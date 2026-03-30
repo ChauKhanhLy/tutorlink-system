@@ -4,7 +4,7 @@ import sequelize from '..config.database.js';
 const Booking = sequelize.define('Booking', {
     datetime: {
         type: DataTypes.DATE,
-        allowNull: false;
+        allowNull: false
     },
     status: {
         type: DataTypes.ENUM('pending', 'confirmed', 'done', 'cancel'),
