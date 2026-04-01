@@ -1,7 +1,7 @@
 import React from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { GraduationCap, MessageSquare, Search, User, Menu, X, Bell } from "lucide-react";
-import { motion as Motion, AnimaPresence } from "framer-motion";
+import { motion , AnimatePresence } from "framer-motion";
 
 export function Layout() {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);

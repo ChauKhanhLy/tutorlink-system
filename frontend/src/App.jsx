@@ -1,8 +1,12 @@
-import LandingPage from "./pages/LandingPage";
-import DashboardPage from "./pages/DashboardPage";
+import { RouterProvider } from 'react-router-dom';
+import { router } from './routes';
+import { Toaster } from 'sonner';
 
-function App() {
-  return <DashboardPage />;
+export default function App() {
+  return (
+    <>
+      <RouterProvider router={router} />
+      <Toaster position="top-center" richColors />
+    </>
+  );
 }
-
-export default App;
