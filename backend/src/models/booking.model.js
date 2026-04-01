@@ -1,5 +1,5 @@
 import { DataTypes } from 'sequelize';
-import sequelize from '..config.database.js';
+import sequelize from '../config/database.js';
 
 const Booking = sequelize.define('Booking', {
     datetime: {
@@ -17,6 +17,9 @@ const Booking = sequelize.define('Booking', {
     tutor_id: {type: DataTypes.INTEGER, allowNull: false},
     learner_id: {type: DataTypes.INTEGER, allowNull: false},
     subject_id: {type: DataTypes.INTEGER, allowNull: false}
+
+}, {
+    timestamps: true
 });
 
 export default Booking;

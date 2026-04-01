@@ -1,4 +1,4 @@
-import Booking from '..models/booking.model.js';
+import Booking from '../models/booking.model.js';
 import { Op } from 'sequelize';
 
 export const createBooking = async (data) => {
