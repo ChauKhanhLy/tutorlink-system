@@ -183,7 +183,7 @@ export function Layout() {
             </div>
           </div>
           
-          <div className="border-t border-slate-100 pt-8 flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+          <div className="border-t border-slate-100 pt-8 flex flex-col md:flex-row justify-center items-center space-y-4 md:space-y-0">
             <p className="text-slate-400 text-sm">© 2026 TutorLink. All rights reserved.</p>
             <div className="flex space-x-6 text-slate-400">
               {/* Social icons could go here */}

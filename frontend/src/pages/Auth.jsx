@@ -4,9 +4,8 @@ import {
   GraduationCap, Mail, Lock, User,
   ChevronRight, CheckCircle2, ShieldCheck, Heart
 } from "lucide-react";
-
-import { FaGithub, FaGoogle } from "react-icons/fa";
-import { motion as Motion, AnimatePresence } from "framer-motion";
+import { FaGoogle, FaGithub } from "react-icons/fa";
+import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
 export function AuthPage() {
@@ -127,7 +126,7 @@ export function AuthPage() {
               <span className="text-sm font-bold text-slate-700">Google</span>
             </button>
             <button className="flex items-center justify-center space-x-3 py-4 bg-white border-2 border-slate-50 rounded-2xl hover:bg-slate-50 hover:border-slate-100 transition-all shadow-sm">
-              <Github className="h-5 w-5" />
+              <FaGithub className="h-5 w-5" />
               <span className="text-sm font-bold text-slate-700">GitHub</span>
             </button>
           </div>
