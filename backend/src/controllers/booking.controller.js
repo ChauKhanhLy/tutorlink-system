@@ -1,7 +1,8 @@
 import * as BookingService from '../services/booking.service.js';
 export const postBooking = async (req, res) => {
     try {
-        const learner_id = req.user.id;
+        /*const learner_id = req.user.id;*/
+        const learner_id = 1;
 
         const newBooking = await BookingService.createBooking ({
             ...req.body,
