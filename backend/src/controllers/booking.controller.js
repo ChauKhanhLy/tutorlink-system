@@ -2,7 +2,7 @@ import * as BookingService from '../services/booking.service.js';
 export const postBooking = async (req, res) => {
     try {
         /*const learner_id = req.user.id;*/
-        const learner_id = 1;
+        const learner_id = "ad98a8f2-ba5b-4205-8375-0938a7f4db88";
 
         const newBooking = await BookingService.createBooking ({
             ...req.body,

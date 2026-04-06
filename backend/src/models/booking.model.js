@@ -2,6 +2,11 @@ import { DataTypes } from 'sequelize';
 import sequelize from '../config/database.js';
 
 const Booking = sequelize.define('Booking', {
+    id: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        primaryKey: true
+    },
     datetime: {
         type: DataTypes.DATE,
         allowNull: false
@@ -14,12 +19,14 @@ const Booking = sequelize.define('Booking', {
         type: DataTypes.DECIMAL(10,2),
         allowNull: false
     },
-    tutor_id: {type: DataTypes.INTEGER, allowNull: false},
-    learner_id: {type: DataTypes.INTEGER, allowNull: false},
-    subject_id: {type: DataTypes.INTEGER, allowNull: false}
+    tutor_id: {type: DataTypes.UUID, allowNull: false},
+    learner_id: {type: DataTypes.UUID, allowNull: false},
+    subject_id: {type: DataTypes.UUID, allowNull: false}
 
 }, {
-    timestamps: true
+    tableName: 'bookings',
+    freezeTableName: true,
+    timestamps: false
 });
 
 export default Booking;

@@ -2,6 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import sequelize from './config/database.js';
 import bookingRoutes from './routes/booking.routes.js';
+import './models/booking.model.js'; 
 
 dotenv.config();
 
@@ -13,7 +14,7 @@ app.use('/api/bookings', bookingRoutes);
 
 const startServer = async () => {
     try {
-        await sequelize.sync({ alter: true }); 
+        await sequelize.sync({ force: true }); 
         console.log('✅ Database & Tables đã được đồng bộ hóa thành công!');
 
         const PORT = process.env.PORT || 3000;
