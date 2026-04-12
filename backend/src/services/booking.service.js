@@ -17,3 +17,10 @@ export const createBooking = async (data) => {
 
     return await Booking.create(data);
 };
+
+export const getBookings = async (learner_id) => {
+    return await Booking.findAll({
+        where: { learner_id},
+        order: [['datetime', 'ASC']]
+    });
+};
