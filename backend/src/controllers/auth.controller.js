@@ -2,8 +2,11 @@ const authService = require('../services/auth.service')
 
 exports.register = async (req, res) => {
   try {
-    await authService.register(req.body)
-    res.json({ message: "User registered" })
+    const { email, password } = req.body
+
+    const user = await authService.register({ email, password })
+
+    res.json(user)
   } catch (err) {
     res.status(400).json({ message: err.message })
   }
@@ -11,13 +14,15 @@ exports.register = async (req, res) => {
 
 exports.login = async (req, res) => {
   try {
-    const result = await authService.login(req.body)
+    const { email, password } = req.body
+
+    const result = await authService.login({ email, password })
+
     res.json(result)
   } catch (err) {
-    res.status(400).json({ message: err.message })
+    res.status(401).json({ message: err.message })
   }
 }
-const matchingService = require('../services/matching.service')
 
 exports.getTutors = (req, res) => {
   try {

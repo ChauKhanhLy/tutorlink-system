@@ -4,10 +4,9 @@ const app = express()
 app.use(express.json())
 
 const authRoutes = require('./routes/auth.routes')
-app.use('/auth', authRoutes)
+app.use('/api', authRoutes)
 
 const authMiddleware = require('./middlewares/auth.middleware')
-
 app.get('/users/me', authMiddleware, (req, res) => {
   res.json({
     message: "User info",
@@ -16,7 +15,6 @@ app.get('/users/me', authMiddleware, (req, res) => {
 })
 
 const matchingRoutes = require('./routes/matching.routes')
-
 app.use('/matching', matchingRoutes)
 
 const tutorRoutes = require('./routes/tutor.routes')
