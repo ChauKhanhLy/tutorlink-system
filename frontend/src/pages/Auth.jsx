@@ -24,7 +24,7 @@ export function AuthPage() {
     <div className="min-h-screen bg-white flex overflow-hidden">
       {/* Left Column: Form Section */}
       <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 sm:px-12 md:px-20 lg:px-24 xl:px-32 relative">
-        <div className="absolute top-10 left-10 md:left-24">
+        {/*<div className="absolute top-10 left-10 md:left-24">
           <Link to="/" className="flex items-center space-x-2">
             <div className="bg-indigo-600 p-2 rounded-xl">
               <GraduationCap className="h-6 w-6 text-white" />
@@ -33,7 +33,7 @@ export function AuthPage() {
               TutorLink
             </span>
           </Link>
-        </div>
+        </div>*/}
 
         <div className="max-w-md w-full mx-auto">
           <div className="mb-10 text-center lg:text-left">
