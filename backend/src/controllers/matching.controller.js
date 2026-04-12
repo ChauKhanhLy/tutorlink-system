@@ -1,13 +1,12 @@
 const matchingService = require('../services/matching.service')
 
-exports.getTutors = (req, res) => {
+exports.getTutors = async (req, res) => {
+  const subject = req.query.subject
+
   try {
-    const { subject } = req.query
-
-    const tutors = matchingService.findTutors(subject)
-
-    res.json({ tutors })
+    const tutors = await matchingService.getTutors(subject)
+    res.json(tutors)
   } catch (err) {
-    res.status(400).json({ message: err.message })
+    res.status(500).json({ error: err.message })
   }
 }
