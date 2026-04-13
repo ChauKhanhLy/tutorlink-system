@@ -7,11 +7,12 @@ app.use(express.json())
 const authRoutes = require('./routes/auth.routes')
 const tutorRoutes = require('./routes/tutor.routes')
 const matchingRoutes = require('./routes/matching.routes')
+const userRoutes = require('./routes/user.routes')
 
 app.use('/auth', authRoutes)
 app.use('/tutors', tutorRoutes)
 app.use('/matching', matchingRoutes)
-
+app.use('/users',userRoutes)
 
 // middleware
 const authMiddleware = require('./middlewares/auth.middleware')

@@ -10,10 +10,35 @@ exports.findByEmail = async (email) => {
 }
 
 // tạo user
-exports.createUser = async ({ email, password }) => {
+exports.createUser = async ({ email, password, name}) => {
   const result = await pool.query(
-    'INSERT INTO public.users (email, password) VALUES ($1, $2) RETURNING *',
-    [email, password]
+    'INSERT INTO public.users (email, password, name) VALUES ($1, $2, $3) RETURNING *',
+    [email, password, name]
+  )
+  return result.rows[0]
+}
+
+const db = require('../config/db')
+
+// tìm user theo id
+exports.findById = async (id) => {
+  const result = await db.query(
+    'SELECT id, email, name, phone, avatar FROM users WHERE id = $1',
+    [id]
+  )
+  return result.rows[0]
+}
+
+// update user
+exports.updateUser = async (id, { name, phone, avatar }) => {
+  const result = await db.query(
+    `UPDATE users
+     SET name = $1,
+         phone = $2,
+         avatar = $3
+     WHERE id = $4
+     RETURNING id, email, name, phone, avatar`,
+    [name, phone, avatar, id]
   )
   return result.rows[0]
 }

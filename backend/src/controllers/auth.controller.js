@@ -2,9 +2,9 @@ const authService = require('../services/auth.service')
 
 exports.register = async (req, res) => {
   try {
-    const { email, password } = req.body
+    const { email, password, name } = req.body
 
-    const user = await authService.register({ email, password })
+    const user = await authService.register({ email, password, name})
 
     res.json(user)
   } catch (err) {
