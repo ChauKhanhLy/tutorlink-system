@@ -18,9 +18,17 @@ export const createBooking = async (data) => {
     return await Booking.create(data);
 };
 
-export const getBookings = async (learner_id) => {
+export const getMyBookings = async (learner_id) => {
     return await Booking.findAll({
         where: { learner_id},
         order: [['datetime', 'ASC']]
     });
+};
+
+export const updateStatus = async (id, status) => {
+    const booking = await Booking.findByPk(id);
+    if (!booking) throw new Error("Không tìm thấy lịch học");
+    booking.status = status;
+    await booking.save();
+    return booking;
 };
