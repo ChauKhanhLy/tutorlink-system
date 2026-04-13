@@ -6,6 +6,7 @@ import sequelize from '../config/database.js';
 export const createReview = async (data) => {
     const newReview = await Review.create(data);
     const booking = await Booking.findByPk(data.booking_id);
+    if (!booking) throw new Error("Không tìm thấy lịch học tương ứng");
     const tutorId = booking.tutor_id;
     const [result] = await sequelize.query(`
         SELECT AVG(rating) as new_avg FROM reviews 
@@ -23,6 +24,7 @@ export const createReview = async (data) => {
     if (profile) {
         profile.rating_avg = newAvg;
         await profile.save();
+        
         console.log("✅ Đã lưu điểm mới vào pgAdmin thành công!");
     } else {
         console.log(`❌ KHÔNG TÌM THẤY Gia sư có ID ${tutorId} trong bảng tutor_profiles`);
