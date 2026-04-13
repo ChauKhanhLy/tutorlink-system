@@ -32,3 +32,10 @@ export const updateStatus = async (id, status) => {
     await booking.save();
     return booking;
 };
+
+export const getBookingsForTutor = async (tutor_id) => {
+    return await Booking.findAll({
+        where: { tutor_id },
+        order: [['datetime', 'ASC']]
+    });
+};

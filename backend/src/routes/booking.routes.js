@@ -11,3 +11,12 @@ router.get('/', getMyBookings);
 router.put('/:id/pay', payBooking);
 
 export default router;
+
+router.get('/tutor/:tutor_id', async (req, res) => {
+    try {
+        const data = await BookingService.getBookingsForTutor(req.params.tutor_id);
+        res.status(200).json({ success: true, data });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
