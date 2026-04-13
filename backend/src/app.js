@@ -3,21 +3,25 @@ const app = express()
 
 app.use(express.json())
 
+// routes
 const authRoutes = require('./routes/auth.routes')
-app.use('/api', authRoutes)
+const tutorRoutes = require('./routes/tutor.routes')
+const matchingRoutes = require('./routes/matching.routes')
 
+app.use('/auth', authRoutes)
+app.use('/tutors', tutorRoutes)
+app.use('/matching', matchingRoutes)
+
+
+// middleware
 const authMiddleware = require('./middlewares/auth.middleware')
+
+// protected
 app.get('/users/me', authMiddleware, (req, res) => {
   res.json({
-    message: "User info",
+    message: 'User info',
     user: req.user
   })
 })
-
-const matchingRoutes = require('./routes/matching.routes')
-app.use('/matching', matchingRoutes)
-
-const tutorRoutes = require('./routes/tutor.routes')
-app.use('/tutors', tutorRoutes)
 
 module.exports = app

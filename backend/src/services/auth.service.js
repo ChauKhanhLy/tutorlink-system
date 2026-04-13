@@ -2,7 +2,12 @@ const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
 const userDAL = require('../dal/user.dal')
 
-const SECRET = "123456"
+
+if (!process.env.JWT_SECRET) {
+  throw new Error("JWT_SECRET is not defined")
+}
+
+const SECRET = process.env.JWT_SECRET
 
 exports.register = async ({ email, password }) => {
   const existingUser = await userDAL.findByEmail(email)
