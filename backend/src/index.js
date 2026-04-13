@@ -5,6 +5,7 @@ import bookingRoutes from './routes/booking.routes.js';
 import './models/booking.model.js'; 
 import Review from './models/review.model.js';
 import reviewRoutes from './routes/review.routes.js';
+import TutorProfile from './models/tutor_profile.model.js';
 
 dotenv.config();
 
