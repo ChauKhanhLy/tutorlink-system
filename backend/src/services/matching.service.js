@@ -1,12 +1,12 @@
-const tutorDAL = require('../dal/tutor.dal')
+import * as tutorDAL from '../dal/tutor.dal.js'
 
-exports.getMatching = async (learnerId) => {
-  //  MVP: chỉ cần lấy tutor đã verified
-  const tutors = await tutorDAL.getVerifiedTutors()
-
-  return tutors
+export const getTutors = async (filters) => {
+  return await tutorDAL.getTutors(filters)
 }
 
-exports.getTutors = async (subject) => {
-  return await tutorDAL.getTutorsBySubject(subject)
-}
+/*const tutorDAL = require('../dal/tutor.dal')
+
+// matching chính
+exports.getTutors = async (filters) => {
+  return await tutorDAL.getTutors(filters)
+}*/

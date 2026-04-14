@@ -1,14 +1,9 @@
-require('dotenv').config()
-const app = require('./src/app')
-
-const http = require('http')
-const { Server } = require('socket.io')
-
-// 👇 nếu bạn dùng sequelize
-const sequelize = require('./src/config/database')
-
-// 👇 socket
-const { initChatSocket } = require('./src/socket/chat.socket')
+import 'dotenv/config'
+import app from './src/app.js'
+import http from 'http'
+import { Server } from 'socket.io'
+import sequelize from './src/config/database.js'
+import { initChatSocket } from './src/socket/chat.socket.js'
 
 const server = http.createServer(app)
 
@@ -17,7 +12,7 @@ const io = new Server(server, {
     origin: '*',
     methods: ['GET', 'POST'],
   },
-});
+})
 
 initChatSocket(io)
 
@@ -25,7 +20,6 @@ const PORT = process.env.PORT || 3000
 
 const startServer = async () => {
   try {
-    // DB connect
     if (sequelize?.authenticate) {
       await sequelize.authenticate()
       console.log('Kết nối database thành công')

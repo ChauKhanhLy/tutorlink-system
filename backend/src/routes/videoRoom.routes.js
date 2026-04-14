@@ -37,22 +37,15 @@ router.get('/:id/join', joinVideoRoom);
 
 module.exports = router
 //export default router;*/
-const express = require('express');
+import express from 'express'
+import * as videoRoomController from '../controllers/videoRoom.controller.js'
 
-const {
-  getAllVideoRooms,
-  getVideoRoomByBookingId,
-  createVideoRoom,
-  updateVideoRoomStatus,
-  joinVideoRoom,
-} = require('../controllers/videoRoom.controller'); //bỏ .js cũng được
+const router = express.Router()
 
-const router = express.Router();
+router.get('/', videoRoomController.getAllVideoRooms)
+router.get('/booking/:booking_id', videoRoomController.getVideoRoomByBookingId)
+router.post('/', videoRoomController.createVideoRoom)
+router.patch('/:id/status', videoRoomController.updateVideoRoomStatus)
+router.get('/:id/join', videoRoomController.joinVideoRoom)
 
-router.get('/', getAllVideoRooms);
-router.get('/booking/:booking_id', getVideoRoomByBookingId);
-router.post('/', createVideoRoom);
-router.patch('/:id/status', updateVideoRoomStatus);
-router.get('/:id/join', joinVideoRoom);
-
-module.exports = router; // 
+export default router

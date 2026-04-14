@@ -329,10 +329,10 @@ export const joinVideoRoom = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };*/
-const { v4: uuidv4 } = require('uuid');
-const VideoRoom = require('../models/videoRoom.model');
+import { v4 as uuidv4 } from 'uuid';
+import VideoRoom from '../models/videoRoom.model.js';
 
-const getAllVideoRooms = async (req, res) => {
+export const getAllVideoRooms = async (req, res) => {
   try {
     const videoRooms = await VideoRoom.findAll({
       order: [['start_time', 'ASC']],
@@ -344,7 +344,7 @@ const getAllVideoRooms = async (req, res) => {
   }
 };
 
-const getVideoRoomByBookingId = async (req, res) => {
+export const getVideoRoomByBookingId = async (req, res) => {
   try {
     const { booking_id } = req.params;
 
@@ -364,7 +364,7 @@ const getVideoRoomByBookingId = async (req, res) => {
   }
 };
 
-const createVideoRoom = async (req, res) => {
+export const createVideoRoom = async (req, res) => {
   try {
     const {
       booking_id,
@@ -420,7 +420,7 @@ const createVideoRoom = async (req, res) => {
   }
 };
 
-const updateVideoRoomStatus = async (req, res) => {
+export const updateVideoRoomStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -456,7 +456,7 @@ const updateVideoRoomStatus = async (req, res) => {
   }
 };
 
-const joinVideoRoom = async (req, res) => {
+export const joinVideoRoom = async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -506,12 +506,4 @@ const joinVideoRoom = async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
-};
-
-module.exports = {
-  getAllVideoRooms,
-  getVideoRoomByBookingId,
-  createVideoRoom,
-  updateVideoRoomStatus,
-  joinVideoRoom,
 };
