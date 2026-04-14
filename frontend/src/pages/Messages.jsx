@@ -1,5 +1,4 @@
 import React from "react";
-import axios from "axios";
 import socket from "../socket";
 import { Link } from "react-router-dom";
 import {
@@ -19,11 +18,12 @@ import {
 
 import { ImageWithFallback } from "../components/Image/ImageWithFallback";
 import { MotionContext } from "framer-motion";
+import messageApi from "../api/messageApi";
 
 export function MessagesPage() {
-    const [chats, setChats] = React.useState([]);
+  const [chats, setChats] = React.useState([]);
   const [activeChat, setActiveChat] = React.useState(null);
- const currentTutor = chats.find((c) => c.id === activeChat) || null;
+  const currentTutor = chats.find((c) => c.id === activeChat) || null;
   const [message, setMessage] = React.useState("");
 
   /*const mockChats = tutors.map(t => ({
@@ -63,9 +63,7 @@ export function MessagesPage() {
 
     const fetchMessages = async () => {
       try {
-        const res = await axios.get(
-          `http://localhost:3000/api/messages/${userId}/${activeChat}`,
-        );
+        const res = await messageApi.getMessages(userId, activeChat);
         setMessages(res.data);
       } catch (err) {
         console.error(err);
@@ -97,7 +95,7 @@ export function MessagesPage() {
 
   React.useEffect(() => {
     const fetchChats = async () => {
-      const res = await axios.get("http://localhost:3000/api/conversations");
+      const res = await messageApi.getConversations();
       setChats(res.data);
     };
 

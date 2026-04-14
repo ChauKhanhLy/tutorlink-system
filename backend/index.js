@@ -14,6 +14,10 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+app.get('/', (req, res) => {
+  res.send('Server dang chay OK');
+});
+
 app.use('/api/messages', messageRouter);
 
 const server = http.createServer(app);
@@ -27,7 +31,7 @@ const io = new Server(server, {
 
 initChatSocket(io);
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 const startServer = async () => {
   try {

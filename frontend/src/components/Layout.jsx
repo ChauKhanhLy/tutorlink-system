@@ -9,7 +9,7 @@ import {
   X,
   Bell,
 } from "lucide-react";
-import { AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 export function Layout() {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
@@ -24,13 +24,30 @@ export function Layout() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
   React.useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    } else {
-      setUser(null);
-    }
-  }, [location.pathname]);
+    const loadUser = () => {
+      const storedUser = localStorage.getItem("user");
+      setUser(storedUser ? JSON.parse(storedUser) : null);
+    };
+
+    loadUser(); // load lần đầu
+
+    // 🔥 LẮNG NGHE LOGIN
+    window.addEventListener("login", loadUser);
+
+    return () => window.removeEventListener("login", loadUser);
+  }, []);
+  React.useEffect(() => {
+    const loadUser = () => {
+      const storedUser = localStorage.getItem("user");
+      setUser(storedUser ? JSON.parse(storedUser) : null);
+    };
+
+    loadUser();
+
+    window.addEventListener("login", loadUser);
+
+    return () => window.removeEventListener("login", loadUser);
+  }, []);
 
   const navLinks = [
     { name: "Find Tutors", path: "/search", icon: Search },
@@ -110,6 +127,26 @@ export function Layout() {
 
                     {open && (
                       <div className="absolute right-0 mt-3 w-52 bg-white rounded-xl shadow-lg border border-slate-100 py-2 z-50">
+                        {/* 🔥 PHÂN QUYỀN */}
+                        {user?.role === "tutor" && (
+                          <Link
+                            to="/tutor-dashboard"
+                            className="block px-4 py-2 text-sm hover:bg-slate-100"
+                          >
+                            Tutor Dashboard
+                          </Link>
+                        )}
+
+                        {user?.role === "student" && (
+                          <Link
+                            to="/my-courses"
+                            className="block px-4 py-2 text-sm hover:bg-slate-100"
+                          >
+                            Khóa học của tôi
+                          </Link>
+                        )}
+
+                        {/* menu chung */}
                         <Link
                           to="/dashboard"
                           className="block px-4 py-2 text-sm hover:bg-slate-100"
@@ -133,10 +170,11 @@ export function Layout() {
 
                         <div className="border-t my-2"></div>
 
+                        {/* 👇 logout */}
                         <button
                           onClick={() => {
                             localStorage.removeItem("user");
-                            setUser(null);
+                            window.dispatchEvent(new Event("login")); // 🔥 thêm dòng này
                           }}
                           className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-slate-100"
                         >
@@ -237,8 +275,10 @@ export function Layout() {
         </AnimatePresence>
       </nav>
 
-      <main className="pt-0">
-        <Outlet />
+      <main className="pt-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto w-full">
+          <Outlet />
+        </div>
       </main>
 
       {/* Footer */}
