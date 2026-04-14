@@ -14,7 +14,7 @@ const {
   getAllMessages,
   getMessagesBetweenUsers,
   createMessage
-} = require('../controller/message');
+} = require('../controllers/message.controller');
 
 const router = express.Router();
 

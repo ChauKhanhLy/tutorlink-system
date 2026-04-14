@@ -9,12 +9,13 @@ const tutorRoutes = require('./routes/tutor.routes')
 const matchingRoutes = require('./routes/matching.routes')
 const userRoutes = require('./routes/user.routes')
 const adminRoutes = require('./routes/admin.routes')
-const messageRoutes = require('./router/message.router')
+const messageRoutes = require('./routes/message.routes')
 
 // ===== ROUTES CỦA TEAM =====
 const bookingRoutes = require('./routes/booking.routes')
 const reviewRoutes = require('./routes/review.routes')
 const paymentRoutes = require('./routes/payment.routes')
+const videoRoomRoutes = require('./routes/videoRoom.routes')
 
 // ===== USE ROUTES =====
 app.use('/api/auth', authRoutes)
@@ -28,6 +29,7 @@ app.use('/api/messages', messageRoutes)
 app.use('/api/bookings', bookingRoutes)
 app.use('/api/reviews', reviewRoutes)
 app.use('/api/payments', paymentRoutes)
+app.use('/api/video-rooms', videoRoomRoutes)
 
 // middleware auth
 const authMiddleware = require('./middlewares/auth.middleware')
