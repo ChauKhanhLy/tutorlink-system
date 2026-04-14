@@ -1,8 +1,15 @@
 const express = require('express')
 const router = express.Router()
 
-const controller = require('../controllers/matching.controller')
+const matchingController = require('../controllers/matching.controller')
+const authMiddleware = require('../middlewares/auth.middleware')
+const roleMiddleware = require('../middlewares/role.middleware')
 
-router.get('/', controller.getTutors)
+router.get(
+  '/',
+  authMiddleware,
+  roleMiddleware('learner'),   //  chỉ learner được gọi
+  matchingController.getMatching
+)
 
 module.exports = router

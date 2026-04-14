@@ -10,12 +10,26 @@ exports.findByEmail = async (email) => {
 }
 
 // tạo user
-exports.createUser = async ({ email, password, name}) => {
+exports.createUser = async ({ email, password, name, role}) => {
   const result = await pool.query(
-    'INSERT INTO public.users (email, password, name) VALUES ($1, $2, $3) RETURNING *',
-    [email, password, name]
+    'INSERT INTO public.users (email, password, name, role) VALUES ($1, $2, $3, $4) RETURNING *',
+    [email, password, name, role]
   )
   return result.rows[0]
+}
+
+exports.getAllUsers = async () => {
+  const result = await pool.query(
+    'SELECT id, email, name, role, verified FROM users'
+  )
+  return result.rows
+}
+
+exports.verifyTutor = async (id) => {
+  await pool.query(
+    'UPDATE users SET verified = true WHERE id = $1',
+    [id]
+  )
 }
 
 const db = require('../config/db')
@@ -42,3 +56,4 @@ exports.updateUser = async (id, { name, phone, avatar }) => {
   )
   return result.rows[0]
 }
+

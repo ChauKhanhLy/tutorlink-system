@@ -18,7 +18,8 @@ exports.register = async ({ email, password, name }) => {
   return await userDAL.createUser({
     email,
     password: hashedPassword,
-    name
+    name,
+    role: 'learner'
   })
 }
 
@@ -28,11 +29,9 @@ exports.login = async ({ email, password }) => {
   }
 
   const user = await userDAL.findByEmail(email)
-
   if (!user) throw new Error("User not found")
 
   const isMatch = await bcrypt.compare(password, user.password)
-
   if (!isMatch) throw new Error("Wrong password")
 
   const token = jwt.sign(

@@ -1,11 +1,16 @@
 const express = require('express')
 const router = express.Router()
 
-router.get('/', (req, res) => {
-  res.json([
-    { id: 1, name: "Nguyen Van A", subject: "Math" },
-    { id: 2, name: "Tran Thi B", subject: "English" }
-  ])
-})
+const authMiddleware = require('../middlewares/auth.middleware')
+const roleMiddleware = require('../middlewares/role.middleware')
+
+router.get(
+  '/dashboard',
+  authMiddleware,
+  roleMiddleware('tutor'),   // hỉ tutor
+  (req, res) => {
+    res.json({ message: "Tutor dashboard" })
+  }
+)
 
 module.exports = router
