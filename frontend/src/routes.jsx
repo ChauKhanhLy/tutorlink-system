@@ -7,6 +7,11 @@ import { MessagesPage } from "./pages/Messages";
 import { AuthPage } from "./pages/Auth";
 import { Layout } from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
+import { BookingPage } from "./pages/Booking";
+import { LessonPage } from "./pages/Lesson";
+import { PaymentPage } from "./pages/Payment";
+import { ProfilePage } from "./pages/Profile";
+import { ReviewPage } from "./pages/Review";
 
 export const router = createBrowserRouter([
   {
@@ -30,6 +35,46 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <MessagesPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "bookings",
+        element: (
+          <ProtectedRoute>
+            <BookingPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "lesson/:id",
+        element: (
+          <ProtectedRoute>
+            <LessonPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "payments",
+        element: (
+          <ProtectedRoute>
+            <PaymentPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "profile",
+        element: (
+          <ProtectedRoute>
+            <ProfilePage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "review",
+        element: (
+          <ProtectedRoute>
+            <ReviewPage />
           </ProtectedRoute>
         ),
       },
