@@ -7,6 +7,7 @@ import { Server } from 'socket.io';
 import sequelize from './config/database.js';
 import messageRouter from './src/router/message.router.js';
 import { initChatSocket } from './src/socket/chat.socket.js';
+import videoRoomRouter from './src/router/videoRoom.router.js';
 
 dotenv.config();
 
@@ -19,6 +20,7 @@ app.get('/', (req, res) => {
 });
 
 app.use('/api/messages', messageRouter);
+app.use('/api/video-rooms', videoRoomRouter);
 
 const server = http.createServer(app);
 
