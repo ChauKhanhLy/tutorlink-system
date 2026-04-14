@@ -1,18 +1,36 @@
 import React from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
-import { GraduationCap, MessageSquare, Search, User, Menu, X, Bell } from "lucide-react";
-import { motion , AnimatePresence } from "framer-motion";
+import {
+  GraduationCap,
+  MessageSquare,
+  Search,
+  User,
+  Menu,
+  X,
+  Bell,
+} from "lucide-react";
+import { AnimatePresence } from "framer-motion";
 
 export function Layout() {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const [isScrolled, setIsScrolled] = React.useState(false);
   const location = useLocation();
+  const [user, setUser] = React.useState(null);
+  const [open, setOpen] = React.useState(false);
 
   React.useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 10);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+  React.useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    } else {
+      setUser(null);
+    }
+  }, [location.pathname]);
 
   const navLinks = [
     { name: "Find Tutors", path: "/search", icon: Search },
@@ -36,9 +54,13 @@ export function Layout() {
               <div className="bg-indigo-600 p-2 rounded-xl">
                 <GraduationCap className="h-6 w-6 text-white" />
               </div>
-              <span className={`text-xl font-bold tracking-tight ${
-                isScrolled || location.pathname !== "/" ? "text-slate-900" : "text-white"
-              }`}>
+              <span
+                className={`text-xl font-bold tracking-tight ${
+                  isScrolled || location.pathname !== "/"
+                    ? "text-slate-900"
+                    : "text-white"
+                }`}
+              >
                 TutorLink
               </span>
             </Link>
@@ -50,28 +72,105 @@ export function Layout() {
                   key={link.path}
                   to={link.path}
                   className={`text-sm font-medium transition-colors hover:text-indigo-600 ${
-                    isScrolled || location.pathname !== "/" ? "text-slate-600" : "text-white/90"
+                    isScrolled || location.pathname !== "/"
+                      ? "text-slate-600"
+                      : "text-white/90"
                   }`}
                 >
                   {link.name}
                 </Link>
               ))}
-              <div className="flex items-center space-x-4">
-                <button className={`p-2 rounded-full transition-colors hover:bg-slate-100 ${
-                  isScrolled || location.pathname !== "/" ? "text-slate-600" : "text-white/90"
-                }`}>
-                  <Bell className="h-5 w-5" />
-                </button>
-                <Link
-                  to="/login"
-                  className={`px-5 py-2.5 rounded-full text-sm font-semibold transition-all ${
+              <div className="flex items-center space-x-4 relative">
+                <button
+                  className={`p-2 rounded-full transition-colors hover:bg-slate-100 ${
                     isScrolled || location.pathname !== "/"
-                      ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md hover:shadow-lg"
-                      : "bg-white text-indigo-600 hover:bg-slate-100 shadow-md"
+                      ? "text-slate-600"
+                      : "text-white/90"
                   }`}
                 >
-                  Join Now
-                </Link>
+                  <Bell className="h-5 w-5" />
+                </button>
+
+                {user ? (
+                  //ĐÃ ĐĂNG NHẬP
+                  <div className="relative">
+                    <div
+                      onClick={() => setOpen(!open)}
+                      className="flex items-center space-x-2 cursor-pointer"
+                    >
+                      <img
+                        src={user.avatar || "/avatar.png"}
+                        alt="avatar"
+                        className="w-8 h-8 rounded-full object-cover"
+                      />
+                      <span className="text-sm font-medium text-slate-700">
+                        {user.name}
+                      </span>
+                    </div>
+
+                    {open && (
+                      <div className="absolute right-0 mt-3 w-52 bg-white rounded-xl shadow-lg border border-slate-100 py-2 z-50">
+                        <Link
+                          to="/dashboard"
+                          className="block px-4 py-2 text-sm hover:bg-slate-100"
+                        >
+                          Dashboard
+                        </Link>
+
+                        <Link
+                          to="/profile"
+                          className="block px-4 py-2 text-sm hover:bg-slate-100"
+                        >
+                          Hồ sơ
+                        </Link>
+
+                        <Link
+                          to="/messages"
+                          className="block px-4 py-2 text-sm hover:bg-slate-100"
+                        >
+                          Tin nhắn
+                        </Link>
+
+                        <div className="border-t my-2"></div>
+
+                        <button
+                          onClick={() => {
+                            localStorage.removeItem("user");
+                            setUser(null);
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-slate-100"
+                        >
+                          Đăng xuất
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  // CHƯA ĐĂNG NHẬP
+                  <>
+                    <Link
+                      to="/login"
+                      className={`px-4 py-2 text-sm font-semibold rounded-full border ${
+                        isScrolled || location.pathname !== "/"
+                          ? "text-slate-700 border-slate-300 hover:bg-slate-100"
+                          : "text-white border-white/50 hover:bg-white/10"
+                      }`}
+                    >
+                      Đăng nhập
+                    </Link>
+
+                    <Link
+                      to="/signup"
+                      className={`px-5 py-2.5 text-sm font-semibold rounded-full ${
+                        isScrolled || location.pathname !== "/"
+                          ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md"
+                          : "bg-white text-indigo-600 hover:bg-slate-100 shadow-md"
+                      }`}
+                    >
+                      Đăng ký
+                    </Link>
+                  </>
+                )}
               </div>
             </div>
 
@@ -80,10 +179,16 @@ export function Layout() {
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
                 className={`p-2 rounded-lg transition-colors ${
-                  isScrolled || location.pathname !== "/" ? "text-slate-900" : "text-white"
+                  isScrolled || location.pathname !== "/"
+                    ? "text-slate-900"
+                    : "text-white"
                 }`}
               >
-                {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+                {isMenuOpen ? (
+                  <X className="h-6 w-6" />
+                ) : (
+                  <Menu className="h-6 w-6" />
+                )}
               </button>
             </div>
           </div>
@@ -150,41 +255,114 @@ export function Layout() {
                 </span>
               </Link>
               <p className="text-slate-500 leading-relaxed text-sm">
-                Empowering students to achieve their academic goals through personalized tutoring from the best educators.
+                Empowering students to achieve their academic goals through
+                personalized tutoring from the best educators.
               </p>
             </div>
-            
+
             <div>
               <h4 className="text-slate-900 font-bold mb-6">Explore</h4>
               <ul className="space-y-4">
-                <li><Link to="/search" className="text-slate-500 hover:text-indigo-600 text-sm">Math Tutors</Link></li>
-                <li><Link to="/search" className="text-slate-500 hover:text-indigo-600 text-sm">Science Tutors</Link></li>
-                <li><Link to="/search" className="text-slate-500 hover:text-indigo-600 text-sm">Language Tutors</Link></li>
-                <li><Link to="/search" className="text-slate-500 hover:text-indigo-600 text-sm">Test Prep</Link></li>
+                <li>
+                  <Link
+                    to="/search"
+                    className="text-slate-500 hover:text-indigo-600 text-sm"
+                  >
+                    Math Tutors
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/search"
+                    className="text-slate-500 hover:text-indigo-600 text-sm"
+                  >
+                    Science Tutors
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/search"
+                    className="text-slate-500 hover:text-indigo-600 text-sm"
+                  >
+                    Language Tutors
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/search"
+                    className="text-slate-500 hover:text-indigo-600 text-sm"
+                  >
+                    Test Prep
+                  </Link>
+                </li>
               </ul>
             </div>
 
             <div>
               <h4 className="text-slate-900 font-bold mb-6">For Tutors</h4>
               <ul className="space-y-4">
-                <li><Link to="/signup" className="text-slate-500 hover:text-indigo-600 text-sm">Become a Tutor</Link></li>
-                <li><Link to="/dashboard" className="text-slate-500 hover:text-indigo-600 text-sm">Tutor Dashboard</Link></li>
-                <li><Link to="/" className="text-slate-500 hover:text-indigo-600 text-sm">Guidelines</Link></li>
+                <li>
+                  <Link
+                    to="/signup"
+                    className="text-slate-500 hover:text-indigo-600 text-sm"
+                  >
+                    Become a Tutor
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/dashboard"
+                    className="text-slate-500 hover:text-indigo-600 text-sm"
+                  >
+                    Tutor Dashboard
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/"
+                    className="text-slate-500 hover:text-indigo-600 text-sm"
+                  >
+                    Guidelines
+                  </Link>
+                </li>
               </ul>
             </div>
 
             <div>
               <h4 className="text-slate-900 font-bold mb-6">Support</h4>
               <ul className="space-y-4">
-                <li><Link to="/" className="text-slate-500 hover:text-indigo-600 text-sm">Help Center</Link></li>
-                <li><Link to="/" className="text-slate-500 hover:text-indigo-600 text-sm">Trust & Safety</Link></li>
-                <li><Link to="/" className="text-slate-500 hover:text-indigo-600 text-sm">Terms of Service</Link></li>
+                <li>
+                  <Link
+                    to="/"
+                    className="text-slate-500 hover:text-indigo-600 text-sm"
+                  >
+                    Help Center
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/"
+                    className="text-slate-500 hover:text-indigo-600 text-sm"
+                  >
+                    Trust & Safety
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/"
+                    className="text-slate-500 hover:text-indigo-600 text-sm"
+                  >
+                    Terms of Service
+                  </Link>
+                </li>
               </ul>
             </div>
           </div>
-          
+
           <div className="border-t border-slate-100 pt-8 flex flex-col md:flex-row justify-center items-center space-y-4 md:space-y-0">
-            <p className="text-slate-400 text-sm">© 2026 TutorLink. All rights reserved.</p>
+            <p className="text-slate-400 text-sm">
+              © 2026 TutorLink. All rights reserved.
+            </p>
             <div className="flex space-x-6 text-slate-400">
               {/* Social icons could go here */}
             </div>
