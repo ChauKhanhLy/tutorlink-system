@@ -57,3 +57,27 @@ exports.updateUser = async (id, { name, phone, avatar }) => {
   return result.rows[0]
 }
 
+//become tutor
+exports.updateUser = async (id, data) => {
+  const fields = []
+  const values = []
+  let index = 1
+
+  for (let key in data) {
+    fields.push(`${key} = $${index}`)
+    values.push(data[key])
+    index++
+  }
+
+  values.push(id)
+
+  const query = `
+    UPDATE users
+    SET ${fields.join(', ')}
+    WHERE id = $${index}
+    RETURNING *
+  `
+
+  const result = await db.query(query, values)
+  return result.rows[0]
+}

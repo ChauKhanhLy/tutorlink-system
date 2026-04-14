@@ -19,3 +19,15 @@ exports.updateProfile = async (req, res) => {
     res.status(400).json({ message: err.message })
   }
 }
+
+exports.becomeTutor = async (req, res) => {
+  try {
+    const userId = req.user.id
+
+    const result = await userService.becomeTutor(userId)
+
+    res.json(result)
+  } catch (err) {
+    res.status(400).json({ message: err.message })
+  }
+}
