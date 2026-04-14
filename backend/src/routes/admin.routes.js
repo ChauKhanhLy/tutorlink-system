@@ -4,7 +4,12 @@ const router = express.Router()
 const authMiddleware = require('../middlewares/auth.middleware')
 const roleMiddleware = require('../middlewares/role.middleware')
 const userDAL = require('../dal/user.dal')
+const adminController = require('../controllers/admin.controller')
+const { isAdmin } = require('../middlewares/auth.middleware')
 
+// console.log("authMiddleware:", authMiddleware)
+// console.log("roleMiddleware:", roleMiddleware)
+// console.log("controller:", adminController.getPendingTutors)
 //  xem tất cả user
 router.get(
   '/users',
@@ -30,4 +35,14 @@ router.post(
   }
 )
 
+//verify tutor
+router.post('/verify-tutor/:id', authMiddleware, adminController.verifyTutor)
+
+// pending tutor
+router.get(
+  '/tutors/pending',
+  authMiddleware,
+  roleMiddleware('admin'),
+  adminController.getPendingTutors
+)
 module.exports = router

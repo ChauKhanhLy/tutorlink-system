@@ -37,13 +37,37 @@ const db = require('../config/db')
 // tìm user theo id
 exports.findById = async (id) => {
   const result = await db.query(
-    'SELECT id, email, name, phone, avatar FROM users WHERE id = $1',
+    'SELECT * FROM users WHERE id = $1',
     [id]
   )
   return result.rows[0]
 }
+//update user (admin verify user)
+exports.updateUser = async (id, data) => {
+  const fields = []
+  const values = []
+  let index = 1
 
-// update user
+  for (let key in data) {
+    fields.push(`${key} = $${index}`)
+    values.push(data[key])
+    index++
+  }
+
+  values.push(id)
+
+  const query = `
+    UPDATE users
+    SET ${fields.join(', ')}
+    WHERE id = $${index}
+    RETURNING *
+  `
+
+  const result = await db.query(query, values)
+  return result.rows[0]
+}
+
+// update proFileUser
 exports.updateUser = async (id, { name, phone, avatar }) => {
   const result = await db.query(
     `UPDATE users
@@ -80,4 +104,14 @@ exports.updateUser = async (id, data) => {
 
   const result = await db.query(query, values)
   return result.rows[0]
+}
+
+// pendingTutors
+exports.getPendingTutors = async () => {
+  const result = await db.query(`
+    SELECT id, email, name, role, verified
+    FROM users
+    WHERE role = 'tutor' AND verified = false
+  `)
+  return result.rows
 }
