@@ -23,9 +23,19 @@ export const getMyBookings = async (req, res) => {
         res.status(200).json({
             success: true,
             count: bookings.length,
-            data: BookingService
+            data: bookings
         });
     } catch (error) {
         res.status(500).json({success: false, message: error.message});
+    }
+};
+
+export const payBooking = async (req, res) => {
+    try {
+        const { id } = req.params; // Lấy ID từ URL
+        const updated = await BookingService.updateStatus(id, 'confirmed');
+        res.status(200).json({ success: true, message: "Thanh toán thành công!", data: updated });
+    } catch (error) {
+        res.status(400).json({ success: false, message: error.message });
     }
 };

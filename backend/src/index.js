@@ -3,6 +3,10 @@ import dotenv from 'dotenv';
 import sequelize from './config/database.js';
 import bookingRoutes from './routes/booking.routes.js';
 import './models/booking.model.js'; 
+import Review from './models/review.model.js';
+import reviewRoutes from './routes/review.routes.js';
+import TutorProfile from './models/tutor_profile.model.js';
+import paymentRoutes from './routes/payment.routes.js';
 
 dotenv.config();
 
@@ -11,6 +15,10 @@ const app = express();
 app.use(express.json());
 
 app.use('/api/bookings', bookingRoutes);
+
+app.use('/api/reviews', reviewRoutes);
+
+app.use('/api/payments', paymentRoutes);
 
 const startServer = async () => {
     try {
