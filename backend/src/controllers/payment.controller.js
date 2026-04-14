@@ -23,3 +23,18 @@ export const postPayment = async (req, res) => {
 
     }
 };
+
+export const getPaymentUrl = async (req,res) => {
+    try{
+        const { booking_id } = req.body;
+        const booking = await Booking.findByPk(booking_id);
+
+        if(!booking) return res.status(404).json({message: "Khong thay lich hoc"});
+        
+        const ipAddr = req.headers['x-forwarded-for'] || req.socket.remoteAddress || "127.0.0.1";
+        const url = await PaymentService.createCNPayUrl(booking, ipAddr);
+        res.status(200).json({success: true, url});
+    } catch (error) {
+        res.status(500).json({success: false, message: error.message});
+    }
+};
