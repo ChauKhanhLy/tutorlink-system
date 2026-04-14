@@ -22,9 +22,10 @@ export function AuthPage() {
   const [role, setRole] = React.useState("student"); // mặc định student
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    try {
+  try {
+    if (isLogin) {
       const data = {
         email: e.target[0].value,
         password: e.target[1].value,
@@ -32,24 +33,35 @@ export function AuthPage() {
 
       const res = await authApi.login(data);
 
-      //localStorage.setItem("user", JSON.stringify(res.data));
       localStorage.setItem(
         "user",
         JSON.stringify({
           ...res.data.user,
           token: res.data.token,
-        }),
+        })
       );
-      window.dispatchEvent(new Event("login"));
 
       toast.success("Đăng nhập thành công!");
-
       navigate("/dashboard");
-    } catch (err) {
-      console.log(err);
-      toast.error("Sai tài khoản hoặc mật khẩu!");
+
+    } else {
+      const data = {
+        name: e.target[0].value,
+        email: e.target[1].value,
+        password: e.target[2].value,
+      };
+
+      await authApi.register(data);
+
+      toast.success("Đăng ký thành công!");
+      navigate("/login");
     }
-  };
+
+  } catch (err) {
+    console.log(err);
+    toast.error("Có lỗi xảy ra!");
+  }
+};
 
   React.useEffect(() => {
     const user = localStorage.getItem("user");
