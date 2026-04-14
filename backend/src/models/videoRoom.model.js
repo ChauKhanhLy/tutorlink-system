@@ -77,11 +77,11 @@ const VideoRoom = sequelize.define(
       allowNull: false,
     },
     start_time: {
-      type: DataTypes.DATE,
+      type: DataTypes.STRING(20),
       allowNull: false,
     },
     end_time: {
-      type: DataTypes.DATE,
+      type: DataTypes.STRING(20),
       allowNull: false,
     },
     status: {
