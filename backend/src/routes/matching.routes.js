@@ -8,8 +8,8 @@ const roleMiddleware = require('../middlewares/role.middleware')
 router.get(
   '/',
   authMiddleware,
-  roleMiddleware('learner'),   //  chỉ learner được gọi
-  matchingController.getMatching
+  roleMiddleware('learner'),
+  matchingController.getTutors   
 )
 
 module.exports = router

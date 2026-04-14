@@ -1,10 +1,11 @@
 const matchingService = require('../services/matching.service')
 
-exports.getMatching = async (req, res) => {
+// 🎯 API MATCHING CHÍNH
+exports.getTutors = async (req, res) => {
   try {
-    const learnerId = req.user.id   // lấy từ token
+    const filters = req.query   // subject, price, rating...
 
-    const tutors = await matchingService.getMatching(learnerId)
+    const tutors = await matchingService.getTutors(filters)
 
     res.json({
       message: "Matching tutors",
@@ -12,16 +13,5 @@ exports.getMatching = async (req, res) => {
     })
   } catch (err) {
     res.status(400).json({ message: err.message })
-  }
-}
-
-exports.getTutors = async (req, res) => {
-  const subject = req.query.subject
-
-  try {
-    const tutors = await matchingService.getTutors(subject)
-    res.json(tutors)
-  } catch (err) {
-    res.status(500).json({ error: err.message })
   }
 }

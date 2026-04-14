@@ -1,25 +1,57 @@
 const pool = require('../config/db')
 
-exports.getVerifiedTutors = async () => {
-  const result = await pool.query(
-    `SELECT id, name, email, phone, avatar
-     FROM users
-     WHERE role = 'tutor'
-       AND verified = true`
-  )
-
-  return result.rows
-}
-
-exports.getTutorsBySubject = async (subject) => {
-  const result = await pool.query(`
-    SELECT u.id, u.name, s.name AS subject
+exports.getTutors = async (filters = {}) => {
+  let query = `
+    SELECT 
+      u.id,
+      u.name,
+      u.email,
+      u.phone,
+      u.avatar,
+      tp.hourly_fee,
+      s.name AS subject,
+      COALESCE(AVG(r.rating), 0) AS rating
     FROM users u
-    JOIN tutor_profiles tp ON u.id = tp.user_id
-    JOIN tutor_subjects ts ON tp.user_id = ts.tutor_id
-    JOIN subjects s ON ts.subject_id = s.id
-    WHERE s.name = $1
-  `, [subject])
 
+    JOIN tutor_profile tp ON u.id = tp.user_id
+    JOIN tutor_subject ts ON u.id = ts.tutor_id
+    JOIN subject s ON ts.subject_id = s.id
+
+    LEFT JOIN review r ON u.id = r.reviewer_id
+
+    WHERE u.role = 'tutor'
+      AND u.verified = true
+  `
+
+  const values = []
+
+  //  filter subject
+  if (filters.subject) {
+    values.push(filters.subject)
+    query += ` AND s.name = $${values.length}`
+  }
+
+  //  filter price
+  if (filters.maxPrice) {
+    values.push(filters.maxPrice)
+    query += ` AND tp.hourly_fee <= $${values.length}`
+  }
+
+  query += `
+    GROUP BY u.id, u.name, u.email, u.phone, u.avatar, tp.hourly_fee, s.name
+  `
+
+  // filter rating
+  if (filters.rating) {
+    values.push(filters.rating)
+    query += ` HAVING AVG(r.rating) >= $${values.length}`
+  }
+
+  //  sort (quan trọng)
+  query += `
+    ORDER BY rating DESC, tp.hourly_fee ASC
+  `
+
+  const result = await pool.query(query, values)
   return result.rows
 }
