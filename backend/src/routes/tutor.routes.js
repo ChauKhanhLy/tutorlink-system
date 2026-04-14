@@ -7,7 +7,7 @@ const roleMiddleware = require('../middlewares/role.middleware')
 router.get(
   '/dashboard',
   authMiddleware,
-  roleMiddleware('tutor'),   // hỉ tutor
+  roleMiddleware('tutor'),   // chỉ tutor
   (req, res) => {
     res.json({ message: "Tutor dashboard" })
   }
