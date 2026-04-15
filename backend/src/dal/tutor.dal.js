@@ -1,6 +1,6 @@
-const pool = require('../config/db')
+import db from '../config/db.js'
 
-exports.getTutors = async (filters = {}) => {
+export const getTutors = async (filters = {}) => {
   let query = `
     SELECT 
       u.id,
@@ -13,11 +13,11 @@ exports.getTutors = async (filters = {}) => {
       COALESCE(AVG(r.rating), 0) AS rating
     FROM users u
 
-    JOIN tutor_profile tp ON u.id = tp.user_id
-    JOIN tutor_subject ts ON u.id = ts.tutor_id
-    JOIN subject s ON ts.subject_id = s.id
+    JOIN tutor_profiles tp ON u.id = tp.user_id
+    JOIN tutor_subjects ts ON u.id = ts.tutor_id
+    JOIN subjects s ON ts.subject_id = s.id
 
-    LEFT JOIN review r ON u.id = r.reviewer_id
+    LEFT JOIN reviews r ON u.id = r.reviewer_id
 
     WHERE u.role = 'tutor'
       AND u.verified = true
@@ -25,13 +25,11 @@ exports.getTutors = async (filters = {}) => {
 
   const values = []
 
-  //  filter subject
   if (filters.subject) {
     values.push(filters.subject)
     query += ` AND s.name = $${values.length}`
   }
 
-  //  filter price
   if (filters.maxPrice) {
     values.push(filters.maxPrice)
     query += ` AND tp.hourly_fee <= $${values.length}`
@@ -41,17 +39,15 @@ exports.getTutors = async (filters = {}) => {
     GROUP BY u.id, u.name, u.email, u.phone, u.avatar, tp.hourly_fee, s.name
   `
 
-  // filter rating
   if (filters.rating) {
     values.push(filters.rating)
     query += ` HAVING AVG(r.rating) >= $${values.length}`
   }
 
-  //  sort (quan trọng)
   query += `
     ORDER BY rating DESC, tp.hourly_fee ASC
   `
 
-  const result = await pool.query(query, values)
+  const result = await db.query(query, values)
   return result.rows
 }

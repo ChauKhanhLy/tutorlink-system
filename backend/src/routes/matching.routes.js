@@ -1,15 +1,19 @@
-const express = require('express')
+import express from 'express'
 const router = express.Router()
 
-const matchingController = require('../controllers/matching.controller')
-const authMiddleware = require('../middlewares/auth.middleware')
-const roleMiddleware = require('../middlewares/role.middleware')
+import { getTutors } from '../controllers/matching.controller.js'
+import authMiddleware from '../middlewares/auth.middleware.js'
+import roleMiddleware from '../middlewares/role.middleware.js'
 
+// PUBLIC API (KHÔNG cần login)
+router.get('/', getTutors)
+
+// PRIVATE API (có login)
 router.get(
-  '/',
+  '/personalized',
   authMiddleware,
   roleMiddleware('learner'),
-  matchingController.getTutors   
+  getTutors
 )
 
-module.exports = router
+export default router
