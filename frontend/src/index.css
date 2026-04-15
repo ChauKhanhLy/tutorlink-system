@@ -1,3 +1,23 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Reset chuẩn */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px; /* base chuẩn */
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Fix Chrome zoom weird */
+:root {
+  --scale: 1;
+}

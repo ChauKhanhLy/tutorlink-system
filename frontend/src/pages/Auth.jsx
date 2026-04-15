@@ -1,29 +1,79 @@
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
-  GraduationCap, Mail, Lock, User,
-  ChevronRight, CheckCircle2, ShieldCheck, Heart
+  GraduationCap,
+  Mail,
+  Lock,
+  User,
+  ChevronRight,
+  CheckCircle2,
+  ShieldCheck,
+  Heart,
 } from "lucide-react";
 import { FaGoogle, FaGithub } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
+import authApi from "../api/authApi";
+import { useAuth } from "../context/AuthContext";
 
 export function AuthPage() {
+  const { login } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const isLogin = location.pathname === "/login";
   const [role, setRole] = React.useState("student"); // mặc định student
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    toast.success(`Đăng nhập thành công với vai trò ${role === "student" ? "học sinh" : "gia sư"}!`);
-    navigate("/dashboard");
+
+    try {
+      if (isLogin) {
+        const data = {
+          email: e.target[0].value,
+          password: e.target[1].value,
+        };
+
+        const res = await authApi.login(data);
+
+        const userData = {
+          ...res.data.user,
+          token: res.data.token,
+        };
+
+        login(userData); // 🔥 QUAN TRỌNG
+
+        toast.success("Đăng nhập thành công!");
+        navigate("/dashboard");
+      } else {
+        const formData = new FormData(e.target);
+        const data = {
+          name: formData.get("name"),
+          email: formData.get("email"),
+          password: formData.get("password"),
+        };
+
+        await authApi.register(data);
+
+        toast.success("Đăng ký thành công!");
+        navigate("/login");
+      }
+    } catch (err) {
+      console.log(err.response?.data);
+      toast.error(err.response?.data?.message || "Lỗi server");
+    }
   };
 
+  React.useEffect(() => {
+    const user = localStorage.getItem("user");
+
+    if (user) {
+      navigate("/dashboard");
+    }
+  }, [navigate]);
   return (
-    <div className="min-h-screen bg-white flex overflow-hidden">
+    <div className="w-full flex flex-col lg:flex-row">
       {/* Left Column: Form Section */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 sm:px-12 md:px-20 lg:px-24 xl:px-32 relative">
+      <div className="w-full lg:w-1/2 flex flex-col justify-center py-10">
         {/*<div className="absolute top-10 left-10 md:left-24">
           <Link to="/" className="flex items-center space-x-2">
             <div className="bg-indigo-600 p-2 rounded-xl">
@@ -35,16 +85,15 @@ export function AuthPage() {
           </Link>
         </div>*/}
 
-        <div className="max-w-md w-full mx-auto">
+        <div className="max-w-sm sm:max-w-md w-full mx-auto">
           <div className="mb-10 text-center lg:text-left">
-            <h1 className="text-4xl font-extrabold text-slate-900 mb-3 tracking-tight">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 mb-3 tracking-tight">
               {isLogin ? "Chào mừng trở lại!" : "Tham gia cộng đồng"}
             </h1>
             <p className="text-slate-500 font-medium">
               {isLogin
                 ? "Đăng nhập để tiếp tục các buổi học và tin nhắn của bạn."
-                : "Tạo tài khoản và bắt đầu hành trình học tập ngay hôm nay."
-              }
+                : "Tạo tài khoản và bắt đầu hành trình học tập ngay hôm nay."}
             </p>
           </div>
 
@@ -53,7 +102,9 @@ export function AuthPage() {
               <button
                 onClick={() => setRole("student")}
                 className={`flex-1 py-3.5 rounded-[1.75rem] text-sm font-bold transition-all ${
-                  role === "student" ? "bg-white text-indigo-600 shadow-xl shadow-indigo-500/5 ring-1 ring-slate-100" : "text-slate-400 hover:text-slate-600"
+                  role === "student"
+                    ? "bg-white text-indigo-600 shadow-xl shadow-indigo-500/5 ring-1 ring-slate-100"
+                    : "text-slate-400 hover:text-slate-600"
                 }`}
               >
                 Tôi là học sinh
@@ -61,7 +112,9 @@ export function AuthPage() {
               <button
                 onClick={() => setRole("tutor")}
                 className={`flex-1 py-3.5 rounded-[1.75rem] text-sm font-bold transition-all ${
-                  role === "tutor" ? "bg-white text-indigo-600 shadow-xl shadow-indigo-500/5 ring-1 ring-slate-100" : "text-slate-400 hover:text-slate-600"
+                  role === "tutor"
+                    ? "bg-white text-indigo-600 shadow-xl shadow-indigo-500/5 ring-1 ring-slate-100"
+                    : "text-slate-400 hover:text-slate-600"
                 }`}
               >
                 Tôi là gia sư
@@ -74,34 +127,42 @@ export function AuthPage() {
               <div className="relative group">
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:text-indigo-600 transition-colors" />
                 <input
+                  name="name"
                   type="text"
                   placeholder="Họ và tên"
                   required
-                  className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white transition-all text-sm font-medium shadow-sm"
+                  className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white transition-all text-sm font-medium shadow-sm"
                 />
               </div>
             )}
+
             <div className="relative group">
               <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:text-indigo-600 transition-colors" />
               <input
+                name="email"
                 type="email"
                 placeholder="Địa chỉ email"
                 required
-                className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white transition-all text-sm font-medium shadow-sm"
+                className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white transition-all text-sm font-medium shadow-sm"
               />
             </div>
+
             <div className="relative group">
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:text-indigo-600 transition-colors" />
               <input
+                name="password"
                 type="password"
                 placeholder="Mật khẩu"
                 required
-                className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white transition-all text-sm font-medium shadow-sm"
+                className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white transition-all text-sm font-medium shadow-sm"
               />
             </div>
             {isLogin && (
               <div className="text-right">
-                <button type="button" className="text-xs font-bold text-indigo-600 hover:text-indigo-700 hover:underline">
+                <button
+                  type="button"
+                  className="text-xs font-bold text-indigo-600 hover:text-indigo-700 hover:underline"
+                >
                   Quên mật khẩu?
                 </button>
               </div>
@@ -116,7 +177,9 @@ export function AuthPage() {
 
           <div className="my-10 flex items-center">
             <div className="flex-1 border-t border-slate-100"></div>
-            <span className="mx-4 text-xs font-bold text-slate-400 uppercase tracking-widest">hoặc tiếp tục với</span>
+            <span className="mx-4 text-xs font-bold text-slate-400 uppercase tracking-widest">
+              hoặc tiếp tục với
+            </span>
             <div className="flex-1 border-t border-slate-100"></div>
           </div>
 
@@ -156,51 +219,60 @@ export function AuthPage() {
           </div>
         </div>
 
-        <div className="relative z-10 h-full flex flex-col items-center justify-center px-20 text-center text-white">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={role}
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 1.05 }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
-              className="max-w-lg"
-            >
-              <div className="mb-12 inline-flex items-center space-x-2 px-4 py-2 bg-white/10 backdrop-blur-md rounded-full border border-white/20 text-indigo-100 text-xs font-bold uppercase tracking-widest">
-                <CheckCircle2 className="h-4 w-4 text-white" />
-                <span>Mạng lưới học thuật đã xác thực</span>
-              </div>
+        <div className="relative z-10 h-full flex flex-col items-center justify-center px-10 text-center text-white">
+          <div className="max-w-xl mx-auto">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={role}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 1.05 }}
+                transition={{ duration: 0.5, ease: "easeOut" }}
+                className="max-w-lg"
+              >
+                <div className="mb-12 inline-flex items-center space-x-2 px-4 py-2 bg-white/10 backdrop-blur-md rounded-full border border-white/20 text-indigo-100 text-xs font-bold uppercase tracking-widest">
+                  <CheckCircle2 className="h-4 w-4 text-white" />
+                  <span>Mạng lưới học thuật đã xác thực</span>
+                </div>
 
-              <h2 className="text-4xl xl:text-5xl font-extrabold mb-8 leading-tight">
-                {role === "student"
-                  ? "Nâng cao việc học của bạn với sự hướng dẫn 1-1 từ chuyên gia."
-                  : "Biến kiến thức thành thu nhập và tạo ảnh hưởng."
-                }
-              </h2>
+                <h2 className="text-2xl xl:text-3xl font-bold mb-6 leading-snug">
+                  {role === "student"
+                    ? "Nâng cao việc học của bạn với sự hướng dẫn 1-1 từ chuyên gia."
+                    : "Biến kiến thức thành thu nhập và tạo ảnh hưởng."}
+                </h2>
 
-              <p className="text-xl text-indigo-100/80 mb-16 leading-relaxed font-medium">
-                {role === "student"
-                  ? "Tham gia cùng hơn 50.000 học sinh đạt thành công mỗi học kỳ nhờ sự hỗ trợ học tập cá nhân hóa."
-                  : "Trao quyền cho thế hệ người học tiếp theo trong khi xây dựng sự nghiệp linh hoạt của riêng bạn."
-                }
-              </p>
+                <p className="text-base text-indigo-100/80 mb-10 leading-relaxed">
+                  {role === "student"
+                    ? "Tham gia cùng hơn 50.000 học sinh đạt thành công mỗi học kỳ nhờ sự hỗ trợ học tập cá nhân hóa."
+                    : "Trao quyền cho thế hệ người học tiếp theo trong khi xây dựng sự nghiệp linh hoạt của riêng bạn."}
+                </p>
 
-              <div className="space-y-6">
-                {[
-                  { icon: ShieldCheck, text: "Gia sư đã xác thực & Thanh toán an toàn" },
-                  { icon: Heart, text: "Trải nghiệm học tập cá nhân hóa" },
-                  { icon: GraduationCap, text: "Đạt được mục tiêu học tập của bạn" }
-                ].map((feature, idx) => (
-                  <div key={idx} className="flex items-center space-x-4 text-left p-6 bg-white/5 backdrop-blur-sm rounded-3xl border border-white/10 hover:bg-white/10 transition-colors">
-                    <div className="p-3 bg-white/10 rounded-2xl">
-                      <feature.icon className="h-6 w-6 text-white" />
+                <div className="space-y-6">
+                  {[
+                    {
+                      icon: ShieldCheck,
+                      text: "Gia sư đã xác thực & Thanh toán an toàn",
+                    },
+                    { icon: Heart, text: "Trải nghiệm học tập cá nhân hóa" },
+                    {
+                      icon: GraduationCap,
+                      text: "Đạt được mục tiêu học tập của bạn",
+                    },
+                  ].map((feature, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center space-x-4 text-left p-6 bg-white/5 backdrop-blur-sm rounded-3xl border border-white/10 hover:bg-white/10 transition-colors"
+                    >
+                      <div className="p-3 bg-white/10 rounded-2xl">
+                        <feature.icon className="h-6 w-6 text-white" />
+                      </div>
+                      <span className="font-bold text-lg">{feature.text}</span>
                     </div>
-                    <span className="font-bold text-lg">{feature.text}</span>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          </AnimatePresence>
+                  ))}
+                </div>
+              </motion.div>
+            </AnimatePresence>
+          </div>
         </div>
       </div>
     </div>
