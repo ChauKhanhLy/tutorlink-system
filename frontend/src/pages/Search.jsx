@@ -37,6 +37,10 @@ export function SearchPage() {
     "Ngữ văn",
   ];
 
+  const formatPrice = (price) => {
+  return Number(price).toLocaleString("vi-VN") + "đ";
+};
+
   React.useEffect(() => {
     const delayDebounce = setTimeout(async () => {
       try {
@@ -58,7 +62,7 @@ export function SearchPage() {
           q: searchQuery || undefined,
           subject:
             selectedSubject === "Tất cả môn học" ? undefined : selectedSubject,
-          maxPrice: priceRange * 1000, // Chuyển từ triệu sang nghìn
+          maxPrice: parseInt(priceRange * 1000), // Chuyển từ triệu sang nghìn
           rating: selectedRating || undefined,
         };
 
@@ -68,7 +72,7 @@ export function SearchPage() {
         );
 
         const res = await tutorApi.search(params);
-        setTutors(res.data?.data || []);
+        setTutors(res.data?.tutors || []);
       } catch (err) {
         console.error("Lỗi khi tải dữ liệu:", err);
         setTutors([]);
@@ -189,7 +193,7 @@ export function SearchPage() {
                   </label>
                   <div className="flex justify-between text-xs mt-2">
                     <span>0đ</span>
-                    <span>{priceRange}.000đ</span>
+                    <span>{priceRange}.0000đ</span>
                   </div>
                   <input
                     type="range"
@@ -360,7 +364,9 @@ export function SearchPage() {
                           </div>
                           <div className="mt-4 md:mt-0 text-right">
                             <div className="text-2xl font-bold text-indigo-600">
-                              ${tutor.hourlyRate || tutor.hourly_fee}
+                              {formatPrice(
+                                tutor.hourlyRate || tutor.hourly_fee,
+                              )}
                             </div>
                             <div className="text-slate-400 text-xs font-bold uppercase tracking-wider">
                               Mỗi giờ

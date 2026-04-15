@@ -5,12 +5,17 @@ import roleMiddleware from '../middlewares/role.middleware.js'
 
 const router = express.Router()
 
-router.get(
+/*router.get(
   '/',
   authMiddleware,
   roleMiddleware('learner'),
   getTutors
-)
+)*/
+// PUBLIC (search bình thường)
+router.get('/', getTutors)
+
+// PRIVATE (sau này AI recommend, cá nhân hoá)
+
 
 export default router
 

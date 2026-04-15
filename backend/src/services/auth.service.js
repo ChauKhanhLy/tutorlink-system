@@ -1,4 +1,4 @@
-import bcrypt from 'bcrypt'
+/*import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import * as userDAL from '../dal/user.dal.js'
 
@@ -59,7 +59,8 @@ export const login = async ({ email, password }) => {
     }
   }
 }
-/*import bcrypt from 'bcrypt'
+*/
+import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import * as userDAL from '../dal/user.dal.js'
 
