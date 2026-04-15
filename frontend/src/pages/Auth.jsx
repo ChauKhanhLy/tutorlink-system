@@ -14,8 +14,10 @@ import { FaGoogle, FaGithub } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import authApi from "../api/authApi";
+import { useAuth } from "../context/AuthContext";
 
 export function AuthPage() {
+  const { login } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const isLogin = location.pathname === "/login";
@@ -33,13 +35,12 @@ export function AuthPage() {
 
         const res = await authApi.login(data);
 
-        localStorage.setItem(
-          "user",
-          JSON.stringify({
-            ...res.data.user,
-            token: res.data.token,
-          }),
-        );
+        const userData = {
+          ...res.data.user,
+          token: res.data.token,
+        };
+
+        login(userData); // 🔥 QUAN TRỌNG
 
         toast.success("Đăng nhập thành công!");
         navigate("/dashboard");

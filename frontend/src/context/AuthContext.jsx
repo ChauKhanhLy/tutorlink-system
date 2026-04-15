@@ -1,22 +1,25 @@
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(() => {
-  try {
-    const data = localStorage.getItem("user");
-    return data && data !== "undefined" ? JSON.parse(data) : null;
-  } catch {
-    return null;
-  }
-});
+  const [user, setUser] = useState(null);
 
-  const login = (userData) => {
-    localStorage.setItem("user", JSON.stringify(userData));
-    setUser(userData);
+  // load user từ localStorage khi reload
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+  }, []);
+
+  // login
+  const login = (data) => {
+    localStorage.setItem("user", JSON.stringify(data));
+    setUser(data);
   };
 
+  // logout
   const logout = () => {
     localStorage.removeItem("user");
     setUser(null);
@@ -29,7 +32,4 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-// custom hook
-export const useAuth = () => {
-  return useContext(AuthContext);
-};
+export const useAuth = () => useContext(AuthContext);

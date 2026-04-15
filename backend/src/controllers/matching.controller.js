@@ -8,8 +8,9 @@ export const getTutors = async (req, res) => {
     const tutors = await getTutorsService(filters)
 
     res.json({
-      message: "Matching tutors",
-      tutors
+      //message: "Matching tutors",
+      //tutors
+      data: tutors
     })
   } catch (err) {
     res.status(400).json({ message: err.message })

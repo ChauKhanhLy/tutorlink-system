@@ -21,10 +21,21 @@ export function Layout() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
+  // scroll
   React.useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 10);
     window.addEventListener("scroll", handleScroll);
+
     return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // click outside
+  React.useEffect(() => {
+    const handleClickOutside = () => setOpen(false);
+
+    document.addEventListener("click", handleClickOutside);
+
+    return () => document.removeEventListener("click", handleClickOutside);
   }, []);
 
   const learnerNavLinks = [
@@ -107,11 +118,13 @@ export function Layout() {
                 {user ? (
                   <div className="relative">
                     <div
-                      onClick={() => setOpen(!open)}
-                      className="flex items-center space-x-2 cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation(); // 🔥 ngăn click lan ra document
+                        setOpen(!open);
+                      }}
                     >
                       <img
-                        src={user.avatar || "/avatar.png"}
+                        src={user?.avatar || "/avatar.png"}
                         alt="avatar"
                         className="w-8 h-8 rounded-full object-cover"
                       />
@@ -262,7 +275,6 @@ export function Layout() {
           <Outlet />
         </div>
       </main>
-
 
       {/* Footer */}
       <footer className="bg-white border-t border-slate-200 pt-16 pb-8">

@@ -11,10 +11,10 @@ const axiosClient = axios.create({
 axiosClient.interceptors.request.use(
   (config) => {
     try {
-      const user = JSON.parse(localStorage.getItem("user"));
+      const token = localStorage.getItem("token");
 
-      if (user?.token) {
-        config.headers.Authorization = `Bearer ${user.token}`;
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
       }
     } catch (err) {
       console.log("Parse user error:", err);
@@ -22,7 +22,7 @@ axiosClient.interceptors.request.use(
 
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 );
 
 // RESPONSE INTERCEPTOR
@@ -33,11 +33,12 @@ axiosClient.interceptors.response.use(
 
     if (error.response?.status === 401) {
       localStorage.removeItem("user");
+      localStorage.removeItem("token");
       window.location.href = "/login";
     }
 
     return Promise.reject(error);
-  }
+  },
 );
 
 export default axiosClient;

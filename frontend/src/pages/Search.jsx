@@ -58,7 +58,7 @@ export function SearchPage() {
           q: searchQuery || undefined,
           subject:
             selectedSubject === "Tất cả môn học" ? undefined : selectedSubject,
-          maxPrice: priceRange,
+          maxPrice: priceRange * 1000, // Chuyển từ triệu sang nghìn
           rating: selectedRating || undefined,
         };
 
