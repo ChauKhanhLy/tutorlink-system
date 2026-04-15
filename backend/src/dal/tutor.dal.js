@@ -13,11 +13,11 @@ export const getTutors = async (filters = {}) => {
       COALESCE(AVG(r.rating), 0) AS rating
     FROM users u
 
-    JOIN tutor_profile tp ON u.id = tp.user_id
-    JOIN tutor_subject ts ON u.id = ts.tutor_id
-    JOIN subject s ON ts.subject_id = s.id
+    JOIN tutor_profiles tp ON u.id = tp.user_id
+    JOIN tutor_subjects ts ON u.id = ts.tutor_id
+    JOIN subjects s ON ts.subject_id = s.id
 
-    LEFT JOIN review r ON u.id = r.reviewer_id
+    LEFT JOIN reviews r ON u.id = r.reviewer_id
 
     WHERE u.role = 'tutor'
       AND u.verified = true
