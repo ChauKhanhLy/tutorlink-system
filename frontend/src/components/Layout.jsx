@@ -1,59 +1,52 @@
 import React from "react";
-import { Link, Outlet, useLocation } from "react-router-dom";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   GraduationCap,
   MessageSquare,
   Search,
-  User,
   Menu,
   X,
   Bell,
+  Calendar,
+  Users,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
+import { useAuth } from "../context/AuthContext";
 
 export function Layout() {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const [isScrolled, setIsScrolled] = React.useState(false);
-  const location = useLocation();
-  const [user, setUser] = React.useState(null);
   const [open, setOpen] = React.useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
 
   React.useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 10);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
-  React.useEffect(() => {
-    const loadUser = () => {
-      const storedUser = localStorage.getItem("user");
-      setUser(storedUser ? JSON.parse(storedUser) : null);
-    };
 
-    loadUser(); // load lần đầu
-
-    // 🔥 LẮNG NGHE LOGIN
-    window.addEventListener("login", loadUser);
-
-    return () => window.removeEventListener("login", loadUser);
-  }, []);
-  React.useEffect(() => {
-    const loadUser = () => {
-      const storedUser = localStorage.getItem("user");
-      setUser(storedUser ? JSON.parse(storedUser) : null);
-    };
-
-    loadUser();
-
-    window.addEventListener("login", loadUser);
-
-    return () => window.removeEventListener("login", loadUser);
-  }, []);
-
-  const navLinks = [
-    { name: "Find Tutors", path: "/search", icon: Search },
+  const learnerNavLinks = [
+    { name: "Tìm gia sư", path: "/search", icon: Search },
     { name: "Dashboard", path: "/dashboard", icon: GraduationCap },
-    { name: "Messages", path: "/messages", icon: MessageSquare },
+    { name: "Tin nhắn", path: "/messages", icon: MessageSquare },
   ];
+
+  const tutorNavLinks = [
+    { name: "Dashboard", path: "/dashboard", icon: GraduationCap },
+    { name: "Lịch dạy", path: "/tutor/schedule", icon: Calendar },
+    { name: "Học viên", path: "/tutor/students", icon: Users },
+    { name: "Tin nhắn", path: "/messages", icon: MessageSquare },
+  ];
+
+  const navLinks = user?.role === "tutor" ? tutorNavLinks : learnerNavLinks;
+
+  const handleLogout = () => {
+    logout();
+    setOpen(false);
+    navigate("/login");
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans">
@@ -67,7 +60,10 @@ export function Layout() {
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center">
-            <Link to="/" className="flex items-center space-x-2">
+            <Link
+              to={user ? "/dashboard" : "/"}
+              className="flex items-center space-x-2"
+            >
               <div className="bg-indigo-600 p-2 rounded-xl">
                 <GraduationCap className="h-6 w-6 text-white" />
               </div>
@@ -109,7 +105,6 @@ export function Layout() {
                 </button>
 
                 {user ? (
-                  //ĐÃ ĐĂNG NHẬP
                   <div className="relative">
                     <div
                       onClick={() => setOpen(!open)}
@@ -127,55 +122,49 @@ export function Layout() {
 
                     {open && (
                       <div className="absolute right-0 mt-3 w-52 bg-white rounded-xl shadow-lg border border-slate-100 py-2 z-50">
-                        {/* 🔥 PHÂN QUYỀN */}
-                        {user?.role === "tutor" && (
+                        {user?.role === "tutor" ? (
+                          <>
+                            <Link
+                              to="/dashboard"
+                              className="block px-4 py-2 text-sm hover:bg-slate-100"
+                              onClick={() => setOpen(false)}
+                            >
+                              Dashboard Gia sư
+                            </Link>
+                            <Link
+                              to="/tutor/schedule"
+                              className="block px-4 py-2 text-sm hover:bg-slate-100"
+                              onClick={() => setOpen(false)}
+                            >
+                              Lịch dạy
+                            </Link>
+                          </>
+                        ) : (
                           <Link
-                            to="/tutor-dashboard"
+                            to="/dashboard"
                             className="block px-4 py-2 text-sm hover:bg-slate-100"
+                            onClick={() => setOpen(false)}
                           >
-                            Tutor Dashboard
+                            Dashboard
                           </Link>
                         )}
-
-                        {user?.role === "student" && (
-                          <Link
-                            to="/my-courses"
-                            className="block px-4 py-2 text-sm hover:bg-slate-100"
-                          >
-                            Khóa học của tôi
-                          </Link>
-                        )}
-
-                        {/* menu chung */}
-                        <Link
-                          to="/dashboard"
-                          className="block px-4 py-2 text-sm hover:bg-slate-100"
-                        >
-                          Dashboard
-                        </Link>
-
                         <Link
                           to="/profile"
                           className="block px-4 py-2 text-sm hover:bg-slate-100"
+                          onClick={() => setOpen(false)}
                         >
                           Hồ sơ
                         </Link>
-
                         <Link
                           to="/messages"
                           className="block px-4 py-2 text-sm hover:bg-slate-100"
+                          onClick={() => setOpen(false)}
                         >
                           Tin nhắn
                         </Link>
-
                         <div className="border-t my-2"></div>
-
-                        {/* 👇 logout */}
                         <button
-                          onClick={() => {
-                            localStorage.removeItem("user");
-                            window.dispatchEvent(new Event("login")); // 🔥 thêm dòng này
-                          }}
+                          onClick={handleLogout}
                           className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-slate-100"
                         >
                           Đăng xuất
@@ -184,7 +173,6 @@ export function Layout() {
                     )}
                   </div>
                 ) : (
-                  // CHƯA ĐĂNG NHẬP
                   <>
                     <Link
                       to="/login"
@@ -196,7 +184,6 @@ export function Layout() {
                     >
                       Đăng nhập
                     </Link>
-
                     <Link
                       to="/signup"
                       className={`px-5 py-2.5 text-sm font-semibold rounded-full ${
@@ -235,12 +222,7 @@ export function Layout() {
         {/* Mobile menu */}
         <AnimatePresence>
           {isMenuOpen && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="md:hidden bg-white border-b border-slate-200 overflow-hidden"
-            >
+            <div className="md:hidden bg-white border-b border-slate-200 overflow-hidden">
               <div className="px-4 pt-2 pb-6 space-y-1">
                 {navLinks.map((link) => (
                   <Link
@@ -259,18 +241,18 @@ export function Layout() {
                     onClick={() => setIsMenuOpen(false)}
                     className="w-full text-center py-4 text-base font-semibold text-slate-700 border border-slate-200 rounded-xl"
                   >
-                    Log In
+                    Đăng nhập
                   </Link>
                   <Link
                     to="/signup"
                     onClick={() => setIsMenuOpen(false)}
                     className="w-full text-center py-4 text-base font-semibold text-white bg-indigo-600 rounded-xl shadow-md"
                   >
-                    Sign Up
+                    Đăng ký
                   </Link>
                 </div>
               </div>
-            </motion.div>
+            </div>
           )}
         </AnimatePresence>
       </nav>
@@ -280,6 +262,7 @@ export function Layout() {
           <Outlet />
         </div>
       </main>
+
 
       {/* Footer */}
       <footer className="bg-white border-t border-slate-200 pt-16 pb-8">

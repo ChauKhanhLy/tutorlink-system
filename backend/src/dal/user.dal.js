@@ -15,6 +15,7 @@ export const createUser = async ({ email, password, name, role }) => {
     'INSERT INTO users (email, password, name, role) VALUES ($1, $2, $3, $4) RETURNING *',
     [email, password, name, role]
   )
+  console.log("USER CREATED:", result.rows[0])
   return result.rows[0]
 }
 
@@ -77,6 +78,8 @@ export const getPendingTutors = async () => {
   `)
   return result.rows
 }
+
+
 
 /*const pool = require('../config/db')
 

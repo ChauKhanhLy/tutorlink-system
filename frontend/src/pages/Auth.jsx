@@ -22,46 +22,45 @@ export function AuthPage() {
   const [role, setRole] = React.useState("student"); // mặc định student
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  try {
-    if (isLogin) {
-      const data = {
-        email: e.target[0].value,
-        password: e.target[1].value,
-      };
+    try {
+      if (isLogin) {
+        const data = {
+          email: e.target[0].value,
+          password: e.target[1].value,
+        };
 
-      const res = await authApi.login(data);
+        const res = await authApi.login(data);
 
-      localStorage.setItem(
-        "user",
-        JSON.stringify({
-          ...res.data.user,
-          token: res.data.token,
-        })
-      );
+        localStorage.setItem(
+          "user",
+          JSON.stringify({
+            ...res.data.user,
+            token: res.data.token,
+          }),
+        );
 
-      toast.success("Đăng nhập thành công!");
-      navigate("/dashboard");
+        toast.success("Đăng nhập thành công!");
+        navigate("/dashboard");
+      } else {
+        const formData = new FormData(e.target);
+        const data = {
+          name: formData.get("name"),
+          email: formData.get("email"),
+          password: formData.get("password"),
+        };
 
-    } else {
-      const data = {
-        name: e.target[0].value,
-        email: e.target[1].value,
-        password: e.target[2].value,
-      };
+        await authApi.register(data);
 
-      await authApi.register(data);
-
-      toast.success("Đăng ký thành công!");
-      navigate("/login");
+        toast.success("Đăng ký thành công!");
+        navigate("/login");
+      }
+    } catch (err) {
+      console.log(err.response?.data);
+      toast.error(err.response?.data?.message || "Lỗi server");
     }
-
-  } catch (err) {
-    console.log(err);
-    toast.error("Có lỗi xảy ra!");
-  }
-};
+  };
 
   React.useEffect(() => {
     const user = localStorage.getItem("user");
@@ -69,7 +68,7 @@ export function AuthPage() {
     if (user) {
       navigate("/dashboard");
     }
-  }, []);
+  }, [navigate]);
   return (
     <div className="w-full flex flex-col lg:flex-row">
       {/* Left Column: Form Section */}
@@ -127,6 +126,7 @@ export function AuthPage() {
               <div className="relative group">
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:text-indigo-600 transition-colors" />
                 <input
+                  name="name"
                   type="text"
                   placeholder="Họ và tên"
                   required
@@ -134,22 +134,26 @@ export function AuthPage() {
                 />
               </div>
             )}
+
             <div className="relative group">
               <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:text-indigo-600 transition-colors" />
               <input
+                name="email"
                 type="email"
                 placeholder="Địa chỉ email"
                 required
                 className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white transition-all text-sm font-medium shadow-sm"
               />
             </div>
+
             <div className="relative group">
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:text-indigo-600 transition-colors" />
               <input
+                name="password"
                 type="password"
                 placeholder="Mật khẩu"
                 required
-                className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white transition-all text-sm font-medium shadow-sm"
+                className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white transition-all text-sm font-medium shadow-sm"
               />
             </div>
             {isLogin && (

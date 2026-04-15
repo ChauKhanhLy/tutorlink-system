@@ -1,10 +1,18 @@
 // src/pages/Review.jsx
-import React from "react";
+import React, { useState } from "react";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
-import { Star, Send, ChevronLeft, User, Calendar, MessageSquare } from "lucide-react";
+import {
+  Star,
+  Send,
+  ChevronLeft,
+  User,
+  Calendar,
+  MessageSquare,
+} from "lucide-react";
 import { toast } from "sonner";
 import { tutorApi } from "../api/tutorApi";
 import { bookingApi } from "../api/bookingApi";
+import { reviewApi } from "../api/reviewApi";
 import { ImageWithFallback } from "../components/Image/ImageWithFallback";
 
 export function ReviewPage() {
@@ -21,54 +29,84 @@ export function ReviewPage() {
   const [loading, setLoading] = React.useState(true);
   const [submitting, setSubmitting] = React.useState(false);
 
+  const textLength = reviewText.trim().length;
+  const isTooShort = textLength > 0 && textLength < 10;
+  const isTooLong = reviewText.length > 500;
+  const [canReview, setCanReview] = useState(false);
+
+  const isValid = rating > 0 && textLength >= 10 && reviewText.length <= 500;
+
   const fetchData = React.useCallback(async () => {
     if (!tutorId) {
       navigate("/dashboard");
       return;
     }
+
     try {
       const [tutorRes, bookingsRes] = await Promise.all([
         tutorApi.getById(tutorId),
         bookingApi.getMyBookings(),
       ]);
+
       setTutor(tutorRes.data);
-      if (bookingId) {
-        const foundBooking = bookingsRes.data.find(b => b.id === bookingId);
-        setBooking(foundBooking);
+
+      // ✅ tìm booking hợp lệ (>= 30 ngày)
+      const validBooking = bookingsRes.data.find((b) => {
+        if (b.tutorId !== tutorId) return false;
+
+        const diffDays =
+          (new Date() - new Date(b.startTime)) / (1000 * 60 * 60 * 24);
+
+        return diffDays >= 30;
+      });
+
+      if (!validBooking) {
+        toast.error("Bạn cần học ít nhất 1 tháng để đánh giá");
+        navigate("/dashboard");
+        return;
       }
-    } catch  {
+
+      setBooking(validBooking);
+      setCanReview(true);
+    } catch {
       toast.error("Không thể tải thông tin");
     } finally {
       setLoading(false);
     }
-  }, [tutorId, bookingId, navigate]);
-
-  React.useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  }, [tutorId, navigate]);
 
   const handleSubmitReview = async () => {
     if (rating === 0) {
       toast.error("Vui lòng chọn số sao đánh giá");
       return;
     }
+
     if (reviewText.trim().length < 10) {
-      toast.error("Vui lòng viết đánh giá chi tiết hơn (tối thiểu 10 ký tự)");
+      toast.error("Vui lòng viết đánh giá chi tiết hơn");
       return;
     }
 
     setSubmitting(true);
     try {
-      // Gọi API gửi đánh giá
-      // await reviewApi.create({ tutorId, bookingId, rating, content: reviewText });
-      toast.success("Cảm ơn bạn đã đánh giá! Đánh giá của bạn sẽ được hiển thị sau khi kiểm duyệt.");
+      await reviewApi.create({
+        tutorId,
+        bookingId,
+        rating,
+        comment: reviewText, // giữ 1 field thôi
+      });
+
+      toast.success("Đánh giá thành công!");
       navigate("/dashboard");
-    } catch  {
-      toast.error("Gửi đánh giá thất bại, vui lòng thử lại");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Lỗi gửi đánh giá");
     } finally {
       setSubmitting(false);
     }
   };
+
+  React.useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   if (loading) {
     return (
@@ -81,16 +119,32 @@ export function ReviewPage() {
   if (!tutor) {
     return (
       <div className="pt-32 text-center">
-        <h2 className="text-2xl font-bold text-slate-900">Không tìm thấy gia sư</h2>
-        <Link to="/dashboard" className="text-indigo-600 mt-4 inline-block">Quay lại Dashboard</Link>
+        <h2 className="text-2xl font-bold text-slate-900">
+          Không tìm thấy gia sư
+        </h2>
+        <Link to="/dashboard" className="text-indigo-600 mt-4 inline-block">
+          Quay lại Dashboard
+        </Link>
       </div>
     );
   }
+if (!canReview) {
+  return (
+    <div className="pt-32 text-center">
+      <p className="text-red-500 font-bold">
+        Bạn chưa đủ điều kiện để đánh giá
+      </p>
+    </div>
+  );
+}
 
   return (
     <div className="pt-24 pb-16 bg-slate-50 min-h-screen">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-        <Link to="/dashboard" className="inline-flex items-center text-slate-500 hover:text-indigo-600 font-bold mb-6">
+        <Link
+          to="/dashboard"
+          className="inline-flex items-center text-slate-500 hover:text-indigo-600 font-bold mb-6"
+        >
           <ChevronLeft className="h-5 w-5 mr-1" /> Quay lại
         </Link>
 
@@ -98,22 +152,34 @@ export function ReviewPage() {
           {/* Header */}
           <div className="bg-gradient-to-r from-indigo-600 to-indigo-500 p-8 text-white">
             <h1 className="text-2xl font-bold mb-2">Đánh giá buổi học</h1>
-            <p className="text-indigo-100">Chia sẻ trải nghiệm của bạn với gia sư để giúp cộng đồng</p>
+            <p className="text-indigo-100">
+              Chia sẻ trải nghiệm của bạn với gia sư để giúp cộng đồng
+            </p>
           </div>
 
           {/* Tutor Info */}
           <div className="p-8 border-b border-slate-100">
             <div className="flex items-center gap-5">
               <div className="w-20 h-20 rounded-2xl overflow-hidden bg-slate-100">
-                <ImageWithFallback src={tutor.avatar} alt={tutor.name} className="w-full h-full object-cover" />
+                <ImageWithFallback
+                  src={tutor.avatar}
+                  alt={tutor.name}
+                  className="w-full h-full object-cover"
+                />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-slate-900">{tutor.name}</h2>
-                <p className="text-slate-500 text-sm">{tutor.subjects?.join(", ")}</p>
+                <h2 className="text-xl font-bold text-slate-900">
+                  {tutor.name}
+                </h2>
+                <p className="text-slate-500 text-sm">
+                  {tutor.subjects?.join(", ")}
+                </p>
                 {booking && (
                   <div className="flex items-center text-xs text-slate-400 mt-1">
                     <Calendar className="h-3 w-3 mr-1" />
-                    <span>{new Date(booking.date).toLocaleDateString("vi-VN")}</span>
+                    <span>
+                      {new Date(booking.date).toLocaleDateString("vi-VN")}
+                    </span>
                     <span className="mx-2">•</span>
                     <span>{booking.time}</span>
                   </div>
@@ -124,9 +190,11 @@ export function ReviewPage() {
 
           {/* Rating Stars */}
           <div className="p-8 border-b border-slate-100">
-            <label className="block text-sm font-bold text-slate-700 mb-4">Đánh giá của bạn</label>
+            <label className="block text-sm font-bold text-slate-700 mb-4">
+              Đánh giá của bạn
+            </label>
             <div className="flex gap-2">
-              {[1, 2, 3, 4, 5].map(star => (
+              {[1, 2, 3, 4, 5].map((star) => (
                 <button
                   key={star}
                   onMouseEnter={() => setHoverRating(star)}
@@ -145,6 +213,11 @@ export function ReviewPage() {
               ))}
             </div>
             <p className="text-sm text-slate-500 mt-3">
+              {rating === 0 && (
+                <p className="text-sm text-red-500 mt-2">
+                  Vui lòng chọn số sao
+                </p>
+              )}
               {rating === 1 && "Rất tệ"}
               {rating === 2 && "Không hài lòng"}
               {rating === 3 && "Bình thường"}
@@ -155,7 +228,9 @@ export function ReviewPage() {
 
           {/* Review Text */}
           <div className="p-8 border-b border-slate-100">
-            <label className="block text-sm font-bold text-slate-700 mb-2">Nhận xét chi tiết</label>
+            <label className="block text-sm font-bold text-slate-700 mb-2">
+              Nhận xét chi tiết
+            </label>
             <textarea
               value={reviewText}
               onChange={(e) => setReviewText(e.target.value)}
@@ -163,7 +238,13 @@ export function ReviewPage() {
               placeholder="Hãy chia sẻ về phương pháp giảng dạy, sự nhiệt tình, kiến thức chuyên môn của gia sư..."
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
             />
-            <p className="text-right text-xs text-slate-400 mt-1">{reviewText.length}/500 ký tự</p>
+            {isTooShort && (
+              <p className="text-red-500 text-xs mt-1">Tối thiểu 10 ký tự</p>
+            )}
+
+            {isTooLong && (
+              <p className="text-red-500 text-xs mt-1">Tối đa 500 ký tự</p>
+            )}
           </div>
 
           {/* Tips */}
@@ -171,10 +252,15 @@ export function ReviewPage() {
             <div className="flex items-start gap-3 text-sm text-slate-600">
               <MessageSquare className="h-5 w-5 text-indigo-500 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="font-bold text-slate-700">Mẹo viết đánh giá hữu ích:</p>
+                <p className="font-bold text-slate-700">
+                  Mẹo viết đánh giá hữu ích:
+                </p>
                 <ul className="list-disc list-inside mt-1 space-y-1 text-slate-500">
                   <li>Mô tả cụ thể những gì bạn đã học được</li>
-                  <li>Đề cập đến điểm mạnh của gia sư (kiến thức, cách truyền đạt, sự kiên nhẫn...)</li>
+                  <li>
+                    Đề cập đến điểm mạnh của gia sư (kiến thức, cách truyền đạt,
+                    sự kiên nhẫn...)
+                  </li>
                   <li>Chia sẻ kết quả học tập sau buổi học</li>
                 </ul>
               </div>
@@ -185,7 +271,7 @@ export function ReviewPage() {
           <div className="p-8 pt-0">
             <button
               onClick={handleSubmitReview}
-              disabled={submitting}
+              disabled={!isValid || submitting}
               className="w-full py-4 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20 disabled:opacity-50"
             >
               {submitting ? (

@@ -15,18 +15,18 @@ import {
   ChevronRight,
   Play,
 } from "lucide-react";
+import { motion } from "framer-motion";
+import { toast } from "sonner";
 import { tutorApi } from "../api/tutorApi";
 import { bookingApi } from "../api/bookingApi";
 import { ImageWithFallback } from "../components/Image/ImageWithFallback";
-import { MotionContext } from "framer-motion"; // hoặc motion/react tuỳ bạn chọn
-import { toast } from "sonner";
 
 export function TutorProfilePage() {
   const { id } = useParams();
   const [tutor, setTutor] = React.useState(null);
-  //const tutor = tutors.find((t) => t.id === id) || tutors[0];
   const [selectedDate, setSelectedDate] = React.useState("15 thg 3, 2026");
   const [selectedTime, setSelectedTime] = React.useState(null);
+  const [loading, setLoading] = React.useState(true);
 
   const timeSlots = [
     "9:00 SA",
@@ -37,28 +37,97 @@ export function TutorProfilePage() {
     "5:30 CH",
   ];
 
-  const handleBooking = async () => {
-  if (!selectedTime) {
-    toast.error("Vui lòng chọn giờ");
-    return;
-  }
-
-  try {
-    await bookingApi.create({
-      tutorId: tutor.id,
-      date: selectedDate,
-      time: selectedTime,
-    });
-
-    toast.success("Đặt lịch thành công!");
-  } catch (err) {
-    console.error("Lỗi đặt lịch:", err);
-    toast.error("Lỗi đặt lịch");
-  }
-};
   React.useEffect(() => {
-  tutorApi.getById(id).then(res => setTutor(res.data));
-}, [id]);
+    const fetchTutor = async () => {
+      try {
+        const res = await tutorApi.getById(id);
+        setTutor(res.data);
+      } catch (err) {
+        console.error("Lỗi tải gia sư:", err);
+        toast.error("Không thể tải thông tin gia sư");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTutor();
+  }, [id]);
+
+  const handleBooking = async () => {
+    if (!selectedTime) {
+      toast.error("Vui lòng chọn giờ");
+      return;
+    }
+
+    try {
+      // Chuyển đổi selectedDate (vd: "15 thg 3, 2026") và selectedTime (vd: "9:00 SA")
+      const months = {
+        "thg 1": "Jan",
+        "thg 2": "Feb",
+        "thg 3": "Mar",
+        "thg 4": "Apr",
+        "thg 5": "May",
+        "thg 6": "Jun",
+        "thg 7": "Jul",
+        "thg 8": "Aug",
+        "thg 9": "Sep",
+        "thg 10": "Oct",
+        "thg 11": "Nov",
+        "thg 12": "Dec",
+      };
+      let dateStr = selectedDate;
+      for (const [vn, en] of Object.entries(months)) {
+        dateStr = dateStr.replace(vn, en);
+      }
+      dateStr = dateStr.replace(",", "");
+      const baseDate = new Date(dateStr);
+
+      const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
+      if (!timeParts) throw new Error("Định dạng giờ không hợp lệ");
+      let hours = parseInt(timeParts[1]);
+      const minutes = parseInt(timeParts[2]);
+      const period = timeParts[3];
+
+      if (period === "CH" && hours !== 12) hours += 12;
+      if (period === "SA" && hours === 12) hours = 0;
+
+      const startTime = new Date(baseDate);
+      startTime.setHours(hours, minutes, 0, 0);
+      const endTime = new Date(startTime.getTime() + 50 * 60000); // +50 phút
+
+      await bookingApi.create({
+        tutorId: tutor.id,
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+        // subject có thể thêm nếu cần
+      });
+
+      toast.success("Đặt lịch thành công!");
+    } catch (err) {
+      console.error("Lỗi đặt lịch:", err);
+      toast.error(err.response?.data?.message || "Lỗi đặt lịch");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="pt-32 flex justify-center">
+        <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (!tutor) {
+    return (
+      <div className="pt-32 text-center">
+        <h2 className="text-2xl font-bold text-slate-900">
+          Không tìm thấy gia sư
+        </h2>
+        <Link to="/search" className="text-indigo-600 mt-4 inline-block">
+          Quay lại tìm kiếm
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="pt-24 pb-24 bg-slate-50 min-h-screen">
@@ -101,7 +170,7 @@ export function TutorProfilePage() {
                         <div className="flex items-center">
                           <Star className="h-4 w-4 text-amber-500 fill-amber-500 mr-1.5" />
                           <span className="text-sm font-bold text-slate-900">
-                            {tutor.rating}
+                            {tutor.rating || 0}
                           </span>
                           <span className="text-slate-400 text-sm ml-1">
                             ({tutor.reviewCount || 0} đánh giá)
@@ -124,7 +193,7 @@ export function TutorProfilePage() {
                   </div>
 
                   <div className="flex flex-wrap gap-2 mb-6">
-                    {tutor.subjects.map((sub) => (
+                    {tutor.subjects?.map((sub) => (
                       <span
                         key={sub}
                         className="px-4 py-1.5 bg-indigo-50 text-indigo-600 text-xs font-bold rounded-full border border-indigo-100"
@@ -140,7 +209,7 @@ export function TutorProfilePage() {
                         Giá
                       </div>
                       <div className="text-xl font-bold text-slate-900">
-                        ${tutor.hourlyRate}
+                        ${tutor.hourlyRate || tutor.hourly_fee}
                         <span className="text-sm text-slate-400">/giờ</span>
                       </div>
                     </div>
@@ -157,7 +226,7 @@ export function TutorProfilePage() {
                         Kinh nghiệm
                       </div>
                       <div className="text-sm font-bold text-slate-900">
-                        120+ bài học
+                        {tutor.lessonsTaught || 120}+ bài học
                       </div>
                     </div>
                   </div>
@@ -218,7 +287,7 @@ export function TutorProfilePage() {
                     Xem video giới thiệu
                   </h3>
                   <p className="text-slate-400 text-sm mt-2">
-                    Nghe trực tiếp từ {tutor.name.split(" ")[0]}
+                    Nghe trực tiếp từ {tutor.name?.split(" ")[0]}
                   </p>
                 </div>
                 <ImageWithFallback
@@ -228,7 +297,7 @@ export function TutorProfilePage() {
                 />
               </section>
 
-              {/* Reviews */}
+              {/* Reviews (tạm thời hiển thị mock) */}
               <section className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
                 <div className="flex items-center justify-between mb-8">
                   <h2 className="text-xl font-bold text-slate-900">
@@ -237,7 +306,7 @@ export function TutorProfilePage() {
                   <div className="flex items-center">
                     <Star className="h-5 w-5 text-amber-500 fill-amber-500 mr-2" />
                     <span className="text-2xl font-bold text-slate-900">
-                      {tutor.rating}
+                      {tutor.rating || 0}
                     </span>
                     <span className="text-slate-400 font-bold ml-2">/ 5.0</span>
                   </div>
@@ -277,9 +346,7 @@ export function TutorProfilePage() {
                       </div>
                       <p className="text-slate-600 text-sm leading-relaxed italic">
                         "Gia sư tuyệt vời! Cô ấy giúp tôi hiểu các khái niệm
-                        giải tích nâng cao một cách đơn giản. Tôi đã từ điểm C
-                        lên A- chỉ trong một tháng học. Rất đáng để giới thiệu
-                        cho bất kỳ ai đang gặp khó khăn với các môn STEM."
+                        giải tích nâng cao một cách đơn giản."
                       </p>
                       <div className="mt-4 text-xs font-bold text-slate-400">
                         5 tháng 3, 2026
@@ -298,7 +365,7 @@ export function TutorProfilePage() {
                 <div className="p-8">
                   <div className="flex items-baseline justify-between mb-8">
                     <div className="text-3xl font-extrabold text-slate-900">
-                      ${tutor.hourlyRate}
+                      ${tutor.hourlyRate || tutor.hourly_fee}
                     </div>
                     <div className="text-slate-400 text-sm font-bold">
                       Bài học 50 phút
