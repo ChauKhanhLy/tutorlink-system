@@ -17,7 +17,7 @@ import {
 import { Link } from "react-router-dom";
 import { tutorApi } from "../api/tutorApi";
 import { bookingApi } from "../api/bookingApi";
-//import { favoriteApi } from "../api/favoriteApi";
+import { favoriteApi } from "../api/favoriteApi";
 import messageApi  from "../api/messageApi";
 //import { billingApi } from "../api/billingApi";
 import { ImageWithFallback } from "../components/Image/ImageWithFallback";
@@ -320,7 +320,7 @@ export function DashboardPage() {
                         className="bg-white rounded-3xl border border-slate-200 p-6 flex items-start space-x-4 shadow-sm"
                       >
                         <ImageWithFallback
-                          src={tutor.avatar}
+                          src={tutor?.avatar}
                           className="w-16 h-16 rounded-2xl object-cover"
                         />
                         <div className="flex-1">
