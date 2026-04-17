@@ -12,6 +12,7 @@ import {
   LogOut,
   LayoutDashboard,
   UserPlus,
+  Shield,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../../context/AuthContext";

@@ -83,12 +83,21 @@ export const becomeTutor = async (userId, payload = {}) => {
 
   if (!user) throw new Error("User not found")
 
-  if (user.role !== 'tutor') {
-    await userDAL.updateUser(userId, {
-      role: 'tutor',
-      verified: false
-    })
+  const updateData = {
+    role: 'tutor',
+    verified: false,
+    phone: payload.phone,
+    subjects: payload.subjects,
+    hourly_rate: Number(payload.hourlyRate || 0),
+    education: payload.education,
+    experience: payload.experience,
+    certifications: payload.certifications,
+    bio: payload.bio,
+    languages: payload.languages,
+    teaching_style: payload.teachingStyle
   }
+
+  await userDAL.updateUser(userId, updateData)
 
   if (Array.isArray(payload.availability)) {
     await saveAvailabilityPreferences(userId, payload.availability, payload.availableDays || [])

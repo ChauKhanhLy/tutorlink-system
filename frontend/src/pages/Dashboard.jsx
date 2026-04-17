@@ -100,7 +100,11 @@ export function DashboardPage() {
                   {user?.name || "User"}
                 </h3>
                 <p className="text-xs font-bold text-indigo-600 z-10 uppercase tracking-widest">
-                  Gói học viên
+                  {user?.role === "admin"
+                    ? "Gói Admin"
+                    : user?.role === "tutor"
+                    ? "Gói Gia sư"
+                    : "Gói Học viên"}
                 </p>
                 <div className="absolute top-0 right-0 -mt-8 -mr-8 w-24 h-24 bg-indigo-600/10 rounded-full blur-xl"></div>
               </div>

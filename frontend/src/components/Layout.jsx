@@ -53,6 +53,8 @@ export function Layout() {
 
   const navLinks = user?.role === "tutor" ? tutorNavLinks : learnerNavLinks;
 
+  const isAdmin = user?.role === "admin";
+
   const handleLogout = () => {
     logout();
     setOpen(false);
@@ -135,6 +137,15 @@ export function Layout() {
 
                     {open && (
                       <div className="absolute right-0 mt-3 w-52 bg-white rounded-xl shadow-lg border border-slate-100 py-2 z-50">
+                        {isAdmin && (
+                          <Link
+                            to="/admin/dashboard"
+                            className="block px-4 py-2 text-sm font-bold text-indigo-600 hover:bg-slate-100 border-b border-slate-50"
+                            onClick={() => setOpen(false)}
+                          >
+                            Dashboard Admin
+                          </Link>
+                        )}
                         {user?.role === "tutor" ? (
                           <>
                             <Link

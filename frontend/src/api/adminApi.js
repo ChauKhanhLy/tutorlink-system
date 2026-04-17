@@ -2,9 +2,9 @@ import axiosClient from "./axiosClient";
 
 const adminApi = {
   getStats: () => axiosClient.get("/admin/stats"),
-  getPendingTutors: () => axiosClient.get("/admin/pending-tutors"),
-  approveTutor: (id) => axiosClient.put(`/admin/tutors/${id}/approve`),
-  rejectTutor: (id, reason) => axiosClient.put(`/admin/tutors/${id}/reject`, { reason }),
+  getPendingTutors: () => axiosClient.get("/admin/tutors/pending"),
+  approveTutor: (id) => axiosClient.post(`/admin/verify-tutor/${id}`),
+  rejectTutor: (id, reason) => axiosClient.post(`/admin/reject-tutor/${id}`, { reason }),
 };
 
 export default adminApi;
