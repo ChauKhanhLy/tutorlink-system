@@ -34,4 +34,8 @@ export const tutorApi = {
 
     return { data: tutor };
   },
+
+  getAvailability: async () => {
+    return { data: { availableSlots: [] } };
+  },
 };

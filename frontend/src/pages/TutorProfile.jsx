@@ -19,6 +19,7 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { tutorApi } from "../api/tutorApi";
 import { bookingApi } from "../api/bookingApi";
+import { reviewApi } from "../api/reviewApi";
 import { ImageWithFallback } from "../components/Image/ImageWithFallback";
 
 export function TutorProfilePage() {
@@ -28,6 +29,7 @@ export function TutorProfilePage() {
   const [selectedDate, setSelectedDate] = React.useState("null");
   const [selectedTime, setSelectedTime] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
+  const [reviews, setReviews] = React.useState([]);
   const formatVND = (price) => {
     return new Intl.NumberFormat("vi-VN").format(price || 0) + "đ";
   };
@@ -42,6 +44,9 @@ export function TutorProfilePage() {
         // gọi thêm API availability
         const slotRes = await tutorApi.getAvailability(id);
         setAvailableSlots(slotRes.data?.availableSlots || []);
+
+        const reviewRes = await reviewApi.getByTutor(id);
+        setReviews(reviewRes.data || []);
       } catch (err) {
         console.error("Lỗi tải gia sư:", err);
         toast.error("Không thể tải thông tin gia sư");
@@ -319,7 +324,7 @@ export function TutorProfilePage() {
                 />
               </section>
 
-              {/* Reviews (tạm thời hiển thị mock) */}
+              {/* Reviews */}
               <section className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
                 <div className="flex items-center justify-between mb-8">
                   <h2 className="text-xl font-bold text-slate-900">
@@ -335,25 +340,28 @@ export function TutorProfilePage() {
                 </div>
 
                 <div className="space-y-8">
-                  {[1, 2].map((review) => (
+                  {reviews.length === 0 && (
+                    <p className="text-sm text-slate-500">Gia sư chưa có đánh giá nào.</p>
+                  )}
+                  {reviews.map((review) => (
                     <div
-                      key={review}
+                      key={review.id}
                       className="pb-8 border-b border-slate-100 last:border-none last:pb-0"
                     >
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center space-x-3">
                           <div className="w-10 h-10 rounded-full bg-slate-100 overflow-hidden">
                             <ImageWithFallback
-                              src={`https://i.pravatar.cc/100?u=${review + 10}`}
+                              src={`https://i.pravatar.cc/100?u=${review.reviewerId || review.reviewer_id || review.id}`}
                               alt="Học viên"
                             />
                           </div>
                           <div>
                             <h4 className="text-sm font-bold text-slate-900">
-                              Alex Thompson
+                              Học viên
                             </h4>
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                              Học viên Giải tích II
+                              Đánh giá đã xác minh
                             </p>
                           </div>
                         </div>
@@ -361,17 +369,18 @@ export function TutorProfilePage() {
                           {[1, 2, 3, 4, 5].map((s) => (
                             <Star
                               key={s}
-                              className="h-3 w-3 text-amber-500 fill-amber-500"
+                              className={`h-3 w-3 ${s <= Number(review.rating) ? "text-amber-500 fill-amber-500" : "text-slate-200 fill-slate-200"}`}
                             />
                           ))}
                         </div>
                       </div>
                       <p className="text-slate-600 text-sm leading-relaxed italic">
-                        "Gia sư tuyệt vời! Cô ấy giúp tôi hiểu các khái niệm
-                        giải tích nâng cao một cách đơn giản."
+                        "{review.comment || "Buổi học hữu ích và chất lượng."}"
                       </p>
                       <div className="mt-4 text-xs font-bold text-slate-400">
-                        5 tháng 3, 2026
+                        {review.createdAt
+                          ? new Date(review.createdAt).toLocaleDateString("vi-VN")
+                          : ""}
                       </div>
                     </div>
                   ))}
