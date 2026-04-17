@@ -11,8 +11,13 @@ export const getTutors = async (filters = {}) => {
       COALESCE(tp.bio, '') as bio,
       COALESCE(tp.hourly_fee, 0) as hourly_fee,
       u.verified,
+      u.education,
+      u.experience,
+      u.languages,
+      u.teaching_style,
       ARRAY_AGG(DISTINCT s.name) FILTER (WHERE s.name IS NOT NULL) AS subjects,
-      COALESCE(AVG(r.rating), 0) AS rating
+      COALESCE(AVG(r.rating), 0) AS rating,
+      COUNT(DISTINCT r.id) as review_count
     FROM users u
     LEFT JOIN tutor_profiles tp ON u.id = tp.user_id
     LEFT JOIN tutor_subjects ts ON u.id = ts.tutor_id
@@ -40,7 +45,7 @@ export const getTutors = async (filters = {}) => {
   }
 
   query += `
-    GROUP BY u.id, u.name, u.email, u.phone, u.avatar, tp.bio, tp.hourly_fee, u.verified
+    GROUP BY u.id, u.name, u.email, u.phone, u.avatar, tp.bio, tp.hourly_fee, u.verified, u.education, u.experience, u.languages, u.teaching_style
   `
 
   if (filters.rating) {

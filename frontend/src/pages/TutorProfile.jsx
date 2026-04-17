@@ -39,11 +39,13 @@ export function TutorProfilePage() {
     const fetchTutor = async () => {
       try {
         const res = await tutorApi.getById(id);
-        setTutor(res.data);
+        const tutorData = res.data;
+        setTutor(tutorData);
 
         // gọi thêm API availability
         const slotRes = await tutorApi.getAvailability(id);
-        setAvailableSlots(slotRes.data?.availableSlots || []);
+        // Đảm bảo setAvailableSlots nhận đúng cấu trúc từ backend
+        setAvailableSlots(slotRes.data?.availableSlots || slotRes.data || []);
 
         const reviewRes = await reviewApi.getByTutor(id);
         setReviews(reviewRes.data || []);
