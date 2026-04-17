@@ -24,24 +24,24 @@ import { ImageWithFallback } from "../components/Image/ImageWithFallback";
 export function TutorProfilePage() {
   const { id } = useParams();
   const [tutor, setTutor] = React.useState(null);
-  const [selectedDate, setSelectedDate] = React.useState("15 thg 3, 2026");
+  const [availableSlots, setAvailableSlots] = React.useState([]);
+  const [selectedDate, setSelectedDate] = React.useState("null");
   const [selectedTime, setSelectedTime] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
-
-  const timeSlots = [
-    "9:00 SA",
-    "10:30 SA",
-    "1:00 CH",
-    "2:30 CH",
-    "4:00 CH",
-    "5:30 CH",
-  ];
+  const formatVND = (price) => {
+    return new Intl.NumberFormat("vi-VN").format(price || 0) + "đ";
+  };
+  const selectedDay = availableSlots.find((s) => s.date === selectedDate);
 
   React.useEffect(() => {
     const fetchTutor = async () => {
       try {
         const res = await tutorApi.getById(id);
         setTutor(res.data);
+
+        // gọi thêm API availability
+        const slotRes = await tutorApi.getAvailability(id);
+        setAvailableSlots(slotRes.data?.availableSlots || []);
       } catch (err) {
         console.error("Lỗi tải gia sư:", err);
         toast.error("Không thể tải thông tin gia sư");
@@ -52,7 +52,7 @@ export function TutorProfilePage() {
     fetchTutor();
   }, [id]);
 
-  const handleBooking = async () => {
+  /*const handleBooking = async () => {
     if (!selectedTime) {
       toast.error("Vui lòng chọn giờ");
       return;
@@ -99,6 +99,28 @@ export function TutorProfilePage() {
         startTime: startTime.toISOString(),
         endTime: endTime.toISOString(),
         // subject có thể thêm nếu cần
+      });
+
+      toast.success("Đặt lịch thành công!");
+    } catch (err) {
+      console.error("Lỗi đặt lịch:", err);
+      toast.error(err.response?.data?.message || "Lỗi đặt lịch");
+    }
+  };*/
+  const handleBooking = async () => {
+    if (!selectedDate || !selectedTime) {
+      toast.error("Vui lòng chọn ngày và giờ");
+      return;
+    }
+
+    try {
+      const startTime = new Date(`${selectedDate}T${selectedTime}`);
+      const endTime = new Date(startTime.getTime() + 50 * 60000);
+
+      await bookingApi.create({
+        tutorId: tutor.id,
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
       });
 
       toast.success("Đặt lịch thành công!");
@@ -209,7 +231,7 @@ export function TutorProfilePage() {
                         Giá
                       </div>
                       <div className="text-xl font-bold text-slate-900">
-                        ${tutor.hourlyRate || tutor.hourly_fee}
+                        {formatVND(tutor.hourlyRate || tutor.hourly_fee)}
                         <span className="text-sm text-slate-400">/giờ</span>
                       </div>
                     </div>
@@ -365,7 +387,7 @@ export function TutorProfilePage() {
                 <div className="p-8">
                   <div className="flex items-baseline justify-between mb-8">
                     <div className="text-3xl font-extrabold text-slate-900">
-                      ${tutor.hourlyRate || tutor.hourly_fee}
+                      {formatVND(tutor.hourlyRate || tutor.hourly_fee)}
                     </div>
                     <div className="text-slate-400 text-sm font-bold">
                       Bài học 50 phút
@@ -396,19 +418,27 @@ export function TutorProfilePage() {
                           {d}
                         </span>
                       ))}
-                      {[10, 11, 12, 13, 14, 15, 16].map((d) => (
-                        <button
-                          key={d}
-                          onClick={() => setSelectedDate(`${d} thg 3, 2026`)}
-                          className={`py-2 text-xs font-bold rounded-xl transition-all ${
-                            d === 15
-                              ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
-                              : "hover:bg-slate-50 text-slate-700"
-                          }`}
-                        >
-                          {d}
-                        </button>
-                      ))}
+                      {availableSlots.map((slot) => {
+                        const dateObj = new Date(slot.date);
+                        const day = dateObj.getDate();
+
+                        return (
+                          <button
+                            key={slot.date}
+                            onClick={() => {
+                              setSelectedDate(slot.date);
+                              setSelectedTime(null);
+                            }}
+                            className={`py-2 text-xs font-bold rounded-xl transition-all ${
+                              selectedDate === slot.date
+                                ? "bg-indigo-600 text-white shadow-lg"
+                                : "hover:bg-slate-50 text-slate-700"
+                            }`}
+                          >
+                            {day}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -418,19 +448,25 @@ export function TutorProfilePage() {
                       Chọn khung giờ
                     </h4>
                     <div className="grid grid-cols-2 gap-3">
-                      {timeSlots.map((time) => (
-                        <button
-                          key={time}
-                          onClick={() => setSelectedTime(time)}
-                          className={`py-3 text-xs font-bold border rounded-2xl transition-all ${
-                            selectedTime === time
-                              ? "bg-indigo-50 border-indigo-600 text-indigo-600"
-                              : "border-slate-100 text-slate-600 hover:border-slate-200 hover:bg-slate-50"
-                          }`}
-                        >
-                          {time}
-                        </button>
-                      ))}
+                      {selectedDay?.times?.length > 0 ? (
+                        selectedDay.times.map((time) => (
+                          <button
+                            key={time}
+                            onClick={() => setSelectedTime(time)}
+                            className={`py-3 text-xs font-bold border rounded-2xl transition-all ${
+                              selectedTime === time
+                                ? "bg-indigo-50 border-indigo-600 text-indigo-600"
+                                : "border-slate-100 text-slate-600 hover:border-slate-200 hover:bg-slate-50"
+                            }`}
+                          >
+                            {time}
+                          </button>
+                        ))
+                      ) : (
+                        <p className="text-sm text-slate-400">
+                          Không có giờ trống
+                        </p>
+                      )}
                     </div>
                   </div>
 
