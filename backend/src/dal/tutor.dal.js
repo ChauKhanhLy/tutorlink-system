@@ -8,13 +8,15 @@ export const getTutors = async (filters = {}) => {
       u.email,
       u.phone,
       u.avatar,
-      u.bio,
-      u.education,
-      u.experience,
-      u.hourly_rate AS hourly_fee,
+      COALESCE(tp.bio, '') as bio,
+      COALESCE(tp.hourly_fee, 0) as hourly_fee,
       u.verified,
+      ARRAY_AGG(DISTINCT s.name) FILTER (WHERE s.name IS NOT NULL) AS subjects,
       COALESCE(AVG(r.rating), 0) AS rating
     FROM users u
+    LEFT JOIN tutor_profiles tp ON u.id = tp.user_id
+    LEFT JOIN tutor_subjects ts ON u.id = ts.tutor_id
+    LEFT JOIN subjects s ON ts.subject_id = s.id
     LEFT JOIN reviews r ON u.id = r.reviewer_id
     WHERE u.role = 'tutor'
       AND u.verified = true
@@ -24,21 +26,21 @@ export const getTutors = async (filters = {}) => {
 
   if (filters.q) {
     values.push(`%${filters.q}%`)
-    query += ` AND (u.name ILIKE $${values.length} OR u.subjects::text ILIKE $${values.length})`
+    query += ` AND (u.name ILIKE $${values.length} OR s.name ILIKE $${values.length} OR tp.bio ILIKE $${values.length})`
   }
 
   if (filters.subject) {
     values.push(filters.subject)
-    query += ` AND $${values.length} = ANY(u.subjects)`
+    query += ` AND s.name = $${values.length}`
   }
 
   if (filters.maxPrice) {
     values.push(filters.maxPrice)
-    query += ` AND u.hourly_rate <= $${values.length}`
+    query += ` AND tp.hourly_fee <= $${values.length}`
   }
 
   query += `
-    GROUP BY u.id, u.name, u.email, u.phone, u.avatar, u.bio, u.education, u.experience, u.hourly_rate, u.verified
+    GROUP BY u.id, u.name, u.email, u.phone, u.avatar, tp.bio, tp.hourly_fee, u.verified
   `
 
   if (filters.rating) {
@@ -47,7 +49,7 @@ export const getTutors = async (filters = {}) => {
   }
 
   query += `
-    ORDER BY rating DESC, u.hourly_rate ASC
+    ORDER BY rating DESC, tp.hourly_fee ASC
   `
 
   const result = await db.query(query, values)

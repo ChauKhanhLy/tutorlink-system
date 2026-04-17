@@ -68,6 +68,7 @@ exports.getPendingTutors = async () => {
 import * as userDAL from '../dal/user.dal.js'
 import isUUID from 'validator/lib/isUUID.js'
 import { saveAvailabilityPreferences } from './tutorAvailability.service.js'
+import db from '../config/db.js'
 
 // update profile
 export const updateProfile = async (userId, data) => {
@@ -83,22 +84,58 @@ export const becomeTutor = async (userId, payload = {}) => {
 
   if (!user) throw new Error("User not found")
 
-  const updateData = {
+  // 1. Cập nhật bảng users (thông tin cơ bản)
+  const updateUserData = {
     role: 'tutor',
     verified: false,
-    phone: payload.phone,
-    subjects: payload.subjects,
-    hourly_rate: Number(payload.hourlyRate || 0),
-    education: payload.education,
-    experience: payload.experience,
-    certifications: payload.certifications,
-    bio: payload.bio,
-    languages: payload.languages,
-    teaching_style: payload.teachingStyle
+    phone: payload.phone
+  }
+  await userDAL.updateUser(userId, updateUserData)
+
+  // 2. Cập nhật bảng tutor_profiles (thông tin chuyên sâu)
+  const existingProfile = await db.query('SELECT * FROM tutor_profiles WHERE user_id = $1', [userId])
+  
+  if (existingProfile.rows.length > 0) {
+    await db.query(
+      `UPDATE tutor_profiles 
+       SET bio = $1, hourly_fee = $2, verified = false 
+       WHERE user_id = $3`,
+      [payload.bio, Number(payload.hourlyRate || 0), userId]
+    )
+  } else {
+    await db.query(
+      `INSERT INTO tutor_profiles (user_id, bio, hourly_fee, verified) 
+       VALUES ($1, $2, $3, false)`,
+      [userId, payload.bio, Number(payload.hourlyRate || 0)]
+    )
   }
 
-  await userDAL.updateUser(userId, updateData)
+  // 3. Cập nhật bảng tutor_subjects
+  if (Array.isArray(payload.subjects) && payload.subjects.length > 0) {
+    await db.query('DELETE FROM tutor_subjects WHERE tutor_id = $1', [userId])
+    
+    for (const subjectName of payload.subjects) {
+      let subjectRes = await db.query('SELECT id FROM subjects WHERE name = $1', [subjectName])
+      let subjectId;
+      
+      if (subjectRes.rows.length === 0) {
+        const newSub = await db.query(
+          'INSERT INTO subjects (name) VALUES ($1) RETURNING id',
+          [subjectName]
+        )
+        subjectId = newSub.rows[0].id
+      } else {
+        subjectId = subjectRes.rows[0].id
+      }
 
+      await db.query(
+        'INSERT INTO tutor_subjects (tutor_id, subject_id, price) VALUES ($1, $2, $3)',
+        [userId, subjectId, Number(payload.hourlyRate || 0)]
+      )
+    }
+  }
+
+  // 4. Lưu lịch dạy
   if (Array.isArray(payload.availability)) {
     await saveAvailabilityPreferences(userId, payload.availability, payload.availableDays || [])
   }
@@ -118,12 +155,17 @@ export const verifyTutor = async (userId) => {
   if (user.role !== 'tutor')
     throw new Error("User is not tutor")
 
-  if (user.verified)
-    throw new Error("Tutor already verified")
-
-  const updatedUser = await userDAL.updateUser(userId, {
+  // Update verified in BOTH tables
+  await userDAL.updateUser(userId, {
     verified: true
   })
+
+  await db.query(
+    'UPDATE tutor_profiles SET verified = true WHERE user_id = $1',
+    [userId]
+  )
+
+  const updatedUser = await userDAL.findById(userId)
 
   return {
     message: "Tutor verified",
