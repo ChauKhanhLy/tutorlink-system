@@ -91,7 +91,7 @@ export const becomeTutor = async (userId, payload = {}) => {
   }
 
   if (Array.isArray(payload.availability)) {
-    await saveAvailabilityPreferences(userId, payload.availability)
+    await saveAvailabilityPreferences(userId, payload.availability, payload.availableDays || [])
   }
 
   return { message: "Requested to become tutor", savedAvailability: Array.isArray(payload.availability) }
