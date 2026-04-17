@@ -15,6 +15,7 @@ import { ReviewPage } from "./pages/Review";
 import { BecomeTutorPage } from "./pages/BecomeTutor";
 import { AdminLogin } from "./pages/admin/AdminLogin";
 import { AdminDashboard } from "./pages/admin/AdminDashboard";
+import { TutorDashboard } from "./pages/TutorDashboard";
 
 export const router = createBrowserRouter([
   {
@@ -30,6 +31,22 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <DashboardPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "tutor/schedule",
+        element: (
+          <ProtectedRoute requiredRole="tutor">
+            <TutorDashboard />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "tutor/students",
+        element: (
+          <ProtectedRoute requiredRole="tutor">
+            <TutorDashboard />
           </ProtectedRoute>
         ),
       },

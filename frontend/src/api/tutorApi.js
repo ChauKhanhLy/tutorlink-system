@@ -23,25 +23,11 @@ export const tutorApi = {
   getAll: () => axiosClient.get("/matching"),
   search: (params) => axiosClient.get("/matching", { params }),
 
-  getById: async (id) => {
-    const res = await axiosClient.get("/matching");
-    const tutors = res.data?.tutors || [];
-    const tutor = tutors.find((item) => String(item.id) === String(id));
+  getById: (id) => axiosClient.get(`/tutors/${id}`),
 
-    if (!tutor) {
-      throw new Error("Tutor not found");
-    }
+  getAvailability: (id) => axiosClient.get(`/tutors/${id}/availability`),
 
-    return { data: tutor };
-  },
-
-  getAvailability: async (id) => {
-    const res = await axiosClient.get(`/tutors/${id}/availability`);
-    return {
-      ...res,
-      data: res.data?.data || { availableSlots: [] },
-    };
-  },
+  getTutorStats: () => axiosClient.get("/tutors/stats"),
 
   registerTutor: (data) => axiosClient.post("/users/become-tutor", data),
 };

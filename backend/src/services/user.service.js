@@ -88,25 +88,40 @@ export const becomeTutor = async (userId, payload = {}) => {
   const updateUserData = {
     role: 'tutor',
     verified: false,
-    phone: payload.phone
+    phone: payload.phone,
+    avatar: payload.avatar
   }
   await userDAL.updateUser(userId, updateUserData)
 
   // 2. Cập nhật bảng tutor_profiles (thông tin chuyên sâu)
   const existingProfile = await db.query('SELECT * FROM tutor_profiles WHERE user_id = $1', [userId])
   
+  const profileData = {
+    bio: payload.bio,
+    hourly_fee: Number(payload.hourlyRate || 0),
+    education: payload.education,
+    experience: payload.experience,
+    languages: Array.isArray(payload.languages) ? JSON.stringify(payload.languages) : payload.languages,
+    teaching_style: payload.teachingStyle,
+    certifications: payload.certifications,
+    verified: user.verified // Giữ nguyên trạng thái verified hiện tại của user
+  }
+
   if (existingProfile.rows.length > 0) {
     await db.query(
       `UPDATE tutor_profiles 
-       SET bio = $1, hourly_fee = $2, verified = false 
-       WHERE user_id = $3`,
-      [payload.bio, Number(payload.hourlyRate || 0), userId]
+       SET bio = $1, hourly_fee = $2, education = $3, experience = $4, 
+           languages = $5, teaching_style = $6, certifications = $7, verified = $8 
+       WHERE user_id = $9`,
+      [profileData.bio, profileData.hourly_fee, profileData.education, profileData.experience, 
+       profileData.languages, profileData.teaching_style, profileData.certifications, profileData.verified, userId]
     )
   } else {
     await db.query(
-      `INSERT INTO tutor_profiles (user_id, bio, hourly_fee, verified) 
-       VALUES ($1, $2, $3, false)`,
-      [userId, payload.bio, Number(payload.hourlyRate || 0)]
+      `INSERT INTO tutor_profiles (user_id, bio, hourly_fee, education, experience, languages, teaching_style, certifications, verified) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [userId, profileData.bio, profileData.hourly_fee, profileData.education, profileData.experience, 
+       profileData.languages, profileData.teaching_style, profileData.certifications, profileData.verified]
     )
   }
 
@@ -160,10 +175,20 @@ export const verifyTutor = async (userId) => {
     verified: true
   })
 
-  await db.query(
-    'UPDATE tutor_profiles SET verified = true WHERE user_id = $1',
-    [userId]
-  )
+  const profileExists = await db.query('SELECT user_id FROM tutor_profiles WHERE user_id = $1', [userId])
+  
+  if (profileExists.rows.length > 0) {
+    await db.query(
+      'UPDATE tutor_profiles SET verified = true WHERE user_id = $1',
+      [userId]
+    )
+  } else {
+    // Nếu chưa có profile (có thể do dữ liệu cũ), tạo mới một profile mặc định
+    await db.query(
+      'INSERT INTO tutor_profiles (user_id, bio, hourly_fee, verified) VALUES ($1, $2, $3, $4)',
+      [userId, 'Gia sư mới', 0, true]
+    )
+  }
 
   const updatedUser = await userDAL.findById(userId)
 

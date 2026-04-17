@@ -23,9 +23,15 @@ import messageApi  from "../api/messageApi";
 import { ImageWithFallback } from "../components/Image/ImageWithFallback";
 import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
+import { TutorDashboard } from "./TutorDashboard";
 
 export function DashboardPage() {
   const { user, logout } = useAuth();
+
+  if (user?.role === "tutor") {
+    return <TutorDashboard />;
+  }
+
   const [sessions, setSessions] = React.useState([]);
   const [tutors, setTutors] = React.useState([]);
   const [activeTab, setActiveTab] = React.useState("sessions");

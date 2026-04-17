@@ -26,7 +26,7 @@ export function TutorProfilePage() {
   const { id } = useParams();
   const [tutor, setTutor] = React.useState(null);
   const [availableSlots, setAvailableSlots] = React.useState([]);
-  const [selectedDate, setSelectedDate] = React.useState("null");
+  const [selectedDate, setSelectedDate] = React.useState(null);
   const [selectedTime, setSelectedTime] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
   const [reviews, setReviews] = React.useState([]);
@@ -44,8 +44,11 @@ export function TutorProfilePage() {
 
         // gọi thêm API availability
         const slotRes = await tutorApi.getAvailability(id);
-        // Đảm bảo setAvailableSlots nhận đúng cấu trúc từ backend
-        setAvailableSlots(slotRes.data?.availableSlots || slotRes.data || []);
+        const slots = slotRes.data?.availableSlots || slotRes.data || [];
+        setAvailableSlots(slots);
+        if (slots.length > 0) {
+          setSelectedDate(slots[0].date);
+        }
 
         const reviewRes = await reviewApi.getByTutor(id);
         setReviews(reviewRes.data || []);
@@ -124,8 +127,12 @@ export function TutorProfilePage() {
       const startTime = new Date(`${selectedDate}T${selectedTime}`);
       const endTime = new Date(startTime.getTime() + 50 * 60000);
 
+      // Lấy subject_id đầu tiên của gia sư nếu có
+      const subjectId = tutor.subject_ids?.[0] || null;
+
       await bookingApi.create({
         tutorId: tutor.id,
+        subjectId: subjectId,
         startTime: startTime.toISOString(),
         endTime: endTime.toISOString(),
       });
@@ -247,7 +254,14 @@ export function TutorProfilePage() {
                         Ngôn ngữ
                       </div>
                       <div className="text-sm font-bold text-slate-900">
-                        {tutor.languages ? tutor.languages.join(", ") : "Anh"}
+                        {tutor.languages
+                          ? Array.isArray(tutor.languages)
+                            ? tutor.languages.join(", ")
+                            : typeof tutor.languages === "string" &&
+                                tutor.languages.startsWith("[")
+                              ? JSON.parse(tutor.languages).join(", ")
+                              : tutor.languages
+                          : "Tiếng Việt"}
                       </div>
                     </div>
                     <div>
@@ -255,7 +269,7 @@ export function TutorProfilePage() {
                         Kinh nghiệm
                       </div>
                       <div className="text-sm font-bold text-slate-900">
-                        {tutor.lessonsTaught || 120}+ bài học
+                        {tutor.experience || `${tutor.lessonsTaught || 120}+ bài học`}
                       </div>
                     </div>
                   </div>
@@ -274,6 +288,16 @@ export function TutorProfilePage() {
                   {tutor.bio ||
                     "Tôi là gia sư giàu kinh nghiệm, đam mê giảng dạy và giúp học sinh đạt được mục tiêu học tập."}
                 </p>
+                {tutor.teaching_style && (
+                  <div className="mb-8 p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100">
+                    <h4 className="text-sm font-bold text-indigo-900 mb-2">
+                      Phong cách giảng dạy
+                    </h4>
+                    <p className="text-sm text-indigo-700 italic">
+                      "{tutor.teaching_style}"
+                    </p>
+                  </div>
+                )}
                 <div className="grid md:grid-cols-2 gap-8">
                   <div className="flex items-start space-x-4">
                     <div className="p-3 bg-amber-50 rounded-2xl">

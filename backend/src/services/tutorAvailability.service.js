@@ -7,9 +7,11 @@ const AVAILABILITY_TEMPLATES = {
 }
 
 const toHourSlots = (startTime, endTime) => {
-  const startHour = Number(String(startTime).slice(0, 2))
-  const endHour = Number(String(endTime).slice(0, 2))
+  const startHour = parseInt(String(startTime).split(':')[0])
+  const endHour = parseInt(String(endTime).split(':')[0])
   const slots = []
+
+  if (isNaN(startHour) || isNaN(endHour)) return []
 
   for (let hour = startHour; hour < endHour; hour += 1) {
     slots.push(`${String(hour).padStart(2, '0')}:00`)
@@ -19,8 +21,14 @@ const toHourSlots = (startTime, endTime) => {
 }
 
 export const saveAvailabilityPreferences = async (tutorId, timeSlots = [], availableDays = []) => {
-  const normalized = []
+  // Luôn xóa lịch cũ trước khi lưu mới
+  await replaceTutorAvailability(tutorId, [])
 
+  if (!timeSlots.length || !availableDays.length) {
+    return;
+  }
+
+  const normalized = []
   for (const slot of timeSlots) {
     const template = AVAILABILITY_TEMPLATES[slot]
     if (!template) continue
@@ -34,20 +42,17 @@ export const saveAvailabilityPreferences = async (tutorId, timeSlots = [], avail
     }
   }
 
-  // Nếu không có slots hoặc days, không lưu gì
-  if (normalized.length === 0 && (timeSlots.length > 0 || availableDays.length > 0)) {
-    // fallback nếu cũ hoặc không đủ data
-    return;
+  if (normalized.length > 0) {
+    await replaceTutorAvailability(tutorId, normalized)
   }
-
-  await replaceTutorAvailability(tutorId, normalized)
 }
 
 export const buildAvailabilitySlots = async (tutorId, daysAhead = 14) => {
   const rules = await getTutorAvailabilityRules(tutorId)
   if (!rules.length) return []
 
-  const today = new Date()
+  const now = new Date()
+  const today = new Date(now)
   today.setHours(0, 0, 0, 0)
 
   const result = []
@@ -60,14 +65,26 @@ export const buildAvailabilitySlots = async (tutorId, daysAhead = 14) => {
     const dayRules = rules.filter((rule) => Number(rule.day_of_week) === day)
     if (!dayRules.length) continue
 
-    const times = [
+    let times = [
       ...new Set(dayRules.flatMap((rule) => toHourSlots(rule.start_time, rule.end_time)))
     ].sort()
 
+    // Nếu là ngày hôm nay, chỉ hiện các khung giờ chưa trôi qua
+    if (i === 0) {
+      const currentHour = now.getHours()
+      times = times.filter(t => parseInt(t.split(':')[0]) > currentHour)
+    }
+
     if (!times.length) continue
 
+    // Fix timezone issue: use local date string (YYYY-MM-DD)
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const dayOfMonth = String(date.getDate()).padStart(2, '0')
+    const dateStr = `${year}-${month}-${dayOfMonth}`
+
     result.push({
-      date: date.toISOString().slice(0, 10),
+      date: dateStr,
       times
     })
   }

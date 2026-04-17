@@ -36,5 +36,14 @@ export const bookingApi = {
     };
   },
 
+  getTutorBookings: async () => {
+    const res = await axiosClient.get("/bookings");
+    const raw = res?.data?.data || [];
+    return {
+      ...res,
+      data: raw.map(normalizeBooking),
+    };
+  },
+
   cancel: (bookingId) => axiosClient.patch(`/bookings/${bookingId}/cancel`),
 };

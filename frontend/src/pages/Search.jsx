@@ -20,7 +20,7 @@ export function SearchPage() {
   const [selectedSubject, setSelectedSubject] =
     React.useState("Tất cả môn học");
   const [loading, setLoading] = React.useState(false);
-  const [priceRange, setPriceRange] = React.useState(500); // giá tối đa
+  const [priceRange, setPriceRange] = React.useState(100); // giá tối đa (100 = Tất cả)
   const [selectedRating, setSelectedRating] = React.useState(0);
   const [selectedAvailability, setSelectedAvailability] = React.useState([]);
   const [sortBy, setSortBy] = React.useState("recommended");
@@ -337,8 +337,13 @@ export function SearchPage() {
                             <Globe className="h-3.5 w-3.5 mr-2 text-indigo-500" />
                             Ngôn ngữ:{" "}
                             {tutor.languages
-                              ? tutor.languages.join(", ")
-                              : "Anh, Việt"}
+                              ? Array.isArray(tutor.languages)
+                                ? tutor.languages.join(", ")
+                                : typeof tutor.languages === "string" &&
+                                    tutor.languages.startsWith("[")
+                                  ? JSON.parse(tutor.languages).join(", ")
+                                  : tutor.languages
+                              : "Tiếng Việt"}
                           </div>
                         </div>
                       </div>
