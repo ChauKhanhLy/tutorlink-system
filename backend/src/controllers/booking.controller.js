@@ -6,6 +6,7 @@ export const postBooking = async (req, res) => {
         const tutor_id = req.body?.tutor_id || req.body?.tutorId;
         const datetime = req.body?.datetime || req.body?.startTime;
         const fee = req.body?.fee ?? 0;
+        const type = req.body?.type || 'regular'; // 'trial' hoặc 'regular'
         let subject_id = req.body?.subject_id || req.body?.subjectId;
 
         // Nếu subject_id bị thiếu, thử lấy từ tutor_subjects hoặc bảng subjects mặc định
@@ -32,13 +33,14 @@ export const postBooking = async (req, res) => {
             });
         }
 
-        const newBooking = await BookingService.createBooking ({
-            ...req.body,
+        const newBooking = await BookingService.createBooking({
+            learner_id,
             tutor_id,
+            subject_id,
             datetime,
             fee,
-            subject_id,
-            learner_id
+            type,
+            status: 'pending'
         });
         
         res.status(201).json({ success: true, data: newBooking});

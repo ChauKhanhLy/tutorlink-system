@@ -61,6 +61,13 @@ export function BookingPage() {
     return true;
   });
 
+  const formatVND = (amount) => {
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+    }).format(amount);
+  };
+
   const getStatusBadge = (status, date) => {
     const isPast = new Date(date) < new Date();
     if (status === "cancelled") {
@@ -169,7 +176,9 @@ export function BookingPage() {
                           <span className="font-medium">Zoom / Google Meet</span>
                         </div>
                         <div className="flex items-center text-slate-600">
-                          <span className="font-bold text-indigo-600">${tutor?.hourlyRate}/giờ</span>
+                          <span className="font-bold text-indigo-600">
+                            {booking.type === "trial" ? "Học thử (0đ)" : formatVND(booking.fee || tutor?.hourlyRate)}
+                          </span>
                         </div>
                       </div>
 

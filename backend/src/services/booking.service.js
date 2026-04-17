@@ -9,19 +9,31 @@ export const getTutorSubjects = async (tutorId) => {
 
 export const createBooking = async (data) => {
     const {tutor_id, datetime} = data;
-    const existing = await Booking.findOne({
-        where: {
-            tutor_id,
-            datetime,
-            status: { [Op.ne]: 'cancel'}
-        }
-    });
+    
+    // Kiểm tra xem đã có lịch nào trùng chưa
+    const query = 'SELECT * FROM bookings WHERE tutor_id = $1 AND datetime = $2 AND status != \'cancel\'';
+    const existing = await db.query(query, [tutor_id, datetime]);
 
-    if (existing) {
+    if (existing.rows.length > 0) {
         throw new Error ('Gia su da ban vao khung gio nay!');
     }
 
-    return await Booking.create(data);
+    const insertQuery = `
+        INSERT INTO bookings (learner_id, tutor_id, subject_id, datetime, status, fee, type)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING *
+    `;
+    const result = await db.query(insertQuery, [
+        data.learner_id,
+        data.tutor_id,
+        data.subject_id,
+        data.datetime,
+        data.status || 'pending',
+        data.fee || 0,
+        data.type || 'regular'
+    ]);
+    
+    return result.rows[0];
 };
 
 export const getMyBookings = async (learner_id) => {

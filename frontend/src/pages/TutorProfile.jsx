@@ -28,6 +28,7 @@ export function TutorProfilePage() {
   const [availableSlots, setAvailableSlots] = React.useState([]);
   const [selectedDate, setSelectedDate] = React.useState(null);
   const [selectedTime, setSelectedTime] = React.useState(null);
+  const [bookingType, setBookingType] = React.useState("trial"); // "trial" hoặc "regular"
   const [loading, setLoading] = React.useState(true);
   const [reviews, setReviews] = React.useState([]);
   const formatVND = (price) => {
@@ -135,9 +136,12 @@ export function TutorProfilePage() {
         subjectId: subjectId,
         startTime: startTime.toISOString(),
         endTime: endTime.toISOString(),
+        type: bookingType,
+        fee: bookingType === "trial" ? 0 : (tutor.hourly_fee || 0)
       });
 
-      toast.success("Đặt lịch thành công!");
+      toast.success(bookingType === "trial" ? "Đặt lịch học thử thành công!" : "Đặt lịch học thành công!");
+      navigate("/dashboard");
     } catch (err) {
       console.error("Lỗi đặt lịch:", err);
       toast.error(err.response?.data?.message || "Lỗi đặt lịch");
@@ -422,10 +426,39 @@ export function TutorProfilePage() {
                 <div className="p-8">
                   <div className="flex items-baseline justify-between mb-8">
                     <div className="text-3xl font-extrabold text-slate-900">
-                      {formatVND(tutor.hourlyRate || tutor.hourly_fee)}
+                      {bookingType === "trial" ? "0đ" : formatVND(tutor.hourlyRate || tutor.hourly_fee)}
                     </div>
                     <div className="text-slate-400 text-sm font-bold">
                       Bài học 50 phút
+                    </div>
+                  </div>
+
+                  {/* Loại hình học */}
+                  <div className="mb-8">
+                    <label className="block text-sm font-bold text-slate-900 mb-4">
+                      Chọn hình thức học
+                    </label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        onClick={() => setBookingType("trial")}
+                        className={`py-3 px-4 rounded-2xl text-sm font-bold transition-all border-2 ${
+                          bookingType === "trial"
+                            ? "border-indigo-600 bg-indigo-50 text-indigo-600 shadow-md"
+                            : "border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-200"
+                        }`}
+                      >
+                        Học thử (0đ)
+                      </button>
+                      <button
+                        onClick={() => setBookingType("regular")}
+                        className={`py-3 px-4 rounded-2xl text-sm font-bold transition-all border-2 ${
+                          bookingType === "regular"
+                            ? "border-indigo-600 bg-indigo-50 text-indigo-600 shadow-md"
+                            : "border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-200"
+                        }`}
+                      >
+                        Học thật
+                      </button>
                     </div>
                   </div>
 
