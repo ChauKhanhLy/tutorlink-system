@@ -25,8 +25,19 @@ export function LandingPage() {
     "Luyện thi",
     "Thiết kế",
   ];
+  const formatVND = (price) => {
+    return new Intl.NumberFormat("vi-VN").format(price) + "đ";
+  };
+  /*
   React.useEffect(() => {
     tutorApi.getAll().then((res) => setTutors(res.data));
+  }, []);
+  */
+
+  React.useEffect(() => {
+    tutorApi.getAll().then((res) => {
+      setTutors(res.data?.tutors || []);
+    });
   }, []);
 
   return (
@@ -246,13 +257,16 @@ export function LandingPage() {
                   <h3 className="text-xl font-bold text-slate-900 mb-1">
                     {tutor.name}
                   </h3>
+
                   <p className="text-slate-500 text-sm mb-4 line-clamp-1">
-                    {tutor.subjects.join(", ")}
+                    {Array.isArray(tutor.subjects)
+                      ? tutor.subjects.join(", ")
+                      : tutor.subject || "Chưa cập nhật môn học"}
                   </p>
                   <div className="flex items-center justify-between pt-4 border-t border-slate-50">
                     <div>
                       <span className="text-2xl font-bold text-indigo-600">
-                        ${tutor.hourlyRate}
+                        {formatVND(tutor.hourlyRate || tutor.hourly_fee || 0)}
                       </span>
                       <span className="text-slate-400 text-sm"> / giờ</span>
                     </div>
