@@ -8,15 +8,28 @@ export const AuthProvider = ({ children }) => {
   // load user từ localStorage khi reload
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
-    if (storedUser) {
+    const token = localStorage.getItem("token");
+
+    if (storedUser && token) {
       setUser(JSON.parse(storedUser));
+    } else if (storedUser || token) {
+      // Tránh trạng thái auth nửa vời gây bị đá ra ngay.
+      localStorage.removeItem("user");
+      localStorage.removeItem("token");
     }
   }, []);
 
   // login
   const login = (data) => {
-    localStorage.setItem("user", JSON.stringify(data));
-    setUser(data);
+    const { token, ...userData } = data || {};
+
+    if (!token) {
+      throw new Error("Missing auth token");
+    }
+
+    localStorage.setItem("token", token);
+    localStorage.setItem("user", JSON.stringify(userData));
+    setUser(userData);
   };
 
   // logout

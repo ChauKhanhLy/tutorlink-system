@@ -23,8 +23,9 @@ export const updateProfile = async (req, res) => {
 export const becomeTutor = async (req, res) => {
   try {
     const userId = req.user.id
+    const payload = req.body || {}
 
-    const result = await becomeTutorService(userId)
+    const result = await becomeTutorService(userId, payload)
 
     res.json(result)
   } catch (err) {

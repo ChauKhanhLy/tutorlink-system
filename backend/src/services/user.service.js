@@ -67,6 +67,7 @@ exports.getPendingTutors = async () => {
 //import userDAL from '../dal/user.dal.js'
 import * as userDAL from '../dal/user.dal.js'
 import isUUID from 'validator/lib/isUUID.js'
+import { saveAvailabilityPreferences } from './tutorAvailability.service.js'
 
 // update profile
 export const updateProfile = async (userId, data) => {
@@ -77,20 +78,23 @@ export const updateProfile = async (userId, data) => {
 }
 
 // become tutor
-export const becomeTutor = async (userId) => {
+export const becomeTutor = async (userId, payload = {}) => {
   const user = await userDAL.findById(userId)
 
   if (!user) throw new Error("User not found")
 
-  if (user.role === 'tutor')
-    throw new Error("Already a tutor")
+  if (user.role !== 'tutor') {
+    await userDAL.updateUser(userId, {
+      role: 'tutor',
+      verified: false
+    })
+  }
 
-  await userDAL.updateUser(userId, {
-    role: 'tutor',
-    verified: false
-  })
+  if (Array.isArray(payload.availability)) {
+    await saveAvailabilityPreferences(userId, payload.availability)
+  }
 
-  return { message: "Requested to become tutor" }
+  return { message: "Requested to become tutor", savedAvailability: Array.isArray(payload.availability) }
 }
 
 // verify tutor

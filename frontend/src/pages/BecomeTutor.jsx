@@ -137,25 +137,26 @@ export function BecomeTutorPage() {
       toast.error("Giới thiệu bản thân tối thiểu 50 ký tự");
       return;
     }
+    if (formData.availability.length === 0) {
+      toast.error("Vui lòng chọn ít nhất một khung thời gian rảnh");
+      return;
+    }
 
     setLoading(true);
     try {
-      const submitData = new FormData();
-      Object.keys(formData).forEach(key => {
-        if (key === "cvFile" || key === "degreeFiles") {
-          if (formData[key]) {
-            if (Array.isArray(formData[key])) {
-              formData[key].forEach(file => submitData.append(key, file));
-            } else {
-              submitData.append(key, formData[key]);
-            }
-          }
-        } else if (Array.isArray(formData[key])) {
-          submitData.append(key, JSON.stringify(formData[key]));
-        } else {
-          submitData.append(key, formData[key]);
-        }
-      });
+      const submitData = {
+        phone: formData.phone,
+        avatar: formData.avatar,
+        subjects: formData.subjects,
+        hourlyRate: Number(formData.hourlyRate || 0),
+        education: formData.education,
+        experience: formData.experience,
+        certifications: formData.certifications,
+        bio: formData.bio,
+        languages: formData.languages,
+        teachingStyle: formData.teachingStyle,
+        availability: formData.availability,
+      };
 
       await tutorApi.registerTutor(submitData);
       toast.success("Đăng ký thành công! Đơn của bạn đang chờ admin duyệt.");

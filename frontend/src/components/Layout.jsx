@@ -153,13 +153,22 @@ export function Layout() {
                             </Link>
                           </>
                         ) : (
-                          <Link
-                            to="/dashboard"
-                            className="block px-4 py-2 text-sm hover:bg-slate-100"
-                            onClick={() => setOpen(false)}
-                          >
-                            Dashboard
-                          </Link>
+                          <>
+                            <Link
+                              to="/dashboard"
+                              className="block px-4 py-2 text-sm hover:bg-slate-100"
+                              onClick={() => setOpen(false)}
+                            >
+                              Dashboard
+                            </Link>
+                            <Link
+                              to="/become-tutor"
+                              className="block px-4 py-2 text-sm hover:bg-slate-100"
+                              onClick={() => setOpen(false)}
+                            >
+                              Trở thành gia sư
+                            </Link>
+                          </>
                         )}
                         <Link
                           to="/profile"

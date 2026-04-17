@@ -12,6 +12,7 @@ import { LessonPage } from "./pages/Lesson";
 import { PaymentPage } from "./pages/Payment";
 import { ProfilePage } from "./pages/Profile";
 import { ReviewPage } from "./pages/Review";
+import { BecomeTutorPage } from "./pages/BecomeTutor";
 import { AdminLogin } from "./pages/admin/AdminLogin";
 import { AdminDashboard } from "./pages/admin/AdminDashboard";
 
@@ -77,6 +78,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <ReviewPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "become-tutor",
+        element: (
+          <ProtectedRoute>
+            <BecomeTutorPage />
           </ProtectedRoute>
         ),
       },

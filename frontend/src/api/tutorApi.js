@@ -35,7 +35,13 @@ export const tutorApi = {
     return { data: tutor };
   },
 
-  getAvailability: async () => {
-    return { data: { availableSlots: [] } };
+  getAvailability: async (id) => {
+    const res = await axiosClient.get(`/tutors/${id}/availability`);
+    return {
+      ...res,
+      data: res.data?.data || { availableSlots: [] },
+    };
   },
+
+  registerTutor: (data) => axiosClient.post("/users/become-tutor", data),
 };

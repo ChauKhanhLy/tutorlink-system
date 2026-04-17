@@ -1,6 +1,7 @@
 import express from 'express'
 import authMiddleware from '../middlewares/auth.middleware.js'
 import roleMiddleware from '../middlewares/role.middleware.js'
+import { getTutorAvailability } from '../controllers/tutor.controller.js'
 
 const router = express.Router()
 
@@ -12,6 +13,8 @@ router.get(
     res.json({ message: "Tutor dashboard" })
   }
 )
+
+router.get('/:id/availability', getTutorAvailability)
 
 export default router
 
