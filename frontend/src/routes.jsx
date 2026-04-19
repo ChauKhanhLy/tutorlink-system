@@ -14,6 +14,7 @@ import { ProfilePage } from "./pages/Profile";
 import { ReviewPage } from "./pages/Review";
 import { AdminLogin } from "./pages/admin/AdminLogin";
 import { AdminDashboard } from "./pages/admin/AdminDashboard";
+import { VideoRoomPage } from "./pages/VideoRoom";
 
 export const router = createBrowserRouter([
   {
@@ -89,6 +90,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute requiredRole="admin">
             <AdminDashboard />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "room/:id",
+        element: (
+          <ProtectedRoute>
+            <VideoRoomPage />
           </ProtectedRoute>
         ),
       },
