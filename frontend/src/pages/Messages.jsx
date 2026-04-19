@@ -1,6 +1,6 @@
 import React from "react";
 import socket from "../socket";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   Search,
   MoreVertical,
@@ -17,21 +17,27 @@ import {
 } from "lucide-react";
 import { ImageWithFallback } from "../components/Image/ImageWithFallback";
 import messageApi from "../api/messageApi";
+import userApi from "../api/userApi";
+import { useAuth } from "../context/AuthContext";
 
 export function MessagesPage() {
+  const { user } = useAuth();
+  const userId = user?.id;
+  const [searchParams] = useSearchParams();
+  const tutorIdFromQuery = searchParams.get("tutorId");
+  
   const [chats, setChats] = React.useState([]);
   const [loadingChats, setLoadingChats] = React.useState(true);
   const [activeChat, setActiveChat] = React.useState(null);
   const [message, setMessage] = React.useState("");
   const [messages, setMessages] = React.useState([]);
-  const userId = "abc123"; // tạm thời, sau này lấy từ AuthContext
 
   const currentTutor = React.useMemo(() => {
     return chats.find((c) => c.id === activeChat) || null;
   }, [chats, activeChat]);
 
   const handleSend = () => {
-    if (!message.trim() || !activeChat) return;
+    if (!message.trim() || !activeChat || !userId) return;
 
     const data = {
       sender_id: userId,
@@ -45,11 +51,48 @@ export function MessagesPage() {
 
   // Lấy danh sách cuộc trò chuyện
   React.useEffect(() => {
+    if (!userId) return;
+    
     const fetchChats = async () => {
       try {
         setLoadingChats(true);
-        const res = await messageApi.getConversations();
-        setChats(res.data);
+        const res = await messageApi.getConversations(userId);
+        let conversationList = res.data;
+
+        // Kiểm tra nếu có tutorId từ query nhưng chưa có trong danh sách chat
+        if (tutorIdFromQuery && !conversationList.some(c => c.id === tutorIdFromQuery)) {
+          try {
+            // console.log("Đang lấy thông tin cho tutorId:", tutorIdFromQuery);
+            const tutorRes = await userApi.getById(tutorIdFromQuery);
+            const tutorData = tutorRes.data;
+            // console.log("Dữ liệu tutor nhận được:", tutorData);
+            
+            if (tutorData) {
+              const newChatEntry = {
+                id: tutorData.id,
+                name: tutorData.name,
+                avatar: tutorData.avatar,
+                lastMsg: "Bắt đầu cuộc trò chuyện mới",
+                time: new Date().toISOString(),
+                unread: 0,
+                role: tutorData.role
+              };
+              
+              conversationList = [newChatEntry, ...conversationList];
+            }
+          } catch (err) {
+            console.error("Lỗi lấy thông tin người dùng mới:", err);
+          }
+        }
+
+        setChats(conversationList);
+        
+        // Tự động active chat từ query nếu có
+        if (tutorIdFromQuery) {
+          setActiveChat(tutorIdFromQuery);
+        } else if (conversationList.length > 0 && !activeChat) {
+          setActiveChat(conversationList[0].id);
+        }
       } catch (err) {
         console.error("Lỗi tải danh sách chat:", err);
       } finally {
@@ -57,18 +100,31 @@ export function MessagesPage() {
       }
     };
     fetchChats();
-  }, []);
+  }, [userId, tutorIdFromQuery]);
 
   // Lấy tin nhắn khi activeChat thay đổi
   React.useEffect(() => {
-    if (!activeChat) return;
+    if (!activeChat || !userId) return;
 
     const fetchMessages = async () => {
       try {
         const res = await messageApi.getMessages(userId, activeChat);
         setMessages(res.data);
+        
+        // Đánh dấu đã đọc khi mở chat
+        socket.emit("mark_as_read", { 
+          sender_id: activeChat, 
+          receiver_id: userId 
+        });
+        
+        // Cập nhật state local cho unread count
+        setChats(prev => prev.map(c => 
+          c.id === activeChat ? { ...c, unread: 0 } : c
+        ));
       } catch (err) {
         console.error(err);
+        // Nếu là chat mới chưa có tin nhắn, set messages rỗng
+        setMessages([]);
       }
     };
 
@@ -77,23 +133,79 @@ export function MessagesPage() {
 
   // Socket setup
   React.useEffect(() => {
+    if (!userId) return;
+    
     socket.emit("register_user", userId);
 
-    socket.on("receive_message", (msg) => {
-      setMessages((prev) => [...prev, msg]);
-    });
+    const handleReceiveMessage = (msg) => {
+      // Nếu tin nhắn thuộc về chat đang mở
+      if (
+        (msg.sender_id === activeChat && msg.receiver_id === userId) ||
+        (msg.sender_id === userId && msg.receiver_id === activeChat)
+      ) {
+        setMessages((prev) => [...prev, msg]);
+        
+        // Nếu là tin nhắn từ người khác gửi đến chat đang mở, mark as read
+        if (msg.sender_id === activeChat) {
+          socket.emit("mark_as_read", { 
+            sender_id: activeChat, 
+            receiver_id: userId 
+          });
+        }
+      }
+
+      // Luôn cập nhật danh sách chat (last message, unread count)
+      setChats((prev) => {
+        const otherUserId = msg.sender_id === userId ? msg.receiver_id : msg.sender_id;
+        const chatExists = prev.some(c => c.id === otherUserId);
+        
+        if (chatExists) {
+          return prev.map(c => {
+            if (c.id === otherUserId) {
+              return {
+                ...c,
+                lastMsg: msg.content,
+                time: msg.sent_at,
+                unread: (msg.sender_id !== userId && activeChat !== otherUserId) 
+                  ? (parseInt(c.unread) || 0) + 1 
+                  : c.unread
+              };
+            }
+            return c;
+          }).sort((a, b) => new Date(b.time) - new Date(a.time));
+        } else {
+          // Nếu là chat mới vừa gửi tin nhắn đầu tiên, có thể cần fetch lại list
+          // hoặc thêm vào list nếu có thông tin (thường là trường hợp nhận tin nhắn từ người lạ)
+          return prev;
+        }
+      });
+    };
+
+    socket.on("receive_message", handleReceiveMessage);
 
     return () => {
-      socket.off("receive_message");
+      socket.off("receive_message", handleReceiveMessage);
     };
-  }, [userId]);
+  }, [userId, activeChat]);
 
-  // Tự động chọn chat đầu tiên
-  React.useEffect(() => {
+  // Tự động chọn chat đầu tiên (đã gộp vào useEffect fetchChats)
+  /* React.useEffect(() => {
     if (chats.length > 0 && !activeChat) {
       setActiveChat(chats[0].id);
     }
-  }, [chats, activeChat]);
+  }, [chats, activeChat]); */
+
+  // Helper format time
+  const formatTime = (timeStr) => {
+    if (!timeStr) return "";
+    const date = new Date(timeStr);
+    const now = new Date();
+    
+    if (date.toDateString() === now.toDateString()) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  };
 
   return (
     <div className="pt-20 h-screen bg-white flex overflow-hidden">
@@ -161,13 +273,15 @@ export function MessagesPage() {
                       {chat.name}
                     </h3>
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex-shrink-0">
-                      {chat.time}
+                      {/* {chat.time} */}
+                      {formatTime(chat.time)}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <p
                       className={`text-xs truncate ${
-                        chat.unread
+                        // chat.unread
+                        chat.unread > 0
                           ? "font-bold text-slate-900"
                           : "text-slate-500 font-medium"
                       }`}
@@ -229,7 +343,7 @@ export function MessagesPage() {
             <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/30 custom-scrollbar">
               <div className="flex justify-center mb-8">
                 <span className="px-3 py-1 bg-white border border-slate-200 rounded-full text-[10px] font-bold text-slate-400 uppercase tracking-widest shadow-sm">
-                  11 tháng 3, 2026
+                  {new Date().toLocaleDateString('vi-VN', { day: 'numeric', month: 'long', year: 'numeric' })}
                 </span>
               </div>
 
@@ -249,6 +363,9 @@ export function MessagesPage() {
                       }`}
                     >
                       {msg.content}
+                    </div>
+                    <div className={`text-[10px] mt-1 text-slate-400 font-medium ${msg.sender_id === userId ? "text-right mr-2" : "text-left ml-2"}`}>
+                      {new Date(msg.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </div>
                   </div>
                 </div>
@@ -313,7 +430,8 @@ export function MessagesPage() {
               {currentTutor.name}
             </h3>
             <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-6">
-              Gia sư {currentTutor.subjects?.[0]}
+              {/* Gia sư {currentTutor.subjects?.[0]} */}
+              Gia sư {currentTutor.subject || "Chưa cập nhật"}
             </p>
 
             <div className="grid grid-cols-2 gap-4 mb-8">
@@ -323,7 +441,7 @@ export function MessagesPage() {
                 </div>
                 <div className="text-lg font-extrabold text-slate-900 flex items-center justify-center">
                   <Star className="h-4 w-4 text-amber-500 fill-amber-500 mr-1.5" />{" "}
-                  {currentTutor.rating}
+                  {currentTutor.rating || "5.0"}
                 </div>
               </div>
               <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
@@ -331,7 +449,7 @@ export function MessagesPage() {
                   Giờ
                 </div>
                 <div className="text-lg font-extrabold text-slate-900">
-                  ${currentTutor.hourlyRate}
+                  ${currentTutor.hourlyRate || "20"}
                 </div>
               </div>
             </div>
@@ -344,7 +462,7 @@ export function MessagesPage() {
                 <Clock className="h-5 w-5 text-indigo-600 mt-0.5" />
                 <div>
                   <p className="text-xs font-bold text-indigo-900">
-                    Ngày mai, 10:00 SA
+                    Chưa có lịch
                   </p>
                   <p className="text-[10px] font-medium text-indigo-600">
                     Buổi học 50 phút • Trực tuyến

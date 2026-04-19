@@ -546,7 +546,7 @@ export function TutorProfilePage() {
                   </button>
 
                   <Link
-                    to="/messages"
+                    to={`/messages?tutorId=${tutor.id}`}
                     className="flex items-center justify-center space-x-2 w-full py-4 text-slate-600 font-bold hover:text-indigo-600 transition-colors"
                   >
                     <MessageSquare className="h-5 w-5" />
