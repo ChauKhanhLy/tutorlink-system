@@ -1,5 +1,6 @@
 import React from "react";
 import { Calendar, Users, DollarSign, Star, Clock } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { tutorApi } from "../api/tutorApi";
 import { bookingApi } from "../api/bookingApi";
@@ -13,23 +14,25 @@ export function TutorDashboard() {
     avgRating: 0,
   });
   const [upcomingSessions, setUpcomingSessions] = React.useState([]);
+  const [availability, setAvailability] = React.useState([]);
 
   React.useEffect(() => {
     const fetchTutorData = async () => {
       try {
-        // Giả sử có API /tutor/stats và /tutor/sessions
-        const [statsRes, sessionsRes] = await Promise.all([
+        const [statsRes, sessionsRes, availabilityRes] = await Promise.all([
           tutorApi.getTutorStats(),
           bookingApi.getTutorBookings(),
+          tutorApi.getAvailability(user.id),
         ]);
-        setStats(statsRes.data);
-        setUpcomingSessions(sessionsRes.data.slice(0, 5));
+        setStats(statsRes.data.data || statsRes.data);
+        setUpcomingSessions(sessionsRes.data || []);
+        setAvailability(availabilityRes.data?.availableSlots || availabilityRes.data || []);
       } catch (err) {
         console.error(err);
       }
     };
-    fetchTutorData();
-  }, []);
+    if (user?.id) fetchTutorData();
+  }, [user?.id]);
 
   return (
     <div className="pt-24 min-h-screen bg-slate-50">
@@ -69,15 +72,58 @@ export function TutorDashboard() {
           />
         </div>
 
-        {/* Upcoming Sessions */}
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-8">
-          <h2 className="text-xl font-bold text-slate-900 mb-6">
-            Lịch dạy sắp tới
-          </h2>
-          <div className="space-y-4">
-            {upcomingSessions.map((session) => (
-              <SessionCard key={session.id} session={session} />
-            ))}
+        {/* Grid: Upcoming Sessions & Availability */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Upcoming Sessions */}
+          <div className="lg:col-cols-2 bg-white rounded-3xl border border-slate-200 shadow-sm p-8">
+            <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-indigo-600" />
+              Lịch dạy sắp tới
+            </h2>
+            <div className="space-y-4">
+              {upcomingSessions.length > 0 ? (
+                upcomingSessions.map((session) => (
+                  <SessionCard key={session.id} session={session} />
+                ))
+              ) : (
+                <p className="text-slate-400 text-center py-8">Chưa có lịch dạy nào sắp tới</p>
+              )}
+            </div>
+          </div>
+
+          {/* My Availability */}
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-8">
+            <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+              <Clock className="h-5 w-5 text-indigo-600" />
+              Lịch rảnh của tôi
+            </h2>
+            <div className="space-y-6 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+              {availability.length > 0 ? (
+                availability.map((slot, index) => (
+                  <div key={index} className="border-b border-slate-50 last:border-0 pb-4 last:pb-0">
+                    <p className="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-indigo-400" />
+                      {new Date(slot.date).toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' })}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {slot.times.map((time, tIndex) => (
+                        <span key={tIndex} className="px-3 py-1 bg-slate-50 text-slate-600 text-xs font-medium rounded-lg border border-slate-100">
+                          {time}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-slate-400 text-center py-8">Chưa cập nhật lịch rảnh</p>
+              )}
+            </div>
+            <Link 
+              to="/become-tutor" 
+              className="mt-6 w-full flex items-center justify-center px-4 py-3 border-2 border-dashed border-slate-200 rounded-2xl text-slate-500 font-bold text-sm hover:border-indigo-300 hover:text-indigo-600 transition-all"
+            >
+              Cập nhật lịch rảnh
+            </Link>
           </div>
         </div>
       </div>

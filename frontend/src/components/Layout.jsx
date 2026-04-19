@@ -9,9 +9,12 @@ import {
   Bell,
   Calendar,
   Users,
+  LayoutDashboard,
+  UserPlus,
 } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
+import { SupportChatWidget } from "./SupportChatWidget";
 
 export function Layout() {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
@@ -51,7 +54,25 @@ export function Layout() {
     { name: "Tin nhắn", path: "/messages", icon: MessageSquare },
   ];
 
-  const navLinks = user?.role === "tutor" ? tutorNavLinks : learnerNavLinks;
+  const adminNavLinks = [
+    { name: "Dashboard", path: "/admin/dashboard", icon: LayoutDashboard },
+    {
+      name: "Duyệt gia sư",
+      path: "/admin/dashboard?tab=pending",
+      icon: UserPlus,
+    },
+    { name: "Tin nhắn hỗ trợ", path: "/admin/messages", icon: MessageSquare },
+    { name: "Quản lý người dùng", path: "/admin/users", icon: Users },
+  ];
+
+  const navLinks =
+    user?.role === "admin"
+      ? adminNavLinks
+      : user?.role === "tutor"
+        ? tutorNavLinks
+        : learnerNavLinks;
+
+  //const isAdmin = user?.role === "admin";
 
   const handleLogout = () => {
     logout();
@@ -72,7 +93,13 @@ export function Layout() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center">
             <Link
-              to={user ? "/dashboard" : "/"}
+              to={
+                user?.role === "admin"
+                  ? "/admin/dashboard"
+                  : user
+                    ? "/dashboard"
+                    : "/"
+              }
               className="flex items-center space-x-2"
             >
               <div className="bg-indigo-600 p-2 rounded-xl">
@@ -135,14 +162,38 @@ export function Layout() {
 
                     {open && (
                       <div className="absolute right-0 mt-3 w-52 bg-white rounded-xl shadow-lg border border-slate-100 py-2 z-50">
-                        {user?.role === "tutor" ? (
+                        {user?.role === "admin" ? (
+                          <>
+                            <Link
+                              to="/admin/dashboard"
+                              className="block px-4 py-2 text-sm hover:bg-slate-100"
+                              onClick={() => setOpen(false)}
+                            >
+                              Dashboard
+                            </Link>
+                            <Link
+                              to="/admin/messages"
+                              className="block px-4 py-2 text-sm hover:bg-slate-100"
+                              onClick={() => setOpen(false)}
+                            >
+                              Tin nhắn hỗ trợ
+                            </Link>
+                            <Link
+                              to="/admin/users"
+                              className="block px-4 py-2 text-sm hover:bg-slate-100"
+                              onClick={() => setOpen(false)}
+                            >
+                              Quản lý người dùng
+                            </Link>
+                          </>
+                        ) : user?.role === "tutor" ? (
                           <>
                             <Link
                               to="/dashboard"
                               className="block px-4 py-2 text-sm hover:bg-slate-100"
                               onClick={() => setOpen(false)}
                             >
-                              Dashboard Gia sư
+                              Dashboard
                             </Link>
                             <Link
                               to="/tutor/schedule"
@@ -153,14 +204,24 @@ export function Layout() {
                             </Link>
                           </>
                         ) : (
-                          <Link
-                            to="/dashboard"
-                            className="block px-4 py-2 text-sm hover:bg-slate-100"
-                            onClick={() => setOpen(false)}
-                          >
-                            Dashboard
-                          </Link>
+                          <>
+                            <Link
+                              to="/dashboard"
+                              className="block px-4 py-2 text-sm hover:bg-slate-100"
+                              onClick={() => setOpen(false)}
+                            >
+                              Dashboard
+                            </Link>
+                            <Link
+                              to="/become-tutor"
+                              className="block px-4 py-2 text-sm hover:bg-slate-100"
+                              onClick={() => setOpen(false)}
+                            >
+                              Trở thành gia sư
+                            </Link>
+                          </>
                         )}
+                        {/* Các mục chung cho mọi role */}
                         <Link
                           to="/profile"
                           className="block px-4 py-2 text-sm hover:bg-slate-100"
@@ -275,6 +336,9 @@ export function Layout() {
           <Outlet />
         </div>
       </main>
+
+      {/* Support Chat Widget (only for learner/tutor) */}
+      <SupportChatWidget />
 
       {/* Footer */}
       <footer className="bg-white border-t border-slate-200 pt-16 pb-8">

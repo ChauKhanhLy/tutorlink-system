@@ -12,8 +12,13 @@ import { LessonPage } from "./pages/Lesson";
 import { PaymentPage } from "./pages/Payment";
 import { ProfilePage } from "./pages/Profile";
 import { ReviewPage } from "./pages/Review";
+import { BecomeTutorPage } from "./pages/BecomeTutor";
 import { AdminLogin } from "./pages/admin/AdminLogin";
 import { AdminDashboard } from "./pages/admin/AdminDashboard";
+import { TutorDashboard } from "./pages/TutorDashboard";
+import { VideoRoomPage } from "./pages/VideoRoom";
+import { AdminMessagesPage } from "./pages/admin/AdminMessagesPage";
+import { AdminUsersPage } from "./pages/admin/AdminUsersPage";
 
 export const router = createBrowserRouter([
   {
@@ -29,6 +34,22 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <DashboardPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "tutor/schedule",
+        element: (
+          <ProtectedRoute requiredRole="tutor">
+            <TutorDashboard />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "tutor/students",
+        element: (
+          <ProtectedRoute requiredRole="tutor">
+            <TutorDashboard />
           </ProtectedRoute>
         ),
       },
@@ -81,6 +102,14 @@ export const router = createBrowserRouter([
         ),
       },
       {
+        path: "become-tutor",
+        element: (
+          <ProtectedRoute>
+            <BecomeTutorPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
         path: "admin/login",
         element: <AdminLogin />,
       },
@@ -89,6 +118,30 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute requiredRole="admin">
             <AdminDashboard />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "admin/messages",
+        element: (
+          <ProtectedRoute requiredRole="admin">
+            <AdminMessagesPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "admin/users",
+        element: (
+          <ProtectedRoute requiredRole="admin">
+            <AdminUsersPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "room/:id",
+        element: (
+          <ProtectedRoute>
+            <VideoRoomPage />
           </ProtectedRoute>
         ),
       },

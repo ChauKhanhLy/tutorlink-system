@@ -1,4 +1,20 @@
 import { updateProfile as updateProfileService, becomeTutor as becomeTutorService } from '../services/user.service.js'
+import { findById } from '../dal/user.dal.js'
+
+export const getUserById = async (req, res) => {
+  try {
+    const { id } = req.params
+    const user = await findById(id)
+    if (!user) {
+      return res.status(404).json({ message: "User not found" })
+    }
+    // Không trả về password
+    const { password, ...userWithoutPassword } = user
+    res.json(userWithoutPassword)
+  } catch (err) {
+    res.status(400).json({ message: err.message })
+  }
+}
 
 export const updateProfile = async (req, res) => {
   try {
@@ -23,8 +39,9 @@ export const updateProfile = async (req, res) => {
 export const becomeTutor = async (req, res) => {
   try {
     const userId = req.user.id
+    const payload = req.body || {}
 
-    const result = await becomeTutorService(userId)
+    const result = await becomeTutorService(userId, payload)
 
     res.json(result)
   } catch (err) {

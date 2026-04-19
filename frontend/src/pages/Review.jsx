@@ -52,12 +52,11 @@ export function ReviewPage() {
 
       // ✅ tìm booking hợp lệ (>= 30 ngày)
       const validBooking = bookingsRes.data.find((b) => {
+        if (bookingId && b.id !== bookingId) return false;
         if (b.tutorId !== tutorId) return false;
 
-        const diffDays =
-          (new Date() - new Date(b.startTime)) / (1000 * 60 * 60 * 24);
-
-        return diffDays >= 30;
+        const diffDays = (new Date() - new Date(b.startTime)) / (1000 * 60 * 60 * 24);
+        return diffDays >= 0;
       });
 
       if (!validBooking) {
@@ -89,8 +88,7 @@ export function ReviewPage() {
     setSubmitting(true);
     try {
       await reviewApi.create({
-        tutorId,
-        bookingId,
+        bookingId: booking?.id || bookingId,
         rating,
         comment: reviewText, // giữ 1 field thôi
       });
@@ -178,10 +176,10 @@ if (!canReview) {
                   <div className="flex items-center text-xs text-slate-400 mt-1">
                     <Calendar className="h-3 w-3 mr-1" />
                     <span>
-                      {new Date(booking.date).toLocaleDateString("vi-VN")}
+                      {new Date(booking.startTime || booking.date).toLocaleDateString("vi-VN")}
                     </span>
                     <span className="mx-2">•</span>
-                    <span>{booking.time}</span>
+                    <span>{booking.time || new Date(booking.startTime).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}</span>
                   </div>
                 )}
               </div>

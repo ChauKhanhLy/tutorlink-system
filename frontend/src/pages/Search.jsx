@@ -20,7 +20,7 @@ export function SearchPage() {
   const [selectedSubject, setSelectedSubject] =
     React.useState("Tất cả môn học");
   const [loading, setLoading] = React.useState(false);
-  const [priceRange, setPriceRange] = React.useState(500); // giá tối đa
+  const [priceRange, setPriceRange] = React.useState(100); // giá tối đa (100 = Tất cả)
   const [selectedRating, setSelectedRating] = React.useState(0);
   const [selectedAvailability, setSelectedAvailability] = React.useState([]);
   const [sortBy, setSortBy] = React.useState("recommended");
@@ -62,7 +62,7 @@ export function SearchPage() {
           q: searchQuery || undefined,
           subject:
             selectedSubject === "Tất cả môn học" ? undefined : selectedSubject,
-          maxPrice: parseInt(priceRange * 1000), // Chuyển từ triệu sang nghìn
+          maxPrice: priceRange < 100 ? priceRange * 10000 : undefined, // Nếu range là 100 thì coi như không lọc giá
           rating: selectedRating || undefined,
         };
 
@@ -193,7 +193,11 @@ export function SearchPage() {
                   </label>
                   <div className="flex justify-between text-xs mt-2">
                     <span>0đ</span>
-                    <span>{priceRange}.0000đ</span>
+                    <span>
+                      {priceRange === 100
+                        ? "Tất cả mức giá"
+                        : `${(priceRange * 10000).toLocaleString("vi-VN")}đ`}
+                    </span>
                   </div>
                   <input
                     type="range"
@@ -333,8 +337,13 @@ export function SearchPage() {
                             <Globe className="h-3.5 w-3.5 mr-2 text-indigo-500" />
                             Ngôn ngữ:{" "}
                             {tutor.languages
-                              ? tutor.languages.join(", ")
-                              : "Anh, Việt"}
+                              ? Array.isArray(tutor.languages)
+                                ? tutor.languages.join(", ")
+                                : typeof tutor.languages === "string" &&
+                                    tutor.languages.startsWith("[")
+                                  ? JSON.parse(tutor.languages).join(", ")
+                                  : tutor.languages
+                              : "Tiếng Việt"}
                           </div>
                         </div>
                       </div>
@@ -352,7 +361,7 @@ export function SearchPage() {
                               )}
                             </div>
                             <div className="flex flex-wrap gap-2 mt-2">
-                              {tutor.subjects?.map((sub) => (
+                              {(tutor.subjects || []).map((sub) => (
                                 <span
                                   key={sub}
                                   className="px-3 py-1 bg-indigo-50 text-indigo-600 text-[11px] font-bold rounded-full border border-indigo-100/50"

@@ -19,29 +19,40 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { tutorApi } from "../api/tutorApi";
 import { bookingApi } from "../api/bookingApi";
+import { reviewApi } from "../api/reviewApi";
 import { ImageWithFallback } from "../components/Image/ImageWithFallback";
 
 export function TutorProfilePage() {
   const { id } = useParams();
   const [tutor, setTutor] = React.useState(null);
-  const [selectedDate, setSelectedDate] = React.useState("15 thg 3, 2026");
+  const [availableSlots, setAvailableSlots] = React.useState([]);
+  const [selectedDate, setSelectedDate] = React.useState(null);
   const [selectedTime, setSelectedTime] = React.useState(null);
+  const [bookingType, setBookingType] = React.useState("trial"); // "trial" hoặc "regular"
   const [loading, setLoading] = React.useState(true);
-
-  const timeSlots = [
-    "9:00 SA",
-    "10:30 SA",
-    "1:00 CH",
-    "2:30 CH",
-    "4:00 CH",
-    "5:30 CH",
-  ];
+  const [reviews, setReviews] = React.useState([]);
+  const formatVND = (price) => {
+    return new Intl.NumberFormat("vi-VN").format(price || 0) + "đ";
+  };
+  const selectedDay = availableSlots.find((s) => s.date === selectedDate);
 
   React.useEffect(() => {
     const fetchTutor = async () => {
       try {
         const res = await tutorApi.getById(id);
-        setTutor(res.data);
+        const tutorData = res.data;
+        setTutor(tutorData);
+
+        // gọi thêm API availability
+        const slotRes = await tutorApi.getAvailability(id);
+        const slots = slotRes.data?.availableSlots || slotRes.data || [];
+        setAvailableSlots(slots);
+        if (slots.length > 0) {
+          setSelectedDate(slots[0].date);
+        }
+
+        const reviewRes = await reviewApi.getByTutor(id);
+        setReviews(reviewRes.data || []);
       } catch (err) {
         console.error("Lỗi tải gia sư:", err);
         toast.error("Không thể tải thông tin gia sư");
@@ -52,7 +63,7 @@ export function TutorProfilePage() {
     fetchTutor();
   }, [id]);
 
-  const handleBooking = async () => {
+  /*const handleBooking = async () => {
     if (!selectedTime) {
       toast.error("Vui lòng chọn giờ");
       return;
@@ -102,6 +113,35 @@ export function TutorProfilePage() {
       });
 
       toast.success("Đặt lịch thành công!");
+    } catch (err) {
+      console.error("Lỗi đặt lịch:", err);
+      toast.error(err.response?.data?.message || "Lỗi đặt lịch");
+    }
+  };*/
+  const handleBooking = async () => {
+    if (!selectedDate || !selectedTime) {
+      toast.error("Vui lòng chọn ngày và giờ");
+      return;
+    }
+
+    try {
+      const startTime = new Date(`${selectedDate}T${selectedTime}`);
+      const endTime = new Date(startTime.getTime() + 50 * 60000);
+
+      // Lấy subject_id đầu tiên của gia sư nếu có
+      const subjectId = tutor.subject_ids?.[0] || null;
+
+      await bookingApi.create({
+        tutorId: tutor.id,
+        subjectId: subjectId,
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+        type: bookingType,
+        fee: bookingType === "trial" ? 0 : (tutor.hourly_fee || 0)
+      });
+
+      toast.success(bookingType === "trial" ? "Đặt lịch học thử thành công!" : "Đặt lịch học thành công!");
+      navigate("/dashboard");
     } catch (err) {
       console.error("Lỗi đặt lịch:", err);
       toast.error(err.response?.data?.message || "Lỗi đặt lịch");
@@ -209,7 +249,7 @@ export function TutorProfilePage() {
                         Giá
                       </div>
                       <div className="text-xl font-bold text-slate-900">
-                        ${tutor.hourlyRate || tutor.hourly_fee}
+                        {formatVND(tutor.hourlyRate || tutor.hourly_fee)}
                         <span className="text-sm text-slate-400">/giờ</span>
                       </div>
                     </div>
@@ -218,7 +258,14 @@ export function TutorProfilePage() {
                         Ngôn ngữ
                       </div>
                       <div className="text-sm font-bold text-slate-900">
-                        {tutor.languages ? tutor.languages.join(", ") : "Anh"}
+                        {tutor.languages
+                          ? Array.isArray(tutor.languages)
+                            ? tutor.languages.join(", ")
+                            : typeof tutor.languages === "string" &&
+                                tutor.languages.startsWith("[")
+                              ? JSON.parse(tutor.languages).join(", ")
+                              : tutor.languages
+                          : "Tiếng Việt"}
                       </div>
                     </div>
                     <div>
@@ -226,7 +273,7 @@ export function TutorProfilePage() {
                         Kinh nghiệm
                       </div>
                       <div className="text-sm font-bold text-slate-900">
-                        {tutor.lessonsTaught || 120}+ bài học
+                        {tutor.experience || `${tutor.lessonsTaught || 120}+ bài học`}
                       </div>
                     </div>
                   </div>
@@ -245,6 +292,16 @@ export function TutorProfilePage() {
                   {tutor.bio ||
                     "Tôi là gia sư giàu kinh nghiệm, đam mê giảng dạy và giúp học sinh đạt được mục tiêu học tập."}
                 </p>
+                {tutor.teaching_style && (
+                  <div className="mb-8 p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100">
+                    <h4 className="text-sm font-bold text-indigo-900 mb-2">
+                      Phong cách giảng dạy
+                    </h4>
+                    <p className="text-sm text-indigo-700 italic">
+                      "{tutor.teaching_style}"
+                    </p>
+                  </div>
+                )}
                 <div className="grid md:grid-cols-2 gap-8">
                   <div className="flex items-start space-x-4">
                     <div className="p-3 bg-amber-50 rounded-2xl">
@@ -297,7 +354,7 @@ export function TutorProfilePage() {
                 />
               </section>
 
-              {/* Reviews (tạm thời hiển thị mock) */}
+              {/* Reviews */}
               <section className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
                 <div className="flex items-center justify-between mb-8">
                   <h2 className="text-xl font-bold text-slate-900">
@@ -313,25 +370,28 @@ export function TutorProfilePage() {
                 </div>
 
                 <div className="space-y-8">
-                  {[1, 2].map((review) => (
+                  {reviews.length === 0 && (
+                    <p className="text-sm text-slate-500">Gia sư chưa có đánh giá nào.</p>
+                  )}
+                  {reviews.map((review) => (
                     <div
-                      key={review}
+                      key={review.id}
                       className="pb-8 border-b border-slate-100 last:border-none last:pb-0"
                     >
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center space-x-3">
                           <div className="w-10 h-10 rounded-full bg-slate-100 overflow-hidden">
                             <ImageWithFallback
-                              src={`https://i.pravatar.cc/100?u=${review + 10}`}
+                              src={`https://i.pravatar.cc/100?u=${review.reviewerId || review.reviewer_id || review.id}`}
                               alt="Học viên"
                             />
                           </div>
                           <div>
                             <h4 className="text-sm font-bold text-slate-900">
-                              Alex Thompson
+                              Học viên
                             </h4>
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                              Học viên Giải tích II
+                              Đánh giá đã xác minh
                             </p>
                           </div>
                         </div>
@@ -339,17 +399,18 @@ export function TutorProfilePage() {
                           {[1, 2, 3, 4, 5].map((s) => (
                             <Star
                               key={s}
-                              className="h-3 w-3 text-amber-500 fill-amber-500"
+                              className={`h-3 w-3 ${s <= Number(review.rating) ? "text-amber-500 fill-amber-500" : "text-slate-200 fill-slate-200"}`}
                             />
                           ))}
                         </div>
                       </div>
                       <p className="text-slate-600 text-sm leading-relaxed italic">
-                        "Gia sư tuyệt vời! Cô ấy giúp tôi hiểu các khái niệm
-                        giải tích nâng cao một cách đơn giản."
+                        "{review.comment || "Buổi học hữu ích và chất lượng."}"
                       </p>
                       <div className="mt-4 text-xs font-bold text-slate-400">
-                        5 tháng 3, 2026
+                        {review.createdAt
+                          ? new Date(review.createdAt).toLocaleDateString("vi-VN")
+                          : ""}
                       </div>
                     </div>
                   ))}
@@ -365,10 +426,39 @@ export function TutorProfilePage() {
                 <div className="p-8">
                   <div className="flex items-baseline justify-between mb-8">
                     <div className="text-3xl font-extrabold text-slate-900">
-                      ${tutor.hourlyRate || tutor.hourly_fee}
+                      {bookingType === "trial" ? "0đ" : formatVND(tutor.hourlyRate || tutor.hourly_fee)}
                     </div>
                     <div className="text-slate-400 text-sm font-bold">
                       Bài học 50 phút
+                    </div>
+                  </div>
+
+                  {/* Loại hình học */}
+                  <div className="mb-8">
+                    <label className="block text-sm font-bold text-slate-900 mb-4">
+                      Chọn hình thức học
+                    </label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        onClick={() => setBookingType("trial")}
+                        className={`py-3 px-4 rounded-2xl text-sm font-bold transition-all border-2 ${
+                          bookingType === "trial"
+                            ? "border-indigo-600 bg-indigo-50 text-indigo-600 shadow-md"
+                            : "border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-200"
+                        }`}
+                      >
+                        Học thử (0đ)
+                      </button>
+                      <button
+                        onClick={() => setBookingType("regular")}
+                        className={`py-3 px-4 rounded-2xl text-sm font-bold transition-all border-2 ${
+                          bookingType === "regular"
+                            ? "border-indigo-600 bg-indigo-50 text-indigo-600 shadow-md"
+                            : "border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-200"
+                        }`}
+                      >
+                        Học thật
+                      </button>
                     </div>
                   </div>
 
@@ -396,19 +486,27 @@ export function TutorProfilePage() {
                           {d}
                         </span>
                       ))}
-                      {[10, 11, 12, 13, 14, 15, 16].map((d) => (
-                        <button
-                          key={d}
-                          onClick={() => setSelectedDate(`${d} thg 3, 2026`)}
-                          className={`py-2 text-xs font-bold rounded-xl transition-all ${
-                            d === 15
-                              ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
-                              : "hover:bg-slate-50 text-slate-700"
-                          }`}
-                        >
-                          {d}
-                        </button>
-                      ))}
+                      {availableSlots.map((slot) => {
+                        const dateObj = new Date(slot.date);
+                        const day = dateObj.getDate();
+
+                        return (
+                          <button
+                            key={slot.date}
+                            onClick={() => {
+                              setSelectedDate(slot.date);
+                              setSelectedTime(null);
+                            }}
+                            className={`py-2 text-xs font-bold rounded-xl transition-all ${
+                              selectedDate === slot.date
+                                ? "bg-indigo-600 text-white shadow-lg"
+                                : "hover:bg-slate-50 text-slate-700"
+                            }`}
+                          >
+                            {day}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -418,19 +516,25 @@ export function TutorProfilePage() {
                       Chọn khung giờ
                     </h4>
                     <div className="grid grid-cols-2 gap-3">
-                      {timeSlots.map((time) => (
-                        <button
-                          key={time}
-                          onClick={() => setSelectedTime(time)}
-                          className={`py-3 text-xs font-bold border rounded-2xl transition-all ${
-                            selectedTime === time
-                              ? "bg-indigo-50 border-indigo-600 text-indigo-600"
-                              : "border-slate-100 text-slate-600 hover:border-slate-200 hover:bg-slate-50"
-                          }`}
-                        >
-                          {time}
-                        </button>
-                      ))}
+                      {selectedDay?.times?.length > 0 ? (
+                        selectedDay.times.map((time) => (
+                          <button
+                            key={time}
+                            onClick={() => setSelectedTime(time)}
+                            className={`py-3 text-xs font-bold border rounded-2xl transition-all ${
+                              selectedTime === time
+                                ? "bg-indigo-50 border-indigo-600 text-indigo-600"
+                                : "border-slate-100 text-slate-600 hover:border-slate-200 hover:bg-slate-50"
+                            }`}
+                          >
+                            {time}
+                          </button>
+                        ))
+                      ) : (
+                        <p className="text-sm text-slate-400">
+                          Không có giờ trống
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -442,7 +546,7 @@ export function TutorProfilePage() {
                   </button>
 
                   <Link
-                    to="/messages"
+                    to={`/messages?tutorId=${tutor.id}`}
                     className="flex items-center justify-center space-x-2 w-full py-4 text-slate-600 font-bold hover:text-indigo-600 transition-colors"
                   >
                     <MessageSquare className="h-5 w-5" />

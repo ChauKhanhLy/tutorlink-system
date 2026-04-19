@@ -12,6 +12,7 @@ import {
   LogOut,
   LayoutDashboard,
   UserPlus,
+  Shield,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../../context/AuthContext";
@@ -103,13 +104,13 @@ export function AdminDashboard() {
     </div>
   );
 
-  if (user?.role !== "admin") {
+  /*if (user?.role !== "admin") {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="text-red-500">Bạn không có quyền truy cập</p>
       </div>
     );
-  }
+  }*/
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
