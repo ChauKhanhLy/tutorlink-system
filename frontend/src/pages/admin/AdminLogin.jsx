@@ -7,8 +7,15 @@ import { useAuth } from "../../context/AuthContext";
 
 export function AdminLogin() {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { user ,login } = useAuth();
   const [loading, setLoading] = React.useState(false);
+
+  // Tự động chuyển hướng khi user đã là admin
+  React.useEffect(() => {
+    if (user && user.role === "admin") {
+      navigate("/admin/dashboard", { replace: true });
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -32,7 +39,7 @@ export function AdminLogin() {
 
       login(userData);
       toast.success("Đăng nhập admin thành công!");
-      navigate("/admin/dashboard");
+      //navigate("/admin/dashboard");
     } catch (err) {
       toast.error(err.response?.data?.message || "Đăng nhập thất bại");
     } finally {

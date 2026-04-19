@@ -24,12 +24,12 @@ export function LessonPage() {
   const [booking, setBooking] = React.useState(null);
   const [tutor, setTutor] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
-  const joinLink = "https://zoom.us/j/123456789";
+  const joinLink = booking?.meeting_link || booking?.meetingLink || "https://zoom.us/j/123456789";
 
   const fetchLessonDetails = React.useCallback(async () => {
     try {
       const bookingRes = await bookingApi.getMyBookings();
-      const foundBooking = bookingRes.data.find(b => b.id === id);
+      const foundBooking = bookingRes.data.find((b) => b.id === id);
       if (foundBooking) {
         setBooking(foundBooking);
         const tutorRes = await tutorApi.getById(foundBooking.tutorId);
@@ -54,8 +54,8 @@ export function LessonPage() {
     toast.success("Đã sao chép link tham gia");
   };
 
-  const isUpcoming = booking && new Date(booking.date) >= new Date();
-  const isPast = booking && new Date(booking.date) < new Date();
+  const isUpcoming = booking && new Date(booking.date || booking.startTime) >= new Date();
+  const isPast = booking && new Date(booking.date || booking.startTime) < new Date();
 
   if (loading) {
     return (
@@ -94,9 +94,9 @@ export function LessonPage() {
                 <p className="text-slate-500">{tutor?.subjects?.join(", ")}</p>
                 <div className="flex items-center mt-2 text-sm text-slate-500">
                   <Calendar className="h-4 w-4 mr-1" />
-                  <span>{new Date(booking.date).toLocaleDateString("vi-VN")}</span>
+                  <span>{new Date(booking.date || booking.startTime).toLocaleDateString("vi-VN")}</span>
                   <Clock className="h-4 w-4 ml-3 mr-1" />
-                  <span>{booking.time}</span>
+                  <span>{booking.time || new Date(booking.startTime).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}</span>
                 </div>
               </div>
             </div>

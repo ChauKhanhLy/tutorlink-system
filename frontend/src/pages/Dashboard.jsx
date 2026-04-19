@@ -23,9 +23,15 @@ import messageApi  from "../api/messageApi";
 import { ImageWithFallback } from "../components/Image/ImageWithFallback";
 import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
+import { TutorDashboard } from "./TutorDashboard";
 
 export function DashboardPage() {
   const { user, logout } = useAuth();
+
+  if (user?.role === "tutor") {
+    return <TutorDashboard />;
+  }
+
   const [sessions, setSessions] = React.useState([]);
   const [tutors, setTutors] = React.useState([]);
   const [activeTab, setActiveTab] = React.useState("sessions");
@@ -100,7 +106,11 @@ export function DashboardPage() {
                   {user?.name || "User"}
                 </h3>
                 <p className="text-xs font-bold text-indigo-600 z-10 uppercase tracking-widest">
-                  Gói học viên
+                  {user?.role === "admin"
+                    ? "Gói Admin"
+                    : user?.role === "tutor"
+                    ? "Gói Gia sư"
+                    : "Gói Học viên"}
                 </p>
                 <div className="absolute top-0 right-0 -mt-8 -mr-8 w-24 h-24 bg-indigo-600/10 rounded-full blur-xl"></div>
               </div>
@@ -162,6 +172,14 @@ export function DashboardPage() {
                 </p>
               </div>
               <div className="flex items-center space-x-3">
+                {user?.role !== "tutor" && (
+                  <Link
+                    to="/become-tutor"
+                    className="bg-amber-500 px-5 py-3 rounded-2xl text-sm font-bold text-white flex items-center hover:bg-amber-600 transition-all shadow-sm"
+                  >
+                    Trở thành gia sư
+                  </Link>
+                )}
                 <Link
                   to="/search"
                   className="bg-white px-5 py-3 rounded-2xl border border-slate-200 text-sm font-bold text-slate-700 flex items-center hover:bg-slate-50 transition-all shadow-sm"
