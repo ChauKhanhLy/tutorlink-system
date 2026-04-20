@@ -71,7 +71,7 @@ if (!SECRET) {
 }
 
 // register
-export const register = async ({ email, password, name }) => {
+/*export const register = async ({ email, password, name }) => {
   const existingUser = await userDAL.findByEmail(email)
 
   if (existingUser) throw new Error("User already exists")
@@ -84,8 +84,25 @@ export const register = async ({ email, password, name }) => {
     name,
     role: 'learner'
   })
-}
+}*/
+export const register = async ({ email, password, name, role }) => {
+  const existingUser = await userDAL.findByEmail(email)
 
+  if (existingUser) throw new Error("User already exists")
+
+  const hashedPassword = await bcrypt.hash(password, 10)
+
+  // 🔥 chỉ cho phép 2 role hợp lệ
+  const validRole = role === 'tutor' ? 'tutor' : 'learner'
+
+  return await userDAL.createUser({
+    email,
+    password: hashedPassword,
+    name,
+    role: validRole,
+    verified: false   // tutor cần duyệt
+  })
+}
 // login
 export const login = async ({ email, password }) => {
   if (!email || !password) {

@@ -40,6 +40,7 @@ app.use('/api/reviews', reviewRoutes)
 app.use('/api/payments', paymentRoutes)
 app.use('/api/video-rooms', videoRoomRoutes)
 
+
 app.get('/api/users/me', authMiddleware, (req, res) => {
   res.json({
     message: 'User info',

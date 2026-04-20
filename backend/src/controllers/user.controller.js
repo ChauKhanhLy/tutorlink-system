@@ -10,6 +10,10 @@ export const getUserById = async (req, res) => {
     }
     // Không trả về password
     const { password, ...userWithoutPassword } = user
+    if (userWithoutPassword.avatar) {
+      userWithoutPassword.avatar = `${BASE_URL}${userWithoutPassword.avatar}`
+    }
+    //
     res.json(userWithoutPassword)
   } catch (err) {
     res.status(400).json({ message: err.message })
@@ -26,10 +30,17 @@ export const updateProfile = async (req, res) => {
       phone,
       avatar
     })
-
+    //  FIX AVATAR SAU UPDATE
+    const userWithAvatar = {
+      ...updatedUser,
+      avatar: updatedUser.avatar
+        ? `${BASE_URL}${updatedUser.avatar}`
+        : null
+    }
     res.json({
       message: "Update profile success",
-      user: updatedUser
+      user: updatedUser,
+      
     })
   } catch (err) {
     res.status(400).json({ message: err.message })
