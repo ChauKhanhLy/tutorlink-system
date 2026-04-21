@@ -1,5 +1,5 @@
 import React from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   Star,
   ShieldCheck,
@@ -34,6 +34,7 @@ export function TutorProfilePage() {
   const formatVND = (price) => {
     return new Intl.NumberFormat("vi-VN").format(price || 0) + "đ";
   };
+  const navigate = useNavigate();
   const selectedDay = availableSlots.find((s) => s.date === selectedDate);
 
   React.useEffect(() => {
@@ -91,8 +92,7 @@ export function TutorProfilePage() {
       }
       dateStr = dateStr.replace(",", "");
       const baseDate = new Date(dateStr);
-
-      const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
+const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
       if (!timeParts) throw new Error("Định dạng giờ không hợp lệ");
       let hours = parseInt(timeParts[1]);
       const minutes = parseInt(timeParts[2]);
@@ -124,8 +124,8 @@ export function TutorProfilePage() {
       return;
     }
 
-    try {
-      const startTime = new Date(`${selectedDate}T${selectedTime}`);
+    /*try {
+      /*const startTime = new Date(`${selectedDate}T${selectedTime}`);
       const endTime = new Date(startTime.getTime() + 50 * 60000);
 
       // Lấy subject_id đầu tiên của gia sư nếu có
@@ -142,9 +142,64 @@ export function TutorProfilePage() {
 
       toast.success(bookingType === "trial" ? "Đặt lịch học thử thành công!" : "Đặt lịch học thành công!");
       navigate("/dashboard");
+      const datetimeString = `${selectedDate}T${selectedTime}:00Z`;
+
+      // 2. GỬI DỮ LIỆU LÊN BACKEND
+      const response = await bookingApi.create({
+        tutor_id: tutor.id,          // Phải dùng đúng tên tutor_id (có gạch dưới)
+        subject_id: tutor.subject_ids?.[0] || "900b2ea5-16ea-4c80-93b1-0f1cc50b4adf", // Mã thật đã test
+        datetime: datetimeString,    // Gửi datetime duy nhất
+        fee: bookingType === "trial" ? 0 : (tutor.hourly_fee || 150000),
+      });
+
+      if (response.data.success) {
+        toast.success("Đặt lịch thành công! Đang chuyển đến danh sách...");
+
+        // 3. ĐIỀU HƯỚNG
+        // Sau khi đặt xong, status sẽ là 'pending'. 
+        // Ta chuyển về Dashboard để người dùng nhấn nút "Thanh toán"
+        setTimeout(() => {
+          navigate("/dashboard");
+        }, 1500);
+      }
     } catch (err) {
       console.error("Lỗi đặt lịch:", err);
-      toast.error(err.response?.data?.message || "Lỗi đặt lịch");
+      toast.error(err.response?.data?.message || "Lỗi không xác định");
+    }
+  };*/
+    try {
+      // --- BẮT ĐẦU ĐOẠN SỬA ---
+      // 1. Tạo đối tượng Date từ Ngày và Giờ đã chọn
+      // Lưu ý: selectedTime của bạn thường có dạng "08:30"
+      const datetimeToSend = new Date(`${selectedDate}T${selectedTime}`);
+
+      // 2. ÉP GIÂY VÀ MILI GIÂY VỀ 0 (Cực kỳ quan trọng để Backend check trùng)
+      datetimeToSend.setSeconds(0);
+      datetimeToSend.setMilliseconds(0);
+
+      const startTimeISO = datetimeToSend.toISOString();
+      // --- KẾT THÚC ĐOẠN SỬA ---
+
+      const endTime = new Date(datetimeToSend.getTime() + 50 * 60000);
+
+      // Lấy subject_id (đảm bảo khớp UUID đã test ở BE)
+      const subjectId = tutor.subject_ids?.[0] || "900b2ea5-16ea-4c80-93b1-0f1cc50b4adf";
+
+      // Gọi API với các key trùng khớp 100% với Backend
+      await bookingApi.create({
+        tutor_id: tutor.id,       // Dùng gạch dưới cho đúng chuẩn BE của bạn
+        subject_id: subjectId,    // Dùng gạch dưới
+        datetime: startTimeISO,   // Gửi trường 'datetime' duy nhất như BE mong đợi
+        type: bookingType,
+        fee: bookingType === "trial" ? 0 : (tutor.hourly_fee || 0)
+      });
+
+      toast.success(bookingType === "trial" ? "Đặt lịch học thử thành công!" : "Đặt lịch học thành công!");
+      navigate("/dashboard");
+    } catch (err) {
+      console.error("Lỗi đặt lịch:", err);
+      // Hiển thị thông báo lỗi cụ thể từ Backend ném về
+      toast.error(err.response?.data?.message || "Gia sư đã có lịch dạy khác!");
     }
   };
 
@@ -262,7 +317,7 @@ export function TutorProfilePage() {
                           ? Array.isArray(tutor.languages)
                             ? tutor.languages.join(", ")
                             : typeof tutor.languages === "string" &&
-                                tutor.languages.startsWith("[")
+                              tutor.languages.startsWith("[")
                               ? JSON.parse(tutor.languages).join(", ")
                               : tutor.languages
                           : "Tiếng Việt"}
@@ -368,7 +423,6 @@ export function TutorProfilePage() {
                     <span className="text-slate-400 font-bold ml-2">/ 5.0</span>
                   </div>
                 </div>
-
                 <div className="space-y-8">
                   {reviews.length === 0 && (
                     <p className="text-sm text-slate-500">Gia sư chưa có đánh giá nào.</p>
@@ -441,21 +495,19 @@ export function TutorProfilePage() {
                     <div className="grid grid-cols-2 gap-3">
                       <button
                         onClick={() => setBookingType("trial")}
-                        className={`py-3 px-4 rounded-2xl text-sm font-bold transition-all border-2 ${
-                          bookingType === "trial"
-                            ? "border-indigo-600 bg-indigo-50 text-indigo-600 shadow-md"
-                            : "border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-200"
-                        }`}
+                        className={`py-3 px-4 rounded-2xl text-sm font-bold transition-all border-2 ${bookingType === "trial"
+                          ? "border-indigo-600 bg-indigo-50 text-indigo-600 shadow-md"
+                          : "border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-200"
+                          }`}
                       >
                         Học thử (0đ)
                       </button>
                       <button
                         onClick={() => setBookingType("regular")}
-                        className={`py-3 px-4 rounded-2xl text-sm font-bold transition-all border-2 ${
-                          bookingType === "regular"
-                            ? "border-indigo-600 bg-indigo-50 text-indigo-600 shadow-md"
-                            : "border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-200"
-                        }`}
+                        className={`py-3 px-4 rounded-2xl text-sm font-bold transition-all border-2 ${bookingType === "regular"
+                          ? "border-indigo-600 bg-indigo-50 text-indigo-600 shadow-md"
+                          : "border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-200"
+                          }`}
                       >
                         Học thật
                       </button>
@@ -486,24 +538,43 @@ export function TutorProfilePage() {
                           {d}
                         </span>
                       ))}
-                      {availableSlots.map((slot) => {
-                        const dateObj = new Date(slot.date);
-                        const day = dateObj.getDate();
+
+                      {/* Render 14 calendar days continuously */}
+                      {Array.from({ length: 14 }).map((_, idx) => {
+                        const d = new Date();
+                        d.setDate(d.getDate() + idx);
+                        const year = d.getFullYear();
+                        const month = String(d.getMonth() + 1).padStart(2, '0');
+                        const dayOfMonth = String(d.getDate()).padStart(2, '0');
+                        const dateStr = `${year}-${month}-${dayOfMonth}`;
+
+                        const jsDay = d.getDay(); // 0 (Sun) to 6 (Sat)
+                        const colStart = jsDay === 0 ? 7 : jsDay;
+
+                        // Check if this date has available slots from backend
+                        const availableSlot = availableSlots.find(s => s.date === dateStr);
+                        const isAvailable = !!availableSlot;
+
+                        // Only the very first box needs gridColumnStart to align properly
+                        const styleDesc = idx === 0 ? { gridColumnStart: colStart } : {};
 
                         return (
                           <button
-                            key={slot.date}
+                            key={dateStr}
+                            disabled={!isAvailable}
+                            style={styleDesc}
                             onClick={() => {
-                              setSelectedDate(slot.date);
+                              setSelectedDate(dateStr);
                               setSelectedTime(null);
                             }}
-                            className={`py-2 text-xs font-bold rounded-xl transition-all ${
-                              selectedDate === slot.date
+                            className={`py-2 text-xs font-bold rounded-xl transition-all ${selectedDate === dateStr
                                 ? "bg-indigo-600 text-white shadow-lg"
-                                : "hover:bg-slate-50 text-slate-700"
-                            }`}
+                                : isAvailable
+                                  ? "hover:bg-indigo-50 text-slate-700 cursor-pointer"
+                                  : "text-slate-300 cursor-not-allowed opacity-50"
+                              }`}
                           >
-                            {day}
+                            {d.getDate()}
                           </button>
                         );
                       })}
@@ -521,11 +592,10 @@ export function TutorProfilePage() {
                           <button
                             key={time}
                             onClick={() => setSelectedTime(time)}
-                            className={`py-3 text-xs font-bold border rounded-2xl transition-all ${
-                              selectedTime === time
-                                ? "bg-indigo-50 border-indigo-600 text-indigo-600"
-                                : "border-slate-100 text-slate-600 hover:border-slate-200 hover:bg-slate-50"
-                            }`}
+                            className={`py-3 text-xs font-bold border rounded-2xl transition-all ${selectedTime === time
+                              ? "bg-indigo-50 border-indigo-600 text-indigo-600"
+                              : "border-slate-100 text-slate-600 hover:border-slate-200 hover:bg-slate-50"
+                              }`}
                           >
                             {time}
                           </button>

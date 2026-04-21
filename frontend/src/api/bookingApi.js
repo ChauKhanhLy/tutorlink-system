@@ -4,17 +4,19 @@ const normalizeBooking = (booking) => {
   const datetime = booking?.datetime || booking?.startTime || booking?.date;
   const dateObj = datetime ? new Date(datetime) : null;
 
+  const isValidDate = dateObj && !isNaN(dateObj.getTime());
+  
   return {
     ...booking,
     id: booking?.id,
     tutorId: booking?.tutor_id || booking?.tutorId,
     learnerId: booking?.learner_id || booking?.learnerId,
     status: booking?.status,
-    date: dateObj ? dateObj.toISOString() : null,
-    time: dateObj
+    date: isValidDate ? dateObj.toISOString() : null,
+    time: isValidDate
       ? dateObj.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })
       : "",
-    startTime: dateObj ? dateObj.toISOString() : null,
+    startTime: isValidDate ? dateObj.toISOString() : null,
   };
 };
 

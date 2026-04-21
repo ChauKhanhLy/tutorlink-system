@@ -1,15 +1,21 @@
 import axiosClient from "./axiosClient";
 
 export const videoRoomApi = {
-  // Lấy thông tin phòng theo ID (room_id hoặc booking_id)
+  // Lấy toàn bộ phòng (admin)
+  getAllRooms: () => axiosClient.get("/video-rooms"),
+
+  // Lấy thông tin phòng theo ID (UUID của video session)
   getRoom: (id) => axiosClient.get(`/video-rooms/${id}`),
   
-  // Tạo phòng mới (thường gọi khi đặt lịch)
+  // Lấy thông tin phòng theo booking ID
+  getRoomByBookingId: (bookingId) => axiosClient.get(`/video-rooms/booking/${bookingId}`),
+  
+  // Tạo phòng mới (nếu cần thủ công)
   createRoom: (data) => axiosClient.post("/video-rooms", data),
   
   // Cập nhật trạng thái phòng (ongoing, ended)
   updateStatus: (id, status) => axiosClient.patch(`/video-rooms/${id}/status`, { status }),
   
-  // Lấy token để join (nếu dùng dịch vụ bên thứ ba)
-  getToken: (roomId) => axiosClient.post(`/video-rooms/${roomId}/token`),
+  // Join room (để cập nhật trạng thái ongoing)
+  joinRoom: (id) => axiosClient.get(`/video-rooms/${id}/join`),
 };

@@ -21,7 +21,7 @@ import { useAuth } from "../context/AuthContext";
 import { ImageWithFallback } from "../components/Image/ImageWithFallback";
 
 export function VideoRoomPage() {
-  const { id } = useParams(); // room ID (có thể là booking_id hoặc room_id)
+  const { id } = useParams(); // room ID (primary key của video_sessions)
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -29,122 +29,92 @@ export function VideoRoomPage() {
   const [loading, setLoading] = React.useState(true);
   const [micEnabled, setMicEnabled] = React.useState(true);
   const [videoEnabled, setVideoEnabled] = React.useState(true);
-  const [screenSharing, setScreenSharing] = React.useState(false);
   const [showChat, setShowChat] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
-  const [connectionQuality, setConnectionQuality] = React.useState("good"); // good, poor, lost
+  const [connectionQuality, setConnectionQuality] = React.useState("good");
+  const [isJoined, setIsJoined] = React.useState(false);
 
-  // Giả lập stream video (thực tế sẽ dùng WebRTC)
-  const localVideoRef = React.useRef(null);
-  const remoteVideoRef = React.useRef(null);
+  const jitsiContainerRef = React.useRef(null);
+  const apiRef = React.useRef(null);
 
   React.useEffect(() => {
-    const fetchRoom = async () => {
+    const initRoom = async () => {
       try {
         const res = await videoRoomApi.getRoom(id);
+        if (!res.data) {
+          toast.error("Phòng học không tồn tại hoặc đã bị xóa");
+          navigate('/dashboard');
+          return;
+        }
         setRoom(res.data);
         
-        // Kiểm tra thời gian có thể join không
-        const now = new Date();
-        const start = new Date(res.data.start_time);
-        const end = new Date(res.data.end_time);
+        // Cập nhật trạng thái ongoing trên backend
+        videoRoomApi.joinRoom(id).catch(console.error);
+
+        // Load Jitsi script
+        const domain = "meet.jit.si";
+        if (!window.JitsiMeetExternalAPI) {
+          await new Promise((resolve) => {
+            const script = document.createElement('script');
+            script.src = `https://${domain}/external_api.js`;
+            script.async = true;
+            script.onload = resolve;
+            document.body.appendChild(script);
+          });
+        }
+
+        // Sử dụng dữ liệu trực tiếp từ response vì state 'room' chưa cập nhật ngay
+        const roomData = res.data;
+        const roomName = roomData.room_id || `tutorlink-${roomData.booking_id}`;
         
-        if (res.data.status === 'cancelled') {
-          toast.error("Buổi học đã bị hủy");
-          navigate('/dashboard');
-          return;
+        const options = {
+          roomName: roomName,
+          width: '100%',
+          height: '100%',
+          parentNode: jitsiContainerRef.current,
+          userInfo: {
+            displayName: user?.name || "Người dùng",
+          },
+          configOverwrite: {
+            prejoinPageEnabled: false,
+            enableLobby: false,
+            startWithAudioMuted: false,
+            startWithVideoMuted: false,
+            disableInviteFunctions: true,
+            doNotStoreRoom: true,
+          },
+        };
+
+        // Dọn dẹp container trước khi tạo mới để tránh bị lặp màn hình
+        if (jitsiContainerRef.current) {
+          jitsiContainerRef.current.innerHTML = "";
         }
-        if (res.data.status === 'ended' || now > end) {
-          toast.error("Buổi học đã kết thúc");
-          navigate('/dashboard');
-          return;
-        }
-        // Không chặn nếu chưa đến giờ, chỉ cảnh báo
-        if (now < start) {
-          toast.warning("Buổi học chưa bắt đầu, bạn có thể vào phòng chờ");
-        }
+
+        apiRef.current = new window.JitsiMeetExternalAPI(domain, options);
+        setIsJoined(true);
+        setLoading(false);
+
       } catch (err) {
         console.error(err);
-        toast.error("Không thể tải thông tin phòng");
+        toast.error("Lỗi khởi tạo phòng học");
         navigate('/dashboard');
-      } finally {
-        setLoading(false);
       }
     };
-    fetchRoom();
-  }, [id, navigate]);
 
-  // Giả lập kết nối video (thực tế sẽ khởi tạo peer connection)
-  React.useEffect(() => {
-    if (!room) return;
-    
-    // Yêu cầu quyền camera/mic
-    navigator.mediaDevices?.getUserMedia({ video: true, audio: true })
-      .then(stream => {
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = stream;
-        }
-      })
-      .catch(err => {
-        console.warn("Không thể truy cập camera/mic:", err);
-        toast.error("Vui lòng cấp quyền camera và micro");
-      });
+    initRoom();
 
-    // Giả lập remote stream (có thể là video tĩnh)
-    // Trong thực tế sẽ nhận từ WebRTC
-  }, [room]);
-
-  const handleToggleMic = () => {
-    const stream = localVideoRef.current?.srcObject;
-    if (stream) {
-      stream.getAudioTracks().forEach(track => track.enabled = !micEnabled);
-    }
-    setMicEnabled(!micEnabled);
-  };
-
-  const handleToggleVideo = () => {
-    const stream = localVideoRef.current?.srcObject;
-    if (stream) {
-      stream.getVideoTracks().forEach(track => track.enabled = !videoEnabled);
-    }
-    setVideoEnabled(!videoEnabled);
-  };
-
-  const handleScreenShare = async () => {
-    try {
-      if (!screenSharing) {
-        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-        if (localVideoRef.current) {
-          // Thay thế video track bằng screen track
-          const videoTrack = screenStream.getVideoTracks()[0];
-          const stream = localVideoRef.current.srcObject;
-          const oldVideoTrack = stream.getVideoTracks()[0];
-          stream.removeTrack(oldVideoTrack);
-          stream.addTrack(videoTrack);
-          localVideoRef.current.srcObject = stream;
-        }
-        setScreenSharing(true);
-        toast.success("Đang chia sẻ màn hình");
-      } else {
-        // Dừng chia sẻ, quay lại camera
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        const videoTrack = stream.getVideoTracks()[0];
-        const currentStream = localVideoRef.current.srcObject;
-        const oldTrack = currentStream.getVideoTracks()[0];
-        currentStream.removeTrack(oldTrack);
-        currentStream.addTrack(videoTrack);
-        localVideoRef.current.srcObject = currentStream;
-        setScreenSharing(false);
+    return () => {
+      if (apiRef.current) {
+        apiRef.current.dispose();
+        apiRef.current = null;
       }
-    } catch (err) {
-      console.error(err);
-      toast.error("Không thể chia sẻ màn hình");
-    }
-  };
+    };
+  }, [id, navigate]);
 
   const handleEndCall = async () => {
     if (confirm("Bạn có chắc muốn kết thúc buổi học?")) {
       try {
+        console.log("Ending call for room:", id);
         await videoRoomApi.updateStatus(id, 'ended');
         toast.success("Đã kết thúc buổi học");
         navigate('/dashboard');
@@ -154,6 +124,7 @@ export function VideoRoomPage() {
     }
   };
 
+
   const copyRoomLink = () => {
     navigator.clipboard.writeText(window.location.href);
     setCopied(true);
@@ -161,173 +132,73 @@ export function VideoRoomPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  if (loading) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-slate-900">
-        <div className="text-white text-center">
-          <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p>Đang vào phòng...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="h-screen flex flex-col bg-slate-900 text-white">
+    <div className="h-screen flex flex-col bg-slate-900 text-white overflow-hidden">
       {/* Header */}
-      <header className="flex items-center justify-between px-6 py-3 bg-slate-800/50 backdrop-blur-sm border-b border-slate-700">
+      <header className="flex items-center justify-between px-6 py-3 bg-slate-800/50 backdrop-blur-sm border-b border-slate-700 z-10">
         <div className="flex items-center gap-4">
-          <Link to="/dashboard" className="text-slate-400 hover:text-white">
-            ← Rời phòng
+          <Link to="/dashboard" className="text-slate-400 hover:text-white flex items-center gap-2">
+            ← <span className="hidden md:inline">Rời phòng</span>
           </Link>
-          <div className="h-6 w-px bg-slate-700"></div>
+          <div className="h-6 w-px bg-slate-700 hidden md:block"></div>
           <div className="flex items-center gap-3">
-            <ImageWithFallback
-              src={room?.tutor?.avatar}
-              alt={room?.tutor?.name}
-              className="w-8 h-8 rounded-full object-cover"
-            />
-            <div>
-              <h2 className="font-bold">{room?.tutor?.name}</h2>
-              <p className="text-xs text-slate-400">{room?.subject || "Buổi học"}</p>
+            <div className="flex flex-col">
+              <h2 className="font-bold text-sm md:text-base">Phòng học trực tuyến</h2>
+              <p className="text-[10px] md:text-xs text-slate-400">ID: {room?.room_id}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2 ml-4">
+          <div className="hidden lg:flex items-center gap-2 ml-4">
             <Shield className="h-4 w-4 text-indigo-400" />
-            <span className="text-xs text-slate-400">Mã hóa đầu cuối</span>
+            <span className="text-xs text-slate-400">Kết nối an toàn</span>
           </div>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 text-xs">
+
+        <div className="flex items-center gap-2 md:gap-4">
+          <div className="hidden sm:flex items-center gap-2 text-xs">
             {connectionQuality === 'good' && <Wifi className="h-4 w-4 text-green-400" />}
-            {connectionQuality === 'poor' && <Wifi className="h-4 w-4 text-yellow-400" />}
-            {connectionQuality === 'lost' && <WifiOff className="h-4 w-4 text-red-400" />}
             <span className="text-slate-400">
-              {new Date(room?.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - 
-              {new Date(room?.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              {room?.start_time ? new Date(room.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""} -
+              {room?.end_time ? new Date(room.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
             </span>
           </div>
           <button
             onClick={copyRoomLink}
-            className="flex items-center gap-1 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition"
+            className="flex items-center gap-1 px-2 md:px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs md:text-sm transition"
           >
             {copied ? <Check className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4" />}
-            <span>{copied ? "Đã sao chép" : "Sao chép link"}</span>
+            <span className="hidden sm:inline">{copied ? "Đã sao chép" : "Sao chép link"}</span>
           </button>
           <button
-            onClick={() => setShowChat(!showChat)}
-            className="p-2 hover:bg-slate-700 rounded-lg transition"
+            onClick={handleEndCall}
+            className="bg-red-600 hover:bg-red-700 p-2 rounded-lg transition"
+            title="Kết thúc buổi học"
           >
-            <MessageSquare className="h-5 w-5" />
-          </button>
-          <button className="p-2 hover:bg-slate-700 rounded-lg transition">
-            <Users className="h-5 w-5" />
+            <PhoneOff className="h-5 w-5" />
           </button>
         </div>
       </header>
 
-      {/* Main content: Video grid */}
-      <div className="flex-1 flex overflow-hidden">
-        <div className={`flex-1 p-4 ${showChat ? 'pr-80' : ''} transition-all`}>
-          <div className="grid grid-cols-2 gap-4 h-full">
-            {/* Local video */}
-            <div className="relative bg-slate-800 rounded-2xl overflow-hidden border border-slate-700">
-              <video
-                ref={localVideoRef}
-                autoPlay
-                muted
-                playsInline
-                className="w-full h-full object-cover mirror"
-              />
-              <div className="absolute bottom-4 left-4 bg-black/50 backdrop-blur-sm px-3 py-1.5 rounded-full text-sm">
-                Bạn {user?.name}
-              </div>
-              {!videoEnabled && (
-                <div className="absolute inset-0 flex items-center justify-center bg-slate-800/80">
-                  <VideoOff className="h-12 w-12 text-slate-400" />
-                </div>
-              )}
-            </div>
-
-            {/* Remote video */}
-            <div className="relative bg-slate-800 rounded-2xl overflow-hidden border border-slate-700">
-              <video
-                ref={remoteVideoRef}
-                autoPlay
-                playsInline
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute bottom-4 left-4 bg-black/50 backdrop-blur-sm px-3 py-1.5 rounded-full text-sm">
-                {room?.tutor?.name} (Gia sư)
-              </div>
-              {/* Giả lập video nếu chưa có stream */}
-              {!remoteVideoRef.current?.srcObject && (
-                <div className="absolute inset-0 flex items-center justify-center bg-slate-800">
-                  <ImageWithFallback
-                    src={room?.tutor?.avatar}
-                    alt={room?.tutor?.name}
-                    className="w-32 h-32 rounded-full object-cover border-4 border-indigo-500/30"
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Chat sidebar (tùy chọn) */}
-        {showChat && (
-          <div className="w-80 border-l border-slate-700 bg-slate-800/50 backdrop-blur-sm flex flex-col">
-            <div className="p-4 border-b border-slate-700">
-              <h3 className="font-bold">Tin nhắn trong phòng</h3>
-            </div>
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              <div className="text-center text-xs text-slate-500">Chưa có tin nhắn</div>
-            </div>
-            <div className="p-4 border-t border-slate-700">
-              <input
-                type="text"
-                placeholder="Nhập tin nhắn..."
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
+      {/* Main content: Jitsi container */}
+      <div className="flex-1 relative bg-black">
+        <div ref={jitsiContainerRef} id="jitsi-container" className="w-full h-full"></div>
+        
+        {!isJoined && (
+          <div className="absolute inset-0 flex items-center justify-center bg-slate-900 z-0">
+            <div className="text-center">
+              <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p>Đang chuẩn bị phòng học...</p>
             </div>
           </div>
         )}
       </div>
 
-      {/* Control bar */}
-      <div className="py-4 px-6 bg-slate-800/80 backdrop-blur-sm border-t border-slate-700">
-        <div className="flex items-center justify-center gap-4">
-          <button
-            onClick={handleToggleMic}
-            className={`p-4 rounded-full transition ${
-              micEnabled ? 'bg-slate-700 hover:bg-slate-600' : 'bg-red-600 hover:bg-red-700'
-            }`}
-          >
-            {micEnabled ? <Mic className="h-6 w-6" /> : <MicOff className="h-6 w-6" />}
-          </button>
-          <button
-            onClick={handleToggleVideo}
-            className={`p-4 rounded-full transition ${
-              videoEnabled ? 'bg-slate-700 hover:bg-slate-600' : 'bg-red-600 hover:bg-red-700'
-            }`}
-          >
-            {videoEnabled ? <Video className="h-6 w-6" /> : <VideoOff className="h-6 w-6" />}
-          </button>
-          <button
-            onClick={handleScreenShare}
-            className={`p-4 rounded-full transition ${
-              screenSharing ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-slate-700 hover:bg-slate-600'
-            }`}
-          >
-            <ScreenShare className="h-6 w-6" />
-          </button>
-          <button
-            onClick={handleEndCall}
-            className="p-4 rounded-full bg-red-600 hover:bg-red-700 transition"
-          >
-            <PhoneOff className="h-6 w-6" />
-          </button>
-        </div>
+
+
+
+      {/* Footer Info */}
+      <div className="py-2 px-6 bg-slate-800/80 backdrop-blur-sm border-t border-slate-700 text-[10px] text-slate-500 text-center">
+        Powered by Jitsi Meet • TutorLink System Video Room
       </div>
     </div>
   );

@@ -30,17 +30,19 @@ export const initChatSocket = (io) => {
           sender_id,
           receiver_id,
           content,
-          sent_at: new Date(),
+          sent_at: new Date().toISOString(),
           is_read: false,
         });
 
         // gửi lại cho người gửi
         socket.emit('receive_message', savedMessage);
+        console.log('Message sent back to sender:', sender_id);
 
-        // gửi realtime cho người nhận nếu đang online
+        // gửi realtime cho người nhận nếu đang online và không phải là chính mình
         const receiverSocketId = onlineUsers.get(receiver_id);
-        if (receiverSocketId) {
+        if (receiverSocketId && receiverSocketId !== socket.id) {
           io.to(receiverSocketId).emit('receive_message', savedMessage);
+          console.log('Message sent to receiver:', receiver_id);
         }
       } catch (error) {
         console.error('Lỗi gửi tin nhắn:', error);
