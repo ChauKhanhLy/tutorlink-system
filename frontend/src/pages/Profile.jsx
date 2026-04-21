@@ -1,80 +1,56 @@
 // src/pages/Profile.jsx
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { User, Mail, Phone, MapPin, Shield, Camera, Save, Lock } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "../context/AuthContext";
 import { ImageWithFallback } from "../components/Image/ImageWithFallback";
 
 export function ProfilePage() {
-  const [user, setUser] = React.useState(null);
-  const [isEditing, setIsEditing] = React.useState(false);
-  const [formData, setFormData] = React.useState({
+  const { user, updateUser } = useAuth();
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState({
     name: "",
     email: "",
     phone: "",
     location: "",
     bio: "",
   });
-  const [loading, setLoading] = React.useState(true);
+  const [loading, setLoading] = useState(true);
 
-  React.useEffect(() => {
-    fetchUserProfile();
-  }, []);
-
-  const fetchUserProfile = async () => {
-    try {
-      // Lấy từ localStorage hoặc API
-      const storedUser = JSON.parse(localStorage.getItem("user"));
-      if (storedUser) {
-        setUser(storedUser);
-        setFormData({
-          name: storedUser.name || "",
-          email: storedUser.email || "",
-          phone: storedUser.phone || "",
-          location: storedUser.location || "",
-          bio: storedUser.bio || "",
-        });
-      }
-      // Có thể gọi API để lấy thông tin mới nhất
-      // const res = await userApi.getMe();
-      // setUser(res.data);
-    } catch {
-    
-      toast.error("Không thể tải thông tin");
-    } finally {
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        name: user.name || "",
+        email: user.email || "",
+        phone: user.phone || "",
+        location: user.location || "",
+        bio: user.bio || "",
+      });
+      setLoading(false);
+    } else {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   const handleInputChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSave = async () => {
-    try {
-      // Gọi API cập nhật
-      // await userApi.update(formData);
-      // Cập nhật localStorage
-      const updatedUser = { ...user, ...formData };
-      localStorage.setItem("user", JSON.stringify(updatedUser));
-      setUser(updatedUser);
-      setIsEditing(false);
-      toast.success("Cập nhật thông tin thành công");
-    } catch {
-      toast.error("Cập nhật thất bại");
-    }
+  const handleSave = () => {
+    updateUser(formData);
+    setIsEditing(false);
+    toast.success("Cập nhật thông tin thành công");
   };
 
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Preview
       const reader = new FileReader();
       reader.onloadend = () => {
-        setUser(prev => ({ ...prev, avatar: reader.result }));
+        updateUser({ avatar: reader.result });
+        toast.success("Ảnh đại diện đã được cập nhật");
       };
       reader.readAsDataURL(file);
-      toast.success("Ảnh đại diện đã được cập nhật");
-      // Ở đây có thể upload file lên server
     }
   };
 
@@ -143,7 +119,6 @@ export function ProfilePage() {
               </div>
 
               <div className="space-y-5">
-                {/* Full Name */}
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-1">Họ và tên</label>
                   {isEditing ? (
@@ -152,14 +127,13 @@ export function ProfilePage() {
                       name="name"
                       value={formData.name}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
                   ) : (
                     <p className="text-slate-900 font-medium">{user?.name || "Chưa cập nhật"}</p>
                   )}
                 </div>
 
-                {/* Email */}
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-1">Địa chỉ email</label>
                   <div className="flex items-center">
@@ -169,7 +143,6 @@ export function ProfilePage() {
                   <p className="text-xs text-slate-400 mt-1">Email không thể thay đổi</p>
                 </div>
 
-                {/* Phone */}
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-1">Số điện thoại</label>
                   {isEditing ? (
@@ -179,14 +152,13 @@ export function ProfilePage() {
                       value={formData.phone}
                       onChange={handleInputChange}
                       placeholder="Chưa có số điện thoại"
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"
                     />
                   ) : (
                     <p className="text-slate-900 font-medium">{user?.phone || "Chưa cập nhật"}</p>
                   )}
                 </div>
 
-                {/* Location */}
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-1">Địa điểm</label>
                   {isEditing ? (
@@ -196,7 +168,7 @@ export function ProfilePage() {
                       value={formData.location}
                       onChange={handleInputChange}
                       placeholder="Thành phố, Quốc gia"
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"
                     />
                   ) : (
                     <div className="flex items-center">
@@ -206,7 +178,6 @@ export function ProfilePage() {
                   )}
                 </div>
 
-                {/* Bio */}
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-1">Giới thiệu bản thân</label>
                   {isEditing ? (
@@ -216,14 +187,13 @@ export function ProfilePage() {
                       onChange={handleInputChange}
                       rows={4}
                       placeholder="Chia sẻ đôi chút về bạn..."
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"
                     />
                   ) : (
                     <p className="text-slate-600">{user?.bio || "Chưa có giới thiệu"}</p>
                   )}
                 </div>
 
-                {/* Save Button */}
                 {isEditing && (
                   <button
                     onClick={handleSave}
@@ -235,7 +205,6 @@ export function ProfilePage() {
               </div>
             </div>
 
-            {/* Security Section */}
             <div className="mt-6 bg-white rounded-3xl border border-slate-200 p-8 shadow-sm">
               <h2 className="text-xl font-bold text-slate-900 mb-4 flex items-center">
                 <Lock className="h-5 w-5 text-indigo-600 mr-2" /> Bảo mật
