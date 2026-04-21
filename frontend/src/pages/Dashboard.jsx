@@ -18,14 +18,20 @@ import { Link } from "react-router-dom";
 import { tutorApi } from "../api/tutorApi";
 import { bookingApi } from "../api/bookingApi";
 import { favoriteApi } from "../api/favoriteApi";
-import messageApi  from "../api/messageApi";
+import messageApi from "../api/messageApi";
 //import { billingApi } from "../api/billingApi";
 import { ImageWithFallback } from "../components/Image/ImageWithFallback";
 import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
+import { TutorDashboard } from "./TutorDashboard";
 
 export function DashboardPage() {
   const { user, logout } = useAuth();
+
+  if (user?.role === "tutor") {
+    return <TutorDashboard />;
+  }
+
   const [sessions, setSessions] = React.useState([]);
   const [tutors, setTutors] = React.useState([]);
   const [activeTab, setActiveTab] = React.useState("sessions");
@@ -54,27 +60,23 @@ export function DashboardPage() {
   React.useEffect(() => {
     const fetchData = async () => {
       try {
-        const [tutorRes, bookingRes,  walletRes, messageRes] =
+        const [tutorRes, bookingRes, messageRes] =
           await Promise.all([
             tutorApi.getAll(),
             bookingApi.getMyBookings(),
-            //favoriteApi.getMyFavorites(),
-            messageApi.getMyMessages(),
-            //billingApi.getWallet(),
+            messageApi.getConversations(user.id),
           ]);
 
-        setTutors(tutorRes.data);
+        setTutors(tutorRes.data.tutors || []);
         setSessions(bookingRes.data);
         setMessages(messageRes.data);
-        setWallet(walletRes.data);
-        //setFavorites(favoriteRes.data);
       } catch (err) {
         console.log(err);
       }
     };
 
-    fetchData();
-  }, []);
+    if (user?.id) fetchData();
+  }, [user?.id]);
 
   const nextSession = sessions
     ?.filter((s) => new Date(s.date) > new Date()) // buổi trong tương lai
@@ -100,39 +102,71 @@ export function DashboardPage() {
                   {user?.name || "User"}
                 </h3>
                 <p className="text-xs font-bold text-indigo-600 z-10 uppercase tracking-widest">
-                  Gói học viên
+                  {user?.role === "admin"
+                    ? "Gói Admin"
+                    : user?.role === "tutor"
+                      ? "Gói Gia sư"
+                      : "Gói Học viên"}
                 </p>
                 <div className="absolute top-0 right-0 -mt-8 -mr-8 w-24 h-24 bg-indigo-600/10 rounded-full blur-xl"></div>
               </div>
 
               <nav className="space-y-2">
-                {sidebarItems.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => setActiveTab(item.id)}
-                    className={`w-full flex items-center justify-between px-4 py-3.5 rounded-2xl font-bold text-sm transition-all ${
-                      activeTab === item.id
-                        ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
-                        : "text-slate-500 hover:bg-slate-50 hover:text-indigo-600"
-                    }`}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <item.icon className="h-5 w-5" />
-                      <span>{item.name}</span>
-                    </div>
-                    {item.badge && (
-                      <span
-                        className={`px-2 py-0.5 rounded-lg text-[10px] font-bold ${
-                          activeTab === item.id
-                            ? "bg-white text-indigo-600"
-                            : "bg-indigo-600 text-white"
-                        }`}
+                {sidebarItems.map((item) => {
+                  const isActive = activeTab === item.id;
+                  const commonClasses = `w-full flex items-center justify-between px-4 py-3.5 rounded-2xl font-bold text-sm transition-all ${
+                    isActive
+                      ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
+                      : "text-slate-500 hover:bg-slate-50 hover:text-indigo-600"
+                  }`;
+
+                  if (item.id === "messages") {
+                    return (
+                      <Link
+                        key={item.id}
+                        to="/messages"
+                        className={commonClasses}
+                        onClick={() => setActiveTab(item.id)}
                       >
-                        {item.badge}
-                      </span>
-                    )}
-                  </button>
-                ))}
+                        <div className="flex items-center space-x-3">
+                          <item.icon className="h-5 w-5" />
+                          <span>{item.name}</span>
+                        </div>
+                        {item.badge && (
+                          <span
+                            className={`px-2 py-0.5 rounded-lg text-[10px] font-bold ${
+                              isActive ? "bg-white text-indigo-600" : "bg-indigo-600 text-white"
+                            }`}
+                          >
+                            {item.badge}
+                          </span>
+                        )}
+                      </Link>
+                    );
+                  }
+
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => setActiveTab(item.id)}
+                      className={commonClasses}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <item.icon className="h-5 w-5" />
+                        <span>{item.name}</span>
+                      </div>
+                      {item.badge && (
+                        <span
+                          className={`px-2 py-0.5 rounded-lg text-[10px] font-bold ${
+                            isActive ? "bg-white text-indigo-600" : "bg-indigo-600 text-white"
+                          }`}
+                        >
+                          {item.badge}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
                 <button
                   onClick={handleLogout}
                   className="w-full flex items-center space-x-3 px-4 py-3.5 rounded-2xl font-bold text-sm text-rose-500 hover:bg-rose-50 transition-all mt-6 border-t border-slate-100 pt-10"
@@ -162,6 +196,14 @@ export function DashboardPage() {
                 </p>
               </div>
               <div className="flex items-center space-x-3">
+                {user?.role !== "tutor" && (
+                  <Link
+                    to="/become-tutor"
+                    className="bg-amber-500 px-5 py-3 rounded-2xl text-sm font-bold text-white flex items-center hover:bg-amber-600 transition-all shadow-sm"
+                  >
+                    Trở thành gia sư
+                  </Link>
+                )}
                 <Link
                   to="/search"
                   className="bg-white px-5 py-3 rounded-2xl border border-slate-200 text-sm font-bold text-slate-700 flex items-center hover:bg-slate-50 transition-all shadow-sm"
@@ -192,7 +234,7 @@ export function DashboardPage() {
                                   1,
                                   Math.floor(
                                     (new Date(nextSession.date) - new Date()) /
-                                      (1000 * 60 * 60),
+                                    (1000 * 60 * 60),
                                   ),
                                 )}{" "}
                                 giờ
@@ -211,17 +253,23 @@ export function DashboardPage() {
                             </p>
 
                             <div className="flex flex-wrap gap-4">
-                              {nextSession.meetingLink && (
+                              {nextSession?.room_id ? (
+                                <Link
+                                  to={`/room/${nextSession.room_id || nextSession.id}`}
+                                  className="px-6 py-3 bg-white text-indigo-600 font-bold rounded-2xl flex items-center hover:bg-slate-50 transition-all shadow-xl"
+                                >
+                                  Tham gia <ExternalLink className="ml-2 h-4 w-4" />
+                                </Link>
+                              ) : nextSession?.meetingLink ? (
                                 <a
                                   href={nextSession.meetingLink}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="px-6 py-3 bg-white text-indigo-600 font-bold rounded-2xl flex items-center hover:bg-slate-50 transition-all shadow-xl"
                                 >
-                                  Tham gia{" "}
-                                  <ExternalLink className="ml-2 h-4 w-4" />
+                                  Tham gia <ExternalLink className="ml-2 h-4 w-4" />
                                 </a>
-                              )}
+                              ) : null}
 
                               <button className="px-6 py-3 bg-white/10 backdrop-blur-md border border-white/20 text-white font-bold rounded-2xl hover:bg-white/20 transition-all">
                                 Đổi lịch
@@ -252,9 +300,14 @@ export function DashboardPage() {
                     </div>
                     <div className="space-y-4">
                       {sessions.map((session) => {
-                        const tutor = tutors.find(
-                          (t) => t.id === session.tutorId,
-                        );
+                        const tutor = tutors.find((t) => t.id === session.tutorId);
+                        const now = new Date();
+                        const startTime = new Date(session.room_start_time || session.datetime || session.date);
+                        const endTime = new Date(session.room_end_time || (new Date(startTime).getTime() + 60 * 60 * 1000));
+
+                        // Cho phép vào phòng bất cứ lúc nào nếu có room_id (phục vụ testing)
+                        const canJoin = !!session.room_id && session.status !== 'cancel' && session.status !== 'done';
+
 
                         return (
                           <div
@@ -273,18 +326,16 @@ export function DashboardPage() {
 
                                 <div className="flex items-center text-slate-500 text-sm mt-1">
                                   <span className="font-bold">
-                                    {session.date
-                                      ? new Date(
-                                          session.date,
-                                        ).toLocaleDateString()
+                                    {session.date || session.datetime
+                                      ? new Date(session.date || session.datetime).toLocaleDateString("vi-VN")
                                       : "Chưa có ngày"}
                                   </span>
                                   <span className="mx-2">•</span>
-                                  <span>{session.time || "Chưa có giờ"}</span>
+                                  <span>{session.time || new Date(startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                 </div>
 
                                 <div className="text-xs text-slate-400 mt-1">
-                                  Gia sư: {tutor?.name || "Đang cập nhật"}
+                                  Gia sư: {tutor?.name || session.tutorName || "Đang cập nhật"}
                                 </div>
                               </div>
                             </div>
@@ -295,14 +346,77 @@ export function DashboardPage() {
                                 className="w-10 h-10 rounded-full border-2 border-white shadow-sm"
                               />
 
-                              <button className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all">
-                                Quản lý
-                              </button>
+                              {canJoin ? (
+                                <Link
+                                  to={`/room/${session.room_id}`}
+                                  className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all"
+                                >
+                                  Vào phòng
+                                </Link>
+                              ) : (
+                                <button className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-400 cursor-not-allowed">
+                                  {session.room_id ? "Chưa đến giờ" : "Chờ xác nhận"}
+                                </button>
+                              )}
                             </div>
                           </div>
                         );
                       })}
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === "messages" && (
+                <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+                  <div className="p-8 border-b border-slate-100 flex justify-between items-center">
+                    <h3 className="text-xl font-bold text-slate-900">Tin nhắn gần đây</h3>
+                    <Link to="/messages" className="text-sm font-bold text-indigo-600 hover:underline">
+                      Mở toàn màn hình
+                    </Link>
+                  </div>
+                  <div className="divide-y divide-slate-50">
+                    {messages.length > 0 ? (
+                      messages.map((conv) => (
+                        <Link
+                          key={conv.id}
+                          to={`/messages?userId=${conv.id}`}
+                          className="flex items-center p-6 hover:bg-slate-50 transition-all gap-4"
+                        >
+                          <div className="relative">
+                            <ImageWithFallback
+                              src={conv.avatar}
+                              className="w-12 h-12 rounded-full object-cover"
+                            />
+                            {conv.unread > 0 && (
+                              <span className="absolute -top-1 -right-1 w-5 h-5 bg-indigo-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">
+                                {conv.unread}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex justify-between items-start mb-1">
+                              <h4 className="font-bold text-slate-900">{conv.name}</h4>
+                              <span className="text-[10px] text-slate-400 font-medium">
+                                {conv.time ? new Date(conv.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
+                              </span>
+                            </div>
+                            <p className="text-sm text-slate-500 line-clamp-1 truncate max-w-md">
+                              {conv.lastMsg}
+                            </p>
+                          </div>
+                          <ChevronRight className="h-5 w-5 text-slate-300" />
+                        </Link>
+                      ))
+                    ) : (
+                      <div className="p-12 text-center">
+                        <MessageSquare className="h-12 w-12 text-slate-200 mx-auto mb-4" />
+                        <p className="text-slate-500 font-medium">Chưa có tin nhắn nào</p>
+                        <Link to="/search" className="text-indigo-600 font-bold text-sm mt-2 inline-block">
+                          Tìm gia sư để trò chuyện
+                        </Link>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

@@ -31,7 +31,7 @@ axiosClient.interceptors.response.use(
   (error) => {
     console.log("API ERROR:", error.response); // 👈 debug cực quan trọng
 
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 || (error.response?.status === 403 && error.response?.data?.message?.toLowerCase().includes("token"))) {
       localStorage.removeItem("user");
       localStorage.removeItem("token");
       window.location.href = "/login";

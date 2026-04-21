@@ -1,9 +1,10 @@
 import express from 'express'
-import { updateProfile, becomeTutor } from '../controllers/user.controller.js'
+import { updateProfile, becomeTutor, getUserById } from '../controllers/user.controller.js'
 import authMiddleware from '../middlewares/auth.middleware.js'
 
 const router = express.Router()
 
+router.get('/:id', getUserById)
 router.put('/me', authMiddleware, updateProfile)
 router.post('/become-tutor', authMiddleware, becomeTutor)
 

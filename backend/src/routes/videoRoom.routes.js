@@ -43,6 +43,7 @@ import * as videoRoomController from '../controllers/videoRoom.controller.js'
 const router = express.Router()
 
 router.get('/', videoRoomController.getAllVideoRooms)
+router.get('/:id', videoRoomController.getVideoRoomById) // Added this
 router.get('/booking/:booking_id', videoRoomController.getVideoRoomByBookingId)
 router.post('/', videoRoomController.createVideoRoom)
 router.patch('/:id/status', videoRoomController.updateVideoRoomStatus)

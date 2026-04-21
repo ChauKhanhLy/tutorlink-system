@@ -43,7 +43,11 @@ export function AuthPage() {
         login(userData); // 🔥 QUAN TRỌNG
 
         toast.success("Đăng nhập thành công!");
-        navigate("/dashboard");
+        if (userData.role === "admin") {
+          navigate("/admin/dashboard");
+        } else {
+          navigate("/dashboard");
+        }
       } else {
         const formData = new FormData(e.target);
         const data = {
@@ -203,6 +207,17 @@ export function AuthPage() {
               {isLogin ? "Đăng ký" : "Đăng nhập"}
             </Link>
           </p>
+
+          {isLogin && (
+            <div className="mt-8 pt-6 border-t border-slate-100 text-center">
+              <Link
+                to="/admin/login"
+                className="text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors uppercase tracking-widest"
+              >
+                Đăng nhập quản trị viên
+              </Link>
+            </div>
+          )}
         </div>
       </div>
 
