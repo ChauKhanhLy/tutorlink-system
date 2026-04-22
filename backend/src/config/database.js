@@ -14,6 +14,7 @@ const sequelize = new Sequelize(
         port: process.env.DB_PORT || 5432,
         dialect: 'postgres',
         logging: false,
+        timezone: '+07:00', // Đặt múi giờ Việt Nam
         pool: { max: 5, min: 0, acquire: 30000, idle: 10000 }
     }
 );

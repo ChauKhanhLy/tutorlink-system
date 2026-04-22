@@ -1,4 +1,6 @@
 import Booking from '../models/booking.model.js';
+import VideoRoom from '../models/videoRoom.model.js';
+import { v4 as uuidv4 } from 'uuid';
 import { Op } from 'sequelize';
 import db from '../config/db.js';
 
@@ -41,22 +43,87 @@ export const getMyBookings = async (learner_id) => {
         SELECT 
             b.*,
             u.name as tutorName,
-            s.name as subject
+            s.name as subject,
+            vs.id as room_id,
+            vs.status as room_status,
+            vs.start_time as room_start_time,
+            vs.end_time as room_end_time
         FROM bookings b
         JOIN users u ON b.tutor_id = u.id
         LEFT JOIN subjects s ON b.subject_id = s.id
+        LEFT JOIN video_sessions vs ON b.id = vs.booking_id
         WHERE b.learner_id = $1
         ORDER BY b.datetime ASC
     `;
     const result = await db.query(query, [learner_id]);
-    return result.rows;
+    const bookings = result.rows;
+    
+    // Đảm bảo các buổi đã confirmed đều có phòng họp
+    await ensureVideoRoomsExist(bookings);
+    
+    return bookings;
 };
+
+// Hàm bổ trợ để tự động tạo phòng nếu thiếu
+async function ensureVideoRoomsExist(bookings) {
+    for (let booking of bookings) {
+        if (booking.status === 'confirmed' && !booking.room_id) {
+            try {
+                // Tạo phòng mới nếu chưa có
+                const startTime = new Date(booking.datetime);
+                const endTime = new Date(startTime.getTime() + 60 * 60 * 1000);
+                const roomId = uuidv4().replace(/-/g, "");
+
+                const newRoom = await VideoRoom.create({
+                    id: uuidv4(),
+                    booking_id: booking.id,
+                    room_id: `tutorlink-${booking.id}`,
+                    provider: 'jitsi',
+                    start_time: startTime.toISOString(),
+                    end_time: endTime.toISOString(),
+                    status: 'scheduled'
+                });
+                
+                // Cập nhật lại đối tượng booking trong memory để frontend nhận được ngay
+                booking.room_id = newRoom.id;
+                booking.room_status = newRoom.status;
+                booking.room_start_time = newRoom.start_time;
+                booking.room_end_time = newRoom.end_time;
+            } catch (err) {
+                console.error(`Lỗi tự động tạo phòng cho booking ${booking.id}:`, err);
+            }
+        }
+    }
+}
 
 export const updateStatus = async (id, status) => {
     const booking = await Booking.findByPk(id);
     if (!booking) throw new Error("Không tìm thấy lịch học");
+    
+    const oldStatus = booking.status;
     booking.status = status;
     await booking.save();
+
+    // Tự động tạo VideoRoom khi xác nhận
+    if (status === 'confirmed') {
+        const existingRoom = await VideoRoom.findOne({ where: { booking_id: id } });
+        if (!existingRoom) {
+            // Giả định mỗi buổi học kéo dài 1 tiếng
+            const startTime = new Date(booking.datetime);
+            const endTime = new Date(startTime.getTime() + 60 * 60 * 1000);
+            
+            await VideoRoom.create({
+                id: uuidv4(),
+                booking_id: id,
+                room_id: `tutorlink-${id}`, // ID định danh cho room (có thể dùng làm Jitsi room name)
+                provider: 'jitsi', // Mặc định dùng Jitsi
+                start_time: startTime.toISOString(),
+                end_time: endTime.toISOString(),
+                status: 'scheduled'
+            });
+        }
+    }
+    
     return booking;
 };
 
@@ -65,13 +132,23 @@ export const getBookingsForTutor = async (tutor_id) => {
         SELECT 
             b.*,
             u.name as studentName,
-            s.name as subject
+            s.name as subject,
+            vs.id as room_id,
+            vs.status as room_status,
+            vs.start_time as room_start_time,
+            vs.end_time as room_end_time
         FROM bookings b
         JOIN users u ON b.learner_id = u.id
         LEFT JOIN subjects s ON b.subject_id = s.id
+        LEFT JOIN video_sessions vs ON b.id = vs.booking_id
         WHERE b.tutor_id = $1
         ORDER BY b.datetime ASC
     `;
     const result = await db.query(query, [tutor_id]);
-    return result.rows;
+    const bookings = result.rows;
+    
+    // Đảm bảo các buổi đã confirmed đều có phòng họp
+    await ensureVideoRoomsExist(bookings);
+    
+    return bookings;
 };

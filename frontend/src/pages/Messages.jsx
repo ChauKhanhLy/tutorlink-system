@@ -155,7 +155,11 @@ export function MessagesPage({ adminMode = false }) {
         (msg.sender_id === activeChat && msg.receiver_id === userId) ||
         (msg.sender_id === userId && msg.receiver_id === activeChat)
       ) {
-        setMessages((prev) => [...prev, msg]);
+        setMessages((prev) => {
+          const exists = prev.some((m) => m.id === msg.id);
+          if (exists) return prev;
+          return [...prev, msg];
+        });
 
         // Nếu là tin nhắn từ người khác gửi đến chat đang mở, mark as read
         if (msg.sender_id === activeChat) {

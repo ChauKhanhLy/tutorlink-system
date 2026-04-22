@@ -146,6 +146,14 @@ function StatCard({ icon: Icon, label, value, color }) {
 }
 
 function SessionCard({ session }) {
+  const now = new Date();
+  const startTime = new Date(session.room_start_time || session.datetime || session.date);
+  const endTime = new Date(session.room_end_time || (new Date(startTime).getTime() + 60 * 60 * 1000));
+  
+  // Cho phép vào phòng bất cứ lúc nào nếu có room_id (phục vụ testing)
+  const canJoin = !!session.room_id && session.status !== 'cancel' && session.status !== 'done';
+
+
   return (
     <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
       <div className="flex items-center gap-4">
@@ -153,15 +161,24 @@ function SessionCard({ session }) {
           <Clock className="h-6 w-6 text-indigo-600" />
         </div>
         <div>
-          <p className="font-bold text-slate-900">{session.subject}</p>
+          <p className="font-bold text-slate-900">{session.subject || "Lớp học"}</p>
           <p className="text-sm text-slate-500">
-            {session.studentName} • {session.time}
+            {session.studentName} • {session.time || new Date(startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
           </p>
         </div>
       </div>
-      <button className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold">
-        Vào lớp
-      </button>
+      {canJoin ? (
+        <Link 
+          to={`/room/${session.room_id}`}
+          className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all"
+        >
+          Vào lớp
+        </Link>
+      ) : (
+        <button className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-400 cursor-not-allowed">
+          {session.room_id ? "Chưa đến giờ" : "Chờ xác nhận"}
+        </button>
+      )}
     </div>
   );
 }

@@ -54,7 +54,8 @@ export const updateVideoRoomStatusModel = async (id, status) => {
 */
 
 import { DataTypes } from 'sequelize';
-import sequelize from '../../config/database.js';
+import sequelize from '../config/database.js';
+
 
 const VideoRoom = sequelize.define(
   'VideoRoom',
