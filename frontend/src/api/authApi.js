@@ -5,8 +5,12 @@ const authApi = {
     return axiosClient.post("/auth/login", data);
   },
 
-  register: (data) => {
-    return axiosClient.post("/auth/register", data);
+  registerLearner: (data) => {
+    return axiosClient.post("/auth/register/learner", data);
+  },
+
+  registerTutor: (data) => {
+    return axiosClient.post("/auth/register/tutor", data);
   },
 };
 

@@ -35,16 +35,20 @@ export function AuthPage() {
 
         const res = await authApi.login(data);
 
-        const userData = {
-          ...res.data.user,
+    
+        login({
+          user: res.data.user,
           token: res.data.token,
-        };
-
-        login(userData); // 🔥 QUAN TRỌNG
+        }); // 🔥   QUAN TRỌNG
 
         toast.success("Đăng nhập thành công!");
-        if (userData.role === "admin") {
+
+        const role = res.data.user.role;
+
+        if (role === "admin") {
           navigate("/admin/dashboard");
+        } else if (role === "tutor") {
+          navigate("/tutor/dashboard");
         } else {
           navigate("/dashboard");
         }
@@ -56,16 +60,21 @@ export function AuthPage() {
           password: formData.get("password"),
         };
 
-        await authApi.register(data);
-
-        toast.success("Đăng ký thành công!");
-        navigate("/login");
+      // 🔥 CHỖ QUAN TRỌNG NHẤT
+      if (role === "tutor") {
+        await authApi.registerTutor(data);
+      } else {
+        await authApi.registerLearner(data);
       }
-    } catch (err) {
-      console.log(err.response?.data);
-      toast.error(err.response?.data?.message || "Lỗi server");
+
+      toast.success("Đăng ký thành công!");
+      navigate("/login");
     }
-  };
+  } catch (err) {
+    console.log(err.response?.data);
+    toast.error(err.response?.data?.message || "Lỗi server");
+  }
+};
 
   React.useEffect(() => {
     const user = localStorage.getItem("user");

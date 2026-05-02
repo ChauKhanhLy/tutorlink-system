@@ -1,9 +1,18 @@
 import * as authService from '../services/auth.service.js'
 
-const register = async (req, res) => {
+const registerLearner = async (req, res) => {
   try {
     const { email, password, name } = req.body
-    const user = await authService.register({ email, password, name })
+    const user = await authService.registerLearner({ email, password, name })
+    res.json(user)
+  } catch (err) {
+    res.status(400).json({ message: err.message })
+  }
+}
+export const registerTutor = async (req, res) => {
+  try {
+    const { email, password, name } = req.body
+    const user = await authService.registerTutor({ email, password, name })
     res.json(user)
   } catch (err) {
     res.status(400).json({ message: err.message })
@@ -20,4 +29,8 @@ const login = async (req, res) => {
   }
 }
 
-export default { register, login }
+export default {
+  registerLearner,
+  registerTutor,
+  login
+}

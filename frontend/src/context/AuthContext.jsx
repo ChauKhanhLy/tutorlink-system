@@ -20,16 +20,14 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   // login
-  const login = (data) => {
-    const { token, ...userData } = data || {};
-
+  const login = ({user, token}) => {
     if (!token) {
       throw new Error("Missing auth token");
     }
 
     localStorage.setItem("token", token);
-    localStorage.setItem("user", JSON.stringify(userData));
-    setUser(userData);
+    localStorage.setItem("user", JSON.stringify(user));
+    setUser(user);
   };
 
   // logout

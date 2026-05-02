@@ -71,9 +71,8 @@ if (!SECRET) {
 }
 
 // register
-export const register = async ({ email, password, name }) => {
+export const registerLearner = async ({ email, password, name }) => {
   const existingUser = await userDAL.findByEmail(email)
-
   if (existingUser) throw new Error("User already exists")
 
   const hashedPassword = await bcrypt.hash(password, 10)
@@ -82,7 +81,25 @@ export const register = async ({ email, password, name }) => {
     email,
     password: hashedPassword,
     name,
-    role: 'learner'
+    role: 'learner',
+    verified: true
+  })
+}
+
+export const registerTutor = async (data) => {
+  const { email, password, name, price, description, subject } = data
+
+  const existingUser = await userDAL.findByEmail(email)
+  if (existingUser) throw new Error("User already exists")
+
+  const hashedPassword = await bcrypt.hash(password, 10)
+
+  return await userDAL.createUser({
+    email,
+    password: hashedPassword,
+    name,
+    role: 'tutor',
+    verified: false, // ❗ chờ admin duyệt
   })
 }
 
