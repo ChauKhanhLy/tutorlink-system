@@ -1,9 +1,27 @@
 import React from "react";
 import { Calendar, Users, DollarSign, Star, Clock } from "lucide-react";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
+import { Dialog, DialogContent } from "../components/dialog";
 import { useAuth } from "../context/AuthContext";
 import { tutorApi } from "../api/tutorApi";
 import { bookingApi } from "../api/bookingApi";
+
+const daysOfWeek = [
+  { id: 1, label: "Thứ 2" },
+  { id: 2, label: "Thứ 3" },
+  { id: 3, label: "Thứ 4" },
+  { id: 4, label: "Thứ 5" },
+  { id: 5, label: "Thứ 6" },
+  { id: 6, label: "Thứ 7" },
+  { id: 0, label: "Chủ nhật" },
+];
+
+const availabilityOptions = [
+  { id: "morning", label: "Sáng (8:00 - 12:00)" },
+  { id: "afternoon", label: "Chiều (13:00 - 17:00)" },
+  { id: "evening", label: "Tối (18:00 - 22:00)" },
+];
 
 export function TutorDashboard() {
   const { user } = useAuth();
@@ -15,6 +33,54 @@ export function TutorDashboard() {
   });
   const [upcomingSessions, setUpcomingSessions] = React.useState([]);
   const [availability, setAvailability] = React.useState([]);
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = React.useState(false);
+  const [editSchedule, setEditSchedule] = React.useState({});
+  const [activeEditDay, setActiveEditDay] = React.useState(1);
+  const [isUpdating, setIsUpdating] = React.useState(false);
+
+  const openUpdateModal = async () => {
+    try {
+      const res = await tutorApi.getMyAvailabilityPreferences();
+      setEditSchedule(res.data?.schedule || {});
+      setIsUpdateModalOpen(true);
+    } catch (err) {
+      toast.error("Không tải được lịch gốc");
+    }
+  };
+
+  const handleScheduleToggle = (timeOptionId) => {
+    setEditSchedule((prev) => {
+      const currentSchedule = prev || {};
+      const daySlots = currentSchedule[activeEditDay] || [];
+      const newDaySlots = daySlots.includes(timeOptionId)
+        ? daySlots.filter((id) => id !== timeOptionId)
+        : [...daySlots, timeOptionId];
+
+      const newSchedule = { ...currentSchedule };
+      if (newDaySlots.length > 0) {
+        newSchedule[activeEditDay] = newDaySlots;
+      } else {
+        delete newSchedule[activeEditDay];
+      }
+      return newSchedule;
+    });
+  };
+
+  const submitAvailabilityUpdate = async () => {
+    setIsUpdating(true);
+    try {
+      await tutorApi.updateMyAvailability(editSchedule);
+      toast.success("Cập nhật lịch rảnh thành công");
+      setIsUpdateModalOpen(false);
+      // Reload UI
+      const availabilityRes = await tutorApi.getAvailability(user.id);
+      setAvailability(availabilityRes.data?.availableSlots || availabilityRes.data || []);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Cập nhật thất bại");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   React.useEffect(() => {
     const fetchTutorData = async () => {
@@ -118,15 +184,97 @@ export function TutorDashboard() {
                 <p className="text-slate-400 text-center py-8">Chưa cập nhật lịch rảnh</p>
               )}
             </div>
-            <Link 
-              to="/become-tutor" 
+            <button 
+              onClick={openUpdateModal}
               className="mt-6 w-full flex items-center justify-center px-4 py-3 border-2 border-dashed border-slate-200 rounded-2xl text-slate-500 font-bold text-sm hover:border-indigo-300 hover:text-indigo-600 transition-all"
             >
               Cập nhật lịch rảnh
-            </Link>
+            </button>
           </div>
         </div>
       </div>
+
+      {/* Modal cập nhật lịch rảnh riêng biệt */}
+      <Dialog open={isUpdateModalOpen} onOpenChange={setIsUpdateModalOpen}>
+        <DialogContent className="max-w-xl">
+          <h2 className="text-xl font-bold text-slate-900 mb-6">Cập nhật lịch rảnh</h2>
+          
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-3">
+              Chọn ngày thiết lập lịch rảnh <span className="text-red-500">*</span>
+            </label>
+            <div className="flex flex-wrap gap-2 mb-6">
+              {daysOfWeek.map((day) => {
+                const hasSchedule = editSchedule?.[day.id]?.length > 0;
+                return (
+                  <button
+                    key={day.id}
+                    type="button"
+                    onClick={() => setActiveEditDay(day.id)}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                      activeEditDay === day.id
+                        ? "bg-indigo-600 text-white shadow-md shadow-indigo-200"
+                        : hasSchedule
+                        ? "bg-indigo-100 text-indigo-700 border border-indigo-200 hover:bg-indigo-200"
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    }`}
+                  >
+                    {day.label}
+                    {hasSchedule && <span className="ml-1.5 w-2 h-2 inline-block rounded-full bg-indigo-500" />}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl relative">
+              <div className="absolute -top-3 left-6 bg-slate-50 px-2 text-xs font-bold text-slate-500 uppercase">
+                Khung giờ rảnh cho {daysOfWeek.find((d) => d.id === activeEditDay)?.label}
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
+                {availabilityOptions.map((option) => {
+                  const isSelected = (editSchedule?.[activeEditDay] || []).includes(option.id);
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => handleScheduleToggle(option.id)}
+                      className={`px-4 py-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                        isSelected
+                          ? "bg-indigo-600 text-white shadow-md shadow-indigo-200"
+                          : "bg-white border text-slate-600 hover:bg-slate-100"
+                      }`}
+                    >
+                      <Clock className="h-4 w-4" />
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+              {(!editSchedule?.[activeEditDay] || editSchedule[activeEditDay].length === 0) && (
+                <p className="mt-3 text-xs text-slate-400 text-center">
+                  Ngày này hiện đang trống lịch rảnh.
+                </p>
+              )}
+            </div>
+            
+            <div className="mt-8 flex justify-end gap-3">
+              <button 
+                onClick={() => setIsUpdateModalOpen(false)}
+                className="px-6 py-3 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-all"
+              >
+                Hủy
+              </button>
+              <button 
+                disabled={isUpdating}
+                onClick={submitAvailabilityUpdate}
+                className="px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-all disabled:opacity-50"
+              >
+                {isUpdating ? "Đang xử lý..." : "Lưu thay đổi"}
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

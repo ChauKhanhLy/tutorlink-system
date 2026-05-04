@@ -85,9 +85,10 @@ export const becomeTutor = async (userId, payload = {}) => {
   if (!user) throw new Error("User not found")
 
   // 1. Cập nhật bảng users (thông tin cơ bản)
+  const isAlreadyTutor = user.role === 'tutor';
   const updateUserData = {
     role: 'tutor',
-    verified: false,
+    verified: isAlreadyTutor ? user.verified : false,
     phone: payload.phone,
     avatar: payload.avatar
   }
@@ -151,11 +152,11 @@ export const becomeTutor = async (userId, payload = {}) => {
   }
 
   // 4. Lưu lịch dạy
-  if (Array.isArray(payload.availability)) {
-    await saveAvailabilityPreferences(userId, payload.availability, payload.availableDays || [])
+  if (payload.schedule && Object.keys(payload.schedule).length > 0) {
+    await saveAvailabilityPreferences(userId, payload.schedule)
   }
 
-  return { message: "Requested to become tutor", savedAvailability: Array.isArray(payload.availability) }
+  return { message: "Requested to become tutor", savedAvailability: !!payload.schedule }
 }
 
 // verify tutor

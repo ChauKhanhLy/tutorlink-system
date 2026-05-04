@@ -40,8 +40,7 @@ export function BecomeTutorPage() {
     bio: "",
     languages: ["Tiếng Việt"],
     teachingStyle: "",
-    availability: [],
-    availableDays: [],
+    schedule: {},
     
     // Upload files
     cvFile: null,
@@ -114,22 +113,25 @@ export function BecomeTutorPage() {
     }));
   };
 
-  const handleAvailabilityToggle = (option) => {
-    setFormData(prev => ({
-      ...prev,
-      availability: prev.availability.includes(option)
-        ? prev.availability.filter(a => a !== option)
-        : [...prev.availability, option]
-    }));
-  };
+  const [activeDay, setActiveDay] = React.useState(1);
 
-  const handleDayToggle = (dayId) => {
-    setFormData(prev => ({
-      ...prev,
-      availableDays: prev.availableDays.includes(dayId)
-        ? prev.availableDays.filter(d => d !== dayId)
-        : [...prev.availableDays, dayId]
-    }));
+  const handleScheduleToggle = (timeOptionId) => {
+    setFormData((prev) => {
+      const currentSchedule = prev.schedule || {};
+      const daySlots = currentSchedule[activeDay] || [];
+      const newDaySlots = daySlots.includes(timeOptionId)
+        ? daySlots.filter((id) => id !== timeOptionId)
+        : [...daySlots, timeOptionId];
+
+      const newSchedule = { ...currentSchedule };
+      if (newDaySlots.length > 0) {
+        newSchedule[activeDay] = newDaySlots;
+      } else {
+        delete newSchedule[activeDay];
+      }
+
+      return { ...prev, schedule: newSchedule };
+    });
   };
 
   const handleFileChange = (field, files) => {
@@ -156,12 +158,8 @@ export function BecomeTutorPage() {
       toast.error("Giới thiệu bản thân tối thiểu 50 ký tự");
       return;
     }
-    if (formData.availableDays.length === 0) {
-      toast.error("Vui lòng chọn ít nhất một ngày rảnh");
-      return;
-    }
-    if (formData.availability.length === 0) {
-      toast.error("Vui lòng chọn ít nhất một khung thời gian rảnh");
+    if (!formData.schedule || Object.keys(formData.schedule).length === 0) {
+      toast.error("Vui lòng thiết lập ít nhất một ngày và khung giờ rảnh");
       return;
     }
 
@@ -178,8 +176,7 @@ export function BecomeTutorPage() {
         bio: formData.bio,
         languages: formData.languages,
         teachingStyle: formData.teachingStyle,
-        availability: formData.availability,
-        availableDays: formData.availableDays,
+        schedule: formData.schedule,
       };
 
       await tutorApi.registerTutor(submitData);
@@ -513,44 +510,60 @@ export function BecomeTutorPage() {
 
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-3">
-                  Chọn ngày có thể dạy <span className="text-red-500">*</span>
+                  Chọn ngày thiết lập lịch rảnh <span className="text-red-500">*</span>
                 </label>
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {daysOfWeek.map((day) => (
-                    <button
-                      key={day.id}
-                      type="button"
-                      onClick={() => handleDayToggle(day.id)}
-                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                        formData.availableDays.includes(day.id)
-                          ? "bg-indigo-600 text-white shadow-md shadow-indigo-200"
-                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                      }`}
-                    >
-                      {day.label}
-                    </button>
-                  ))}
+                <div className="flex flex-wrap gap-2 mb-6">
+                  {daysOfWeek.map((day) => {
+                    const hasSchedule = formData.schedule?.[day.id]?.length > 0;
+                    return (
+                      <button
+                        key={day.id}
+                        type="button"
+                        onClick={() => setActiveDay(day.id)}
+                        className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                          activeDay === day.id
+                            ? "bg-indigo-600 text-white shadow-md shadow-indigo-200"
+                            : hasSchedule
+                            ? "bg-indigo-100 text-indigo-700 border border-indigo-200 hover:bg-indigo-200"
+                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                        }`}
+                      >
+                        {day.label}
+                        {hasSchedule && <span className="ml-1.5 w-2 h-2 inline-block rounded-full bg-indigo-500" />}
+                      </button>
+                    );
+                  })}
                 </div>
 
-                <label className="block text-sm font-bold text-slate-700 mb-3">
-                  Khung giờ có thể dạy <span className="text-red-500">*</span>
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  {availabilityOptions.map((option) => (
-                    <button
-                      key={option.id}
-                      type="button"
-                      onClick={() => handleAvailabilityToggle(option.id)}
-                      className={`px-4 py-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${
-                        formData.availability.includes(option.id)
-                          ? "bg-indigo-600 text-white shadow-md shadow-indigo-200"
-                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                      }`}
-                    >
-                      <Clock className="h-4 w-4" />
-                      {option.label}
-                    </button>
-                  ))}
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl relative">
+                  <div className="absolute -top-3 left-6 bg-slate-50 px-2 text-xs font-bold text-slate-500 uppercase">
+                    Khung giờ rảnh cho {daysOfWeek.find((d) => d.id === activeDay)?.label}
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
+                    {availabilityOptions.map((option) => {
+                      const isSelected = (formData.schedule?.[activeDay] || []).includes(option.id);
+                      return (
+                        <button
+                          key={option.id}
+                          type="button"
+                          onClick={() => handleScheduleToggle(option.id)}
+                          className={`px-4 py-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                            isSelected
+                              ? "bg-indigo-600 text-white shadow-md shadow-indigo-200"
+                              : "bg-white border text-slate-600 hover:bg-slate-100"
+                          }`}
+                        >
+                          <Clock className="h-4 w-4" />
+                          {option.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {(!formData.schedule?.[activeDay] || formData.schedule[activeDay].length === 0) && (
+                    <p className="mt-3 text-xs text-slate-400 text-center">
+                      Ngày này hiện đang trống lịch rảnh.
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -596,15 +609,23 @@ export function BecomeTutorPage() {
                   <p><span className="text-slate-500">Học vấn:</span> {formData.education}</p>
                   <p><span className="text-slate-500">Kinh nghiệm:</span> {formData.experience || "Chưa có"}</p>
                   <p><span className="text-slate-500">Giới thiệu:</span> {formData.bio.substring(0, 100)}...</p>
-                  <p>
-                    <span className="text-slate-500">Thời gian dạy:</span>{" "}
-                    {formData.availableDays
-                      .map((d) => daysOfWeek.find((day) => day.id === d)?.label)
-                      .join(", ")}{" "}
-                    ({formData.availability
-                      .map((a) => availabilityOptions.find((o) => o.id === a)?.label)
-                      .join(", ")})
-                  </p>
+                  <div>
+                    <span className="text-slate-500 block mb-1">Thời gian dạy:</span>{" "}
+                    {Object.entries(formData.schedule || {}).length > 0 ? (
+                      <ul className="list-disc pl-5 text-sm">
+                        {Object.entries(formData.schedule).map(([dayId, slots]) => (
+                          <li key={dayId}>
+                            <strong>{daysOfWeek.find((day) => day.id === parseInt(dayId))?.label}:</strong>{" "}
+                            {slots
+                              .map((s) => availabilityOptions.find((o) => o.id === s)?.label)
+                              .join(", ")}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <span className="text-sm text-slate-400">Bạn chưa thiết lập lịch rảnh</span>
+                    )}
+                  </div>
                 </div>
               </div>
 

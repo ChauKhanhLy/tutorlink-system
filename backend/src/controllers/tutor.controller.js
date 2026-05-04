@@ -1,5 +1,6 @@
-import { buildAvailabilitySlots } from '../services/tutorAvailability.service.js'
+import { buildAvailabilitySlots, saveAvailabilityPreferences } from '../services/tutorAvailability.service.js'
 import { getTutorById as getTutorByIdDAL } from '../dal/tutor.dal.js'
+import { getTutorAvailabilityRules } from '../dal/tutorAvailability.dal.js'
 
 export const getTutorById = async (req, res) => {
   try {
@@ -80,5 +81,44 @@ export const getTutorAvailability = async (req, res) => {
     res.json(slots)
   } catch (err) {
     res.status(400).json({ message: err.message })
+  }
+}
+
+export const getMyAvailabilityPreferences = async (req, res) => {
+  try {
+    const tutorId = req.user?.id;
+    if (!tutorId) return res.status(401).json({ message: "Unauthorized" });
+
+    const rules = await getTutorAvailabilityRules(tutorId);
+    
+    const schedule = {};
+    for (const rule of rules) {
+      let slotName = null;
+      if (rule.start_time.startsWith('08')) slotName = 'morning';
+      else if (rule.start_time.startsWith('13')) slotName = 'afternoon';
+      else if (rule.start_time.startsWith('18')) slotName = 'evening';
+
+      if (slotName) {
+        if (!schedule[rule.day_of_week]) schedule[rule.day_of_week] = [];
+        schedule[rule.day_of_week].push(slotName);
+      }
+    }
+    
+    res.json({ schedule });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+}
+
+export const updateMyAvailability = async (req, res) => {
+  try {
+    const tutorId = req.user?.id;
+    if (!tutorId) return res.status(401).json({ message: "Unauthorized" });
+
+    const { schedule } = req.body;
+    await saveAvailabilityPreferences(tutorId, schedule);
+    res.json({ success: true, message: "Cập nhật lịch rảnh thành công" });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
   }
 }

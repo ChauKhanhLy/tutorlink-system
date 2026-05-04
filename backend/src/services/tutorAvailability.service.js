@@ -20,20 +20,24 @@ const toHourSlots = (startTime, endTime) => {
   return slots
 }
 
-export const saveAvailabilityPreferences = async (tutorId, timeSlots = [], availableDays = []) => {
+export const saveAvailabilityPreferences = async (tutorId, schedule = {}) => {
   // Luôn xóa lịch cũ trước khi lưu mới
   await replaceTutorAvailability(tutorId, [])
 
-  if (!timeSlots.length || !availableDays.length) {
+  if (!schedule || Object.keys(schedule).length === 0) {
     return;
   }
 
   const normalized = []
-  for (const slot of timeSlots) {
-    const template = AVAILABILITY_TEMPLATES[slot]
-    if (!template) continue
 
-    for (const dayOfWeek of availableDays) {
+  for (const [dayStr, timeSlots] of Object.entries(schedule)) {
+    const dayOfWeek = parseInt(dayStr, 10);
+    if (!Array.isArray(timeSlots)) continue;
+
+    for (const slot of timeSlots) {
+      const template = AVAILABILITY_TEMPLATES[slot]
+      if (!template) continue
+
       normalized.push({
         dayOfWeek,
         startTime: template.startTime,

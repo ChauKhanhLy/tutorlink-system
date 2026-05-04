@@ -29,5 +29,8 @@ export const tutorApi = {
 
   getTutorStats: () => axiosClient.get("/tutors/stats"),
 
+  getMyAvailabilityPreferences: () => axiosClient.get("/tutors/me/availability-preferences"),
+  updateMyAvailability: (schedule) => axiosClient.put("/tutors/me/availability", { schedule }),
+
   registerTutor: (data) => axiosClient.post("/users/become-tutor", data),
 };
