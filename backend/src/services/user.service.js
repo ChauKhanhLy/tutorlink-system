@@ -202,3 +202,7 @@ export const verifyTutor = async (userId) => {
 export const getPendingTutors = async () => {
   return await userDAL.getPendingTutors()
 }
+//update avatar
+export const updateAvatar = async (userId, avatar) => {
+  return await userDAL.updateAvatar(userId, avatar)
+}
