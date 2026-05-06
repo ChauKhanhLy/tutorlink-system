@@ -43,19 +43,31 @@ export function VideoRoomPage() {
         const res = await videoRoomApi.getRoom(id);
         if (!res.data) {
           toast.error("Phòng học không tồn tại hoặc đã bị xóa");
-          navigate('/dashboard');
+          navigate("/dashboard");
           return;
         }
         setRoom(res.data);
-        
+
         // Cập nhật trạng thái ongoing trên backend
         videoRoomApi.joinRoom(id).catch(console.error);
+
+        // Xin quyền camera + mic trước
+        try {
+          await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: true,
+          });
+        } catch (err) {
+          toast.error("Bạn cần cấp quyền camera và micro để tham gia");
+          console.error(err);
+          return; // ❗ Dừng luôn, không init Jitsi
+        }
 
         // Load Jitsi script
         const domain = "meet.jit.si";
         if (!window.JitsiMeetExternalAPI) {
           await new Promise((resolve) => {
-            const script = document.createElement('script');
+            const script = document.createElement("script");
             script.src = `https://${domain}/external_api.js`;
             script.async = true;
             script.onload = resolve;
@@ -66,11 +78,11 @@ export function VideoRoomPage() {
         // Sử dụng dữ liệu trực tiếp từ response vì state 'room' chưa cập nhật ngay
         const roomData = res.data;
         const roomName = roomData.room_id || `tutorlink-${roomData.booking_id}`;
-        
+
         const options = {
           roomName: roomName,
-          width: '100%',
-          height: '100%',
+          width: "100%",
+          height: "100%",
           parentNode: jitsiContainerRef.current,
           userInfo: {
             displayName: user?.name || "Người dùng",
@@ -93,11 +105,10 @@ export function VideoRoomPage() {
         apiRef.current = new window.JitsiMeetExternalAPI(domain, options);
         setIsJoined(true);
         setLoading(false);
-
       } catch (err) {
         console.error(err);
         toast.error("Lỗi khởi tạo phòng học");
-        navigate('/dashboard');
+        navigate("/dashboard");
       }
     };
 
@@ -115,15 +126,15 @@ export function VideoRoomPage() {
     if (confirm("Bạn có chắc muốn kết thúc buổi học?")) {
       try {
         console.log("Ending call for room:", id);
-        await videoRoomApi.updateStatus(id, 'ended');
+        await videoRoomApi.updateStatus(id, "ended");
         toast.success("Đã kết thúc buổi học");
-        navigate('/dashboard');
+        navigate("/dashboard");
       } catch (err) {
+        console.error(err);
         toast.error("Lỗi khi kết thúc");
       }
     }
   };
-
 
   const copyRoomLink = () => {
     navigator.clipboard.writeText(window.location.href);
@@ -132,20 +143,26 @@ export function VideoRoomPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-
   return (
     <div className="h-screen flex flex-col bg-slate-900 text-white overflow-hidden">
       {/* Header */}
       <header className="flex items-center justify-between px-6 py-3 bg-slate-800/50 backdrop-blur-sm border-b border-slate-700 z-10">
         <div className="flex items-center gap-4">
-          <Link to="/dashboard" className="text-slate-400 hover:text-white flex items-center gap-2">
+          <Link
+            to="/dashboard"
+            className="text-slate-400 hover:text-white flex items-center gap-2"
+          >
             ← <span className="hidden md:inline">Rời phòng</span>
           </Link>
           <div className="h-6 w-px bg-slate-700 hidden md:block"></div>
           <div className="flex items-center gap-3">
             <div className="flex flex-col">
-              <h2 className="font-bold text-sm md:text-base">Phòng học trực tuyến</h2>
-              <p className="text-[10px] md:text-xs text-slate-400">ID: {room?.room_id}</p>
+              <h2 className="font-bold text-sm md:text-base">
+                Phòng học trực tuyến
+              </h2>
+              <p className="text-[10px] md:text-xs text-slate-400">
+                ID: {room?.room_id}
+              </p>
             </div>
           </div>
           <div className="hidden lg:flex items-center gap-2 ml-4">
@@ -156,18 +173,37 @@ export function VideoRoomPage() {
 
         <div className="flex items-center gap-2 md:gap-4">
           <div className="hidden sm:flex items-center gap-2 text-xs">
-            {connectionQuality === 'good' && <Wifi className="h-4 w-4 text-green-400" />}
+            {connectionQuality === "good" && (
+              <Wifi className="h-4 w-4 text-green-400" />
+            )}
             <span className="text-slate-400">
-              {room?.start_time ? new Date(room.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""} -
-              {room?.end_time ? new Date(room.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
+              {room?.start_time
+                ? new Date(room.start_time).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                : ""}{" "}
+              -
+              {room?.end_time
+                ? new Date(room.end_time).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                : ""}
             </span>
           </div>
           <button
             onClick={copyRoomLink}
             className="flex items-center gap-1 px-2 md:px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs md:text-sm transition"
           >
-            {copied ? <Check className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4" />}
-            <span className="hidden sm:inline">{copied ? "Đã sao chép" : "Sao chép link"}</span>
+            {copied ? (
+              <Check className="h-4 w-4 text-green-400" />
+            ) : (
+              <Copy className="h-4 w-4" />
+            )}
+            <span className="hidden sm:inline">
+              {copied ? "Đã sao chép" : "Sao chép link"}
+            </span>
           </button>
           <button
             onClick={handleEndCall}
@@ -181,8 +217,12 @@ export function VideoRoomPage() {
 
       {/* Main content: Jitsi container */}
       <div className="flex-1 relative bg-black">
-        <div ref={jitsiContainerRef} id="jitsi-container" className="w-full h-full"></div>
-        
+        <div
+          ref={jitsiContainerRef}
+          id="jitsi-container"
+          className="w-full h-full"
+        ></div>
+
         {!isJoined && (
           <div className="absolute inset-0 flex items-center justify-center bg-slate-900 z-0">
             <div className="text-center">
@@ -192,9 +232,6 @@ export function VideoRoomPage() {
           </div>
         )}
       </div>
-
-
-
 
       {/* Footer Info */}
       <div className="py-2 px-6 bg-slate-800/80 backdrop-blur-sm border-t border-slate-700 text-[10px] text-slate-500 text-center">

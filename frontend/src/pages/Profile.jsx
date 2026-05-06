@@ -1,9 +1,19 @@
 // src/pages/Profile.jsx
 import React, { useState, useEffect } from "react";
-import { User, Mail, Phone, MapPin, Shield, Camera, Save, Lock } from "lucide-react";
+import {
+  User,
+  Mail,
+  Phone,
+  MapPin,
+  Shield,
+  Camera,
+  Save,
+  Lock,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../context/AuthContext";
 import { ImageWithFallback } from "../components/Image/ImageWithFallback";
+import api from "../api/axiosClient";
 
 export function ProfilePage() {
   const { user, updateUser } = useAuth();
@@ -36,21 +46,33 @@ export function ProfilePage() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSave = () => {
-    updateUser(formData);
-    setIsEditing(false);
-    toast.success("Cập nhật thông tin thành công");
+  const handleSave = async () => {
+    try {
+      const res = await api.put("/users/me", formData);
+      updateUser(res.data.user);
+      toast.success("Cập nhật thông tin thành công");
+      setIsEditing(false);
+    } catch (err) {
+      console.error(err);
+      toast.error("Cập nhật thất bại");
+    }
   };
 
-  const handleAvatarChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        updateUser({ avatar: reader.result });
-        toast.success("Ảnh đại diện đã được cập nhật");
-      };
-      reader.readAsDataURL(file);
+  const handleAvatarChange = async (e) => {
+    try {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const formData = new FormData();
+      formData.append("avatar", file);
+
+      const res = await api.post("/users/avatar", formData);
+
+      updateUser(res.data.user);
+      toast.success("Cập nhật avatar thành công");
+    } catch (err) {
+      console.error(err);
+      toast.error("Upload avatar thất bại");
     }
   };
 
@@ -66,8 +88,12 @@ export function ProfilePage() {
     <div className="pt-24 pb-16 bg-slate-50 min-h-screen">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-extrabold text-slate-900">Hồ sơ của tôi</h1>
-          <p className="text-slate-500">Quản lý thông tin cá nhân và tài khoản</p>
+          <h1 className="text-3xl font-extrabold text-slate-900">
+            Hồ sơ của tôi
+          </h1>
+          <p className="text-slate-500">
+            Quản lý thông tin cá nhân và tài khoản
+          </p>
         </div>
 
         <div className="grid md:grid-cols-3 gap-8">
@@ -77,14 +103,23 @@ export function ProfilePage() {
               <div className="relative w-32 h-32 mx-auto mb-4">
                 <div className="w-full h-full rounded-full overflow-hidden border-4 border-indigo-100 shadow-lg">
                   <ImageWithFallback
-                    src={user?.avatar || "https://i.pravatar.cc/150"}
+                    src={
+                      user?.avatar
+                        ? `http://localhost:3000${user.avatar}`
+                        : "https://i.pravatar.cc/150"
+                    }
                     alt={user?.name}
                     className="w-full h-full object-cover"
                   />
                 </div>
                 <label className="absolute bottom-0 right-0 p-2 bg-indigo-600 rounded-full cursor-pointer hover:bg-indigo-700 transition-all shadow-lg">
                   <Camera className="h-4 w-4 text-white" />
-                  <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarChange}
+                    className="hidden"
+                  />
                 </label>
               </div>
               <h3 className="font-bold text-xl text-slate-900">{user?.name}</h3>
@@ -109,10 +144,14 @@ export function ProfilePage() {
             <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm">
               <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
                 <h2 className="text-xl font-bold text-slate-900 flex items-center">
-                  <User className="h-5 w-5 text-indigo-600 mr-2" /> Thông tin cá nhân
+                  <User className="h-5 w-5 text-indigo-600 mr-2" /> Thông tin cá
+                  nhân
                 </h2>
                 {!isEditing && (
-                  <button onClick={() => setIsEditing(true)} className="text-indigo-600 text-sm font-bold hover:underline">
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="text-indigo-600 text-sm font-bold hover:underline"
+                  >
                     Chỉnh sửa
                   </button>
                 )}
@@ -120,7 +159,9 @@ export function ProfilePage() {
 
               <div className="space-y-5">
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1">Họ và tên</label>
+                  <label className="block text-sm font-bold text-slate-700 mb-1">
+                    Họ và tên
+                  </label>
                   {isEditing ? (
                     <input
                       type="text"
@@ -130,21 +171,29 @@ export function ProfilePage() {
                       className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
                   ) : (
-                    <p className="text-slate-900 font-medium">{user?.name || "Chưa cập nhật"}</p>
+                    <p className="text-slate-900 font-medium">
+                      {user?.name || "Chưa cập nhật"}
+                    </p>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1">Địa chỉ email</label>
+                  <label className="block text-sm font-bold text-slate-700 mb-1">
+                    Địa chỉ email
+                  </label>
                   <div className="flex items-center">
                     <Mail className="h-5 w-5 text-slate-400 mr-3" />
                     <p className="text-slate-900 font-medium">{user?.email}</p>
                   </div>
-                  <p className="text-xs text-slate-400 mt-1">Email không thể thay đổi</p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Email không thể thay đổi
+                  </p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1">Số điện thoại</label>
+                  <label className="block text-sm font-bold text-slate-700 mb-1">
+                    Số điện thoại
+                  </label>
                   {isEditing ? (
                     <input
                       type="tel"
@@ -155,12 +204,16 @@ export function ProfilePage() {
                       className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"
                     />
                   ) : (
-                    <p className="text-slate-900 font-medium">{user?.phone || "Chưa cập nhật"}</p>
+                    <p className="text-slate-900 font-medium">
+                      {user?.phone || "Chưa cập nhật"}
+                    </p>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1">Địa điểm</label>
+                  <label className="block text-sm font-bold text-slate-700 mb-1">
+                    Địa điểm
+                  </label>
                   {isEditing ? (
                     <input
                       type="text"
@@ -173,13 +226,17 @@ export function ProfilePage() {
                   ) : (
                     <div className="flex items-center">
                       <MapPin className="h-5 w-5 text-slate-400 mr-3" />
-                      <p className="text-slate-900 font-medium">{user?.location || "Chưa cập nhật"}</p>
+                      <p className="text-slate-900 font-medium">
+                        {user?.location || "Chưa cập nhật"}
+                      </p>
                     </div>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1">Giới thiệu bản thân</label>
+                  <label className="block text-sm font-bold text-slate-700 mb-1">
+                    Giới thiệu bản thân
+                  </label>
                   {isEditing ? (
                     <textarea
                       name="bio"
@@ -190,7 +247,9 @@ export function ProfilePage() {
                       className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"
                     />
                   ) : (
-                    <p className="text-slate-600">{user?.bio || "Chưa có giới thiệu"}</p>
+                    <p className="text-slate-600">
+                      {user?.bio || "Chưa có giới thiệu"}
+                    </p>
                   )}
                 </div>
 
@@ -212,7 +271,9 @@ export function ProfilePage() {
               <div className="flex justify-between items-center">
                 <div>
                   <p className="font-medium text-slate-900">Đổi mật khẩu</p>
-                  <p className="text-sm text-slate-500">Cập nhật mật khẩu định kỳ để bảo vệ tài khoản</p>
+                  <p className="text-sm text-slate-500">
+                    Cập nhật mật khẩu định kỳ để bảo vệ tài khoản
+                  </p>
                 </div>
                 <button className="px-5 py-2.5 border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-all">
                   Đổi mật khẩu

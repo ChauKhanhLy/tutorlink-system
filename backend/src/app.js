@@ -10,6 +10,12 @@ import reviewRoutes from './routes/review.routes.js'
 import paymentRoutes from './routes/payment.routes.js'
 import videoRoomRoutes from './routes/videoRoom.routes.js'
 import authMiddleware, {isAdmin} from './middlewares/auth.middleware.js'
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { findById } from './dal/user.dal.js'
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express()
 
@@ -29,6 +35,8 @@ app.use(cors({
 
 app.use(express.json())
 
+app.use("/uploads", express.static("uploads"));
+//app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use('/api/auth', authRoutes)
 app.use('/api/tutors', tutorRoutes)
 app.use('/api/matching', matchingRoutes)
@@ -40,11 +48,20 @@ app.use('/api/reviews', reviewRoutes)
 app.use('/api/payments', paymentRoutes)
 app.use('/api/video-rooms', videoRoomRoutes)
 
-app.get('/api/users/me', authMiddleware, (req, res) => {
+
+/*app.get('/api/users/me', authMiddleware, (req, res) => {
   res.json({
     message: 'User info',
     user: req.user
   })
-})
+})*/
+
+app.get('/api/users/me', authMiddleware, async (req, res) => {
+  const user = await findById(req.user.id);
+
+  const { password, ...userWithoutPassword } = user;
+
+  res.json(userWithoutPassword);
+});
 
 export default app
