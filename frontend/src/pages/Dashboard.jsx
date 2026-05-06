@@ -313,7 +313,7 @@ export function DashboardPage() {
                         const canJoin = (!!session.room_id || !!session.roomId) && session.status !== 'cancel' && session.status !== 'done';
                         
                         if (session.type === 'trial' || session.status === 'confirmed') {
-                          console.log('Session is confirmed/trial:', session.id, 'Room ID:', session.room_id || session.roomId);
+                          console.log('Confirmed/Trial Session details:', JSON.stringify(session, null, 2));
                         }
 
 

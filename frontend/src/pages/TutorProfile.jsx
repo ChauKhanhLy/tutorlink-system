@@ -199,13 +199,17 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
       const subjectId = tutor.subject_ids?.[0] || "900b2ea5-16ea-4c80-93b1-0f1cc50b4adf";
 
       // Gọi API với các key trùng khớp 100% với Backend
-      await bookingApi.create({
-        tutor_id: tutor.id,       // Dùng gạch dưới cho đúng chuẩn BE của bạn
-        subject_id: subjectId,    // Dùng gạch dưới
-        datetime: startTimeISO,   // Gửi trường 'datetime' duy nhất như BE mong đợi
+      const bookingData = {
+        tutor_id: tutor.id,
+        subject_id: subjectId,
+        datetime: startTimeISO,
         type: bookingType,
         fee: bookingType === "trial" ? 0 : (tutor.hourly_fee || 0)
-      });
+      };
+      
+      console.log("Sending booking data:", bookingData);
+      
+      await bookingApi.create(bookingData);
 
       toast.success(bookingType === "trial" ? "Đặt lịch học thử thành công!" : "Đặt lịch học thành công!");
       navigate("/dashboard");
