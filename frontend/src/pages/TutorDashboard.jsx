@@ -195,8 +195,12 @@ function SessionCard({ session, isPending }) {
   const endTime = new Date(session.room_end_time || (new Date(startTime).getTime() + 60 * 60 * 1000));
   
   // Cho phép vào phòng bất cứ lúc nào nếu có room_id (phục vụ testing)
-  const canJoin = !isPending && !!session.room_id && session.status !== 'cancel' && session.status !== 'done';
-
+  //const canJoin = !!session.room_id && session.status !== 'cancel' && session.status !== 'done';
+  const canJoin = (!!session.room_id || !!session.roomId) && session.status !== 'cancel' && session.status !== 'done';
+  
+  if (session.type === 'trial' || session.status === 'confirmed') {
+    console.log('Tutor Confirmed/Trial Session details:', JSON.stringify(session, null, 2));
+  }
 
   return (
     <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
@@ -213,16 +217,15 @@ function SessionCard({ session, isPending }) {
       </div>
       {canJoin ? (
         <Link 
-          to={`/room/${session.room_id}`}
+          //to={`/room/${session.room_id}`}
+          to={`/room/${session.room_id || session.roomId}`}
           className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all"
         >
           Vào lớp
         </Link>
       ) : (
         <button className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-400 cursor-not-allowed">
-          {isPending 
-            ? "Chờ duyệt"
-            : session.room_id ? "Chưa đến giờ" : "Chờ xác nhận"}
+         {session.room_id || session.roomId ? "Chưa đến giờ" : "Chờ xác nhận"}          
         </button>
       )}
     </div>

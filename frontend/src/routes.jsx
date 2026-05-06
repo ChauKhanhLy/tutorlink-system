@@ -19,6 +19,7 @@ import { TutorDashboard } from "./pages/TutorDashboard";
 import { VideoRoomPage } from "./pages/VideoRoom";
 import { AdminMessagesPage } from "./pages/admin/AdminMessagesPage";
 import { AdminUsersPage } from "./pages/admin/AdminUsersPage";
+import { WalletPage } from "./pages/Wallet";
 
 export const router = createBrowserRouter([
   {
@@ -91,6 +92,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <PaymentPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "wallet",
+        element: (
+          <ProtectedRoute>
+            <WalletPage />
           </ProtectedRoute>
         ),
       },

@@ -13,6 +13,7 @@ import {
   ExternalLink,
   Search,
   Bell,
+  Wallet,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { tutorApi } from "../api/tutorApi";
@@ -49,6 +50,7 @@ export function DashboardPage() {
     },
     { id: "favorites", name: "Gia sư đã lưu", icon: Heart },
     { id: "billing", name: "Thanh toán", icon: CreditCard },
+    { id: "wallet", name: "Ví của tôi", icon: Wallet },
     { id: "settings", name: "Cài đặt", icon: Settings },
   ];
 
@@ -188,6 +190,7 @@ export function DashboardPage() {
                   {activeTab === "messages" && "Tin nhắn"}
                   {activeTab === "favorites" && "Gia sư đã lưu"}
                   {activeTab === "billing" && "Thanh toán"}
+                  {activeTab === "wallet" && "Ví của tôi"}
                   {activeTab === "settings" && "Cài đặt"}
                 </h1>
                 <p className="text-slate-500 font-medium">
@@ -298,7 +301,16 @@ export function DashboardPage() {
                         const endTime = new Date(session.room_end_time || (new Date(startTime).getTime() + 60 * 60 * 1000));
 
                         // Cho phép vào phòng bất cứ lúc nào nếu có room_id (phục vụ testing)
-                        const canJoin = !!session.room_id && session.status !== 'cancel' && session.status !== 'done';
+                        //const canJoin = !!session.room_id && session.status !== 'cancel' && session.status !== 'done';
+                        const canJoin = (!!session.room_id || !!session.roomId) && session.status !== 'cancel' && session.status !== 'done';
+                        
+                        if (session.type === 'trial' || session.status === 'confirmed') {
+                          console.log('Confirmed/Trial Session details:', JSON.stringify(session, null, 2));
+                        }
+
+
+                        // Kiểm tra xem có thể đánh giá không
+                        const canReview = session.status === 'completed' && now >= new Date(startTime.getTime() + 2 * 60 * 60 * 1000);
 
 
                         return (
@@ -338,16 +350,30 @@ export function DashboardPage() {
                                 className="w-10 h-10 rounded-full border-2 border-white shadow-sm"
                               />
 
-                              {canJoin ? (
+                              {/* {canJoin ? (
                                 <Link
                                   to={`/room/${session.room_id}`}
                                   className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all"
                                 >
                                   Vào phòng
+                                </Link> */}
+                                {canJoin ? (
+                                  <Link
+                                    to={`/room/${session.room_id || session.roomId}`}
+                                    className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all"
+                                  >
+                                    Vào phòng
+                                  </Link>
+                              ) : canReview ? (
+                                <Link
+                                  to={`/review?tutorId=${session.tutorId}&bookingId=${session.id}`}
+                                  className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-all"
+                                >
+                                  Đánh giá
                                 </Link>
                               ) : (
                                 <button className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-400 cursor-not-allowed">
-                                  {session.room_id ? "Chưa đến giờ" : "Chờ xác nhận"}
+                                  {session.room_id || session.roomId ? "Chưa đến giờ" : "Chờ xác nhận"}
                                 </button>
                               )}
                             </div>
@@ -486,7 +512,7 @@ export function DashboardPage() {
                         <div className="w-12 h-8 bg-slate-200 rounded-md"></div>
                         <div>
                           <p className="text-sm font-bold text-slate-900">
-                            •••• •••• •••• 4242
+                            ••• •••• •••• 4242
                           </p>
                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                             Hết hạn 12/28
@@ -497,6 +523,28 @@ export function DashboardPage() {
                         CHÍNH
                       </span>
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === "wallet" && (
+                <div className="space-y-6">
+                  <div className="bg-blue-50 rounded-3xl p-6 border border-blue-100">
+                    <div className="flex items-center gap-4">
+                      <Wallet className="h-8 w-8 text-blue-600" />
+                      <div>
+                        <h3 className="text-lg font-bold text-blue-900">Quản lý ví</h3>
+                        <p className="text-sm text-blue-700">
+                          Nạp tiền, xem lịch sử giao dịch và settlements hàng tuần
+                        </p>
+                      </div>
+                    </div>
+                    <Link
+                      to="/wallet"
+                      className="mt-4 w-full px-6 py-3 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-all pointer-events-auto relative z-10 inline-block text-center"
+                    >
+                      Đi đến trang quản lý ví
+                    </Link>
                   </div>
                 </div>
               )}

@@ -1,30 +1,46 @@
 import * as BookingService from '../services/booking.service.js';
+import * as WalletService from '../services/wallet.service.js';
 import db from '../config/db.js';
+
 export const postBooking = async (req, res) => {
     try {
         const learner_id = req.user?.id;
         const tutor_id = req.body?.tutor_id || req.body?.tutorId;
         const datetime = req.body?.datetime || req.body?.startTime;
-        const fee = req.body?.fee ?? 0;
+        const fee = parseFloat(req.body?.fee) || 0; // Chuyển fee sang số
         const type = req.body?.type || 'regular'; // 'trial' hoặc 'regular'
         let subject_id = req.body?.subject_id || req.body?.subjectId;
 
-        // Nếu subject_id bị thiếu, thử lấy từ tutor_subjects hoặc bảng subjects mặc định
-        if (!subject_id || subject_id === tutor_id) {
+        console.log(`Booking Request: type=${type}, fee=${fee}, learner=${learner_id}, tutor=${tutor_id}`);
+
+        // Chỉ trừ tiền từ wallet cho buổi học thật (regular)
+        if (type === 'regular' && fee > 0) {
+            console.log(`Deducting ${fee} from wallet for regular lesson`);
+            await WalletService.spendFromWallet(learner_id, fee, null, `Thanh toán buổi học - ${tutor_id}`);
+        }
+
+        // Nếu subject_id bị thiếu hoặc không hợp lệ, thử lấy từ tutor_subjects hoặc bảng subjects mặc định
+        let validSubject = null;
+        if (subject_id) {
+            const checkSubject = await db.query("SELECT id FROM subjects WHERE id = $1", [subject_id]);
+            if (checkSubject.rows.length > 0) {
+                validSubject = subject_id;
+            }
+        }
+
+        if (!validSubject) {
+            console.log(`Subject ${subject_id} not found, falling back...`);
             const tutorSubjects = await BookingService.getTutorSubjects(tutor_id);
             if (tutorSubjects && tutorSubjects.length > 0) {
-                subject_id = tutorSubjects[0].subject_id;
+                validSubject = tutorSubjects[0].subject_id;
             } else {
-                // Lấy một môn học mặc định từ hệ thống (ví dụ: Toán) nếu gia sư chưa có môn học nào
-                // Điều này giúp tránh lỗi NotNull Violation
                 const defaultSubject = await db.query("SELECT id FROM subjects LIMIT 1");
                 if (defaultSubject.rows.length > 0) {
-                    subject_id = defaultSubject.rows[0].id;
-                } else {
-                    subject_id = null;
+                    validSubject = defaultSubject.rows[0].id;
                 }
             }
         }
+        subject_id = validSubject;
 
         if (!learner_id || !tutor_id || !datetime) {
             return res.status(400).json({
@@ -33,18 +49,21 @@ export const postBooking = async (req, res) => {
             });
         }
 
+        console.log(`Creating booking: status=${type === 'trial' ? 'confirmed' : 'pending'}`);
         const newBooking = await BookingService.createBooking({
             learner_id,
             tutor_id,
             subject_id,
             datetime,
-            fee,
+            fee: type === 'trial' ? 0 : fee, // Học thử thường miễn phí
             type,
-            status: 'pending'
+            status: type === 'trial' ? 'confirmed' : 'pending'
         });
         
+        console.log(`Booking created successfully: ${newBooking.id}`);
         res.status(201).json({ success: true, data: newBooking});
     } catch (error) {
+        console.error(`Booking Error: ${error.message}`);
         res.status(400).json({success: false, message: error.message});
     }
 };
