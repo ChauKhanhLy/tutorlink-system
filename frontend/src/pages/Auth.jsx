@@ -20,7 +20,11 @@ export function AuthPage() {
   const { login } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const isLogin = location.pathname === "/login";
+  
+  const isLogin =
+  location.pathname === "/login" ||
+  location.pathname === "/admin/login";
+
   const [role, setRole] = React.useState("student"); // mặc định student
 
   const handleSubmit = async (e) => {
@@ -76,13 +80,21 @@ export function AuthPage() {
   }
 };
 
-  React.useEffect(() => {
-    const user = localStorage.getItem("user");
+React.useEffect(() => {
+  const userStr = localStorage.getItem("user");
 
-    if (user) {
+  if (userStr) {
+    const user = JSON.parse(userStr);
+
+    if (user.role === "admin") {
+      navigate("/admin/dashboard");
+    } else if (user.role === "tutor") {
+      navigate("/tutor/dashboard");
+    } else {
       navigate("/dashboard");
     }
-  }, [navigate]);
+  }
+}, [navigate]);
   return (
     <div className="w-full flex flex-col lg:flex-row">
       {/* Left Column: Form Section */}

@@ -26,7 +26,16 @@ export const router = createBrowserRouter([
     element: <Layout />,
     children: [
       { index: true, element: <LandingPage /> },
+
       { path: "search", element: <SearchPage /> },
+      {
+        path: "tutor/dashboard",
+        element: (
+          <ProtectedRoute requiredRole="tutor">
+            <TutorDashboard />
+          </ProtectedRoute>
+        ),
+      },
       { path: "tutor/:id", element: <TutorProfilePage /> },
 
       {

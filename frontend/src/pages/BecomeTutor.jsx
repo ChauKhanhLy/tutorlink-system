@@ -184,7 +184,7 @@ export function BecomeTutorPage() {
 
       await tutorApi.registerTutor(submitData);
       toast.success("Đăng ký thành công! Đơn của bạn đang chờ admin duyệt.");
-      navigate("/dashboard");
+      navigate("/tutor/dashboard");
     } catch (err) {
       toast.error(err.response?.data?.message || "Đăng ký thất bại");
     } finally {
