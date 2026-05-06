@@ -4,15 +4,20 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { tutorApi } from "../api/tutorApi";
 import { bookingApi } from "../api/bookingApi";
+import { useNavigate } from "react-router-dom";
 
 export function TutorDashboard() {
-  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { user, refreshUser } = useAuth();
+  const isPending = user?.role === "tutor" && user?.verified === false; 
+  const isNewTutor = user?.role === "tutor" && !user?.bio ;
   const [stats, setStats] = React.useState({
     todaySessions: 0,
     totalStudents: 0,
     monthlyEarnings: 0,
     avgRating: 0,
   });
+  const [loadingUser, setLoadingUser] = React.useState(true);
   const [upcomingSessions, setUpcomingSessions] = React.useState([]);
   const [availability, setAvailability] = React.useState([]);
 
@@ -40,9 +45,19 @@ export function TutorDashboard() {
         console.error(err);
       }
     };
-    if (user?.id) fetchTutorData();
-  }, [user?.id]);
+    if (user?.id && !isPending) fetchTutorData();
+  }, [user?.id, isPending]);
+  React.useEffect(() => {
+  const loadUser = async () => {
+    if (!user?.id) return;
 
+    await refreshUser();
+    setLoadingUser(false);
+  };
+
+  loadUser();
+}, [user?.id]);
+if (loadingUser) return <div>Loading...</div>;
   return (
     <div className="pt-24 min-h-screen bg-slate-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -51,9 +66,29 @@ export function TutorDashboard() {
             Xin chào, {user?.name}
           </h1>
           <p className="text-slate-500">Quản lý lớp học và thu nhập của bạn</p>
+           {/* 🔥 THÊM ĐOẠN NÀY */}
+          {isPending && (
+          <div className="mt-4 p-5 bg-yellow-50 border border-yellow-200 rounded-2xl">
+            <p className="text-yellow-700 font-semibold mb-2">
+              Bạn chưa phải gia sư chính thức
+            </p>
+
+            <p className="text-sm text-yellow-600 mb-4">
+              Hãy hoàn thiện hồ sơ để gửi admin xét duyệt
+            </p>
+
+            <button
+              onClick={() => navigate("/become-tutor")}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700"
+            >
+              Đăng ký gia sư chính thức
+            </button>
+          </div>
+        )}
         </div>
 
-        {/* Stats Grid */}
+        {/* Stats - chỉ hiện khi đã duyệt */}
+      {!isPending &&(
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
           <StatCard
             icon={Calendar}
@@ -80,8 +115,9 @@ export function TutorDashboard() {
             color="bg-amber-50 text-amber-600"
           />
         </div>
-
+      )}
         {/* Grid: Upcoming Sessions & Availability */}
+      {!isPending && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Upcoming Sessions */}
           <div className="lg:col-cols-2 bg-white rounded-3xl border border-slate-200 shadow-sm p-8">
@@ -92,7 +128,7 @@ export function TutorDashboard() {
             <div className="space-y-4">
               {upcomingSessions.length > 0 ? (
                 upcomingSessions.map((session) => (
-                  <SessionCard key={session.id} session={session} />
+                  <SessionCard key={session.id} session={session} isPending= {isPending}/>
                 ))
               ) : (
                 <p className="text-slate-400 text-center py-8">
@@ -149,6 +185,13 @@ export function TutorDashboard() {
             </Link>
           </div>
         </div>
+      )}
+      {/* 🔥 PENDING: placeholder thay thế */}
+      {isPending && (
+        <div className="mt-10 text-center text-slate-400">
+          Các chức năng sẽ mở sau khi bạn được duyệt
+        </div>
+      )}
       </div>
     </div>
   );
@@ -168,7 +211,7 @@ function StatCard({ icon: Icon, label, value, color }) {
   );
 }
 
-function SessionCard({ session }) {
+function SessionCard({ session, isPending }) {
   const now = new Date();
   const startTime = new Date(
     session.room_start_time || session.datetime || session.date,
@@ -178,10 +221,8 @@ function SessionCard({ session }) {
   );
 
   // Cho phép vào phòng bất cứ lúc nào nếu có room_id (phục vụ testing)
-  const canJoin =
-    !!session.room_id &&
-    session.status !== "cancel" &&
-    session.status !== "done";
+  const canJoin = !!session.room_id && session.status !== 'cancel' && session.status !== 'done';
+
 
   return (
     <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
@@ -204,7 +245,7 @@ function SessionCard({ session }) {
         </div>
       </div>
       {canJoin ? (
-        <Link
+        <Link 
           to={`/room/${session.room_id}`}
           className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all"
         >
@@ -212,7 +253,7 @@ function SessionCard({ session }) {
         </Link>
       ) : (
         <button className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-400 cursor-not-allowed">
-          {session.room_id ? "Chưa đến giờ" : "Chờ xác nhận"}
+         {session.room_id || session.roomId ? "Chưa đến giờ" : "Chờ xác nhận"}          
         </button>
       )}
     </div>

@@ -15,9 +15,14 @@ export const createReview = async (data) => {
         throw new Error("Bạn đã đánh giá buổi học này rồi.");
     }
 
-    const newReview = await Review.create(data);
     const booking = await Booking.findByPk(data.booking_id);
     if (!booking) throw new Error("Không tìm thấy lịch học tương ứng");
+    
+    if (booking.status !== 'completed') {
+        throw new Error("Chỉ có thể đánh giá các buổi học đã hoàn thành");
+    }
+
+    const newReview = await Review.create(data);
     const tutorId = booking.tutor_id;
     const [result] = await sequelize.query(`
         SELECT AVG(rating) as new_avg FROM reviews 

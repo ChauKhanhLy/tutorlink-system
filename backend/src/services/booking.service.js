@@ -35,7 +35,45 @@ export const createBooking = async (data) => {
         data.type || 'regular'
     ]);
     
-    return result.rows[0];
+    //return result.rows[0];
+    const booking = result.rows[0];
+
+    // Nếu booking ở trạng thái confirmed, tạo phòng học ngay lập tức
+    if (booking.status === 'confirmed') {
+        const room = await createVideoRoom(booking.id, booking.datetime);
+        if (room) {
+            booking.room_id = room.id;
+            booking.room_status = room.status;
+            booking.room_start_time = room.start_time;
+            booking.room_end_time = room.end_time;
+        }
+    }
+    
+    return booking;
+};
+
+// Hàm bổ trợ để tạo phòng học video
+export const createVideoRoom = async (bookingId, datetime) => {
+    try {
+        const existingRoom = await VideoRoom.findOne({ where: { booking_id: bookingId } });
+        if (existingRoom) return existingRoom;
+
+        const startTime = new Date(datetime);
+        const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // Mặc định 1 tiếng
+
+        return await VideoRoom.create({
+            id: uuidv4(),
+            booking_id: bookingId,
+            room_id: `tutorlink-${bookingId}`,
+            provider: 'jitsi',
+            start_time: startTime.toISOString(),
+            end_time: endTime.toISOString(),
+            status: 'scheduled'
+        });
+    } catch (err) {
+        console.error(`Lỗi tạo phòng cho booking ${bookingId}:`, err);
+        return null;
+    }
 };
 
 export const getMyBookings = async (learner_id) => {
@@ -66,31 +104,36 @@ export const getMyBookings = async (learner_id) => {
 
 // Hàm bổ trợ để tự động tạo phòng nếu thiếu
 async function ensureVideoRoomsExist(bookings) {
+    console.log(`Checking video rooms for ${bookings.length} bookings`);
     for (let booking of bookings) {
         if (booking.status === 'confirmed' && !booking.room_id) {
-            try {
-                // Tạo phòng mới nếu chưa có
-                const startTime = new Date(booking.datetime);
-                const endTime = new Date(startTime.getTime() + 60 * 60 * 1000);
-                const roomId = uuidv4().replace(/-/g, "");
+            // try {
+            //     // Tạo phòng mới nếu chưa có
+            //     const startTime = new Date(booking.datetime);
+            //     const endTime = new Date(startTime.getTime() + 60 * 60 * 1000);
+            //     const roomId = uuidv4().replace(/-/g, "");
 
-                const newRoom = await VideoRoom.create({
-                    id: uuidv4(),
-                    booking_id: booking.id,
-                    room_id: `tutorlink-${booking.id}`,
-                    provider: 'jitsi',
-                    start_time: startTime.toISOString(),
-                    end_time: endTime.toISOString(),
-                    status: 'scheduled'
-                });
+            //     const newRoom = await VideoRoom.create({
+            //         id: uuidv4(),
+            //         booking_id: booking.id,
+            //         room_id: `tutorlink-${booking.id}`,
+            //         provider: 'jitsi',
+            //         start_time: startTime.toISOString(),
+            //         end_time: endTime.toISOString(),
+            //         status: 'scheduled'
+            //     });
+            console.log(`Creating missing room for confirmed booking: ${booking.id}`);
+            const newRoom = await createVideoRoom(booking.id, booking.datetime);
+            if (newRoom) {
                 
                 // Cập nhật lại đối tượng booking trong memory để frontend nhận được ngay
                 booking.room_id = newRoom.id;
                 booking.room_status = newRoom.status;
                 booking.room_start_time = newRoom.start_time;
                 booking.room_end_time = newRoom.end_time;
-            } catch (err) {
-                console.error(`Lỗi tự động tạo phòng cho booking ${booking.id}:`, err);
+            // } catch (err) {
+            //     console.error(`Lỗi tự động tạo phòng cho booking ${booking.id}:`, err);
+                console.log(`Room created successfully: ${newRoom.id}`);
             }
         }
     }
@@ -108,23 +151,25 @@ export const updateStatus = async (id, status) => {
     if (status === 'confirmed') {
         const existingRoom = await VideoRoom.findOne({ where: { booking_id: id } });
         if (!existingRoom) {
-            // Giả định mỗi buổi học kéo dài 1 tiếng
-            const startTime = new Date(booking.datetime);
-            const endTime = new Date(startTime.getTime() + 60 * 60 * 1000);
+        //     // Giả định mỗi buổi học kéo dài 1 tiếng
+        //     const startTime = new Date(booking.datetime);
+        //     const endTime = new Date(startTime.getTime() + 60 * 60 * 1000);
             
-            await VideoRoom.create({
-                id: uuidv4(),
-                booking_id: id,
-                room_id: `tutorlink-${id}`, // ID định danh cho room (có thể dùng làm Jitsi room name)
-                provider: 'jitsi', // Mặc định dùng Jitsi
-                start_time: startTime.toISOString(),
-                end_time: endTime.toISOString(),
-                status: 'scheduled'
-            });
-        }
+        //     await VideoRoom.create({
+        //         id: uuidv4(),
+        //         booking_id: id,
+        //         room_id: `tutorlink-${id}`, // ID định danh cho room (có thể dùng làm Jitsi room name)
+        //         provider: 'jitsi', // Mặc định dùng Jitsi
+        //         start_time: startTime.toISOString(),
+        //         end_time: endTime.toISOString(),
+        //         status: 'scheduled'
+        //     });
+        // }
+        await createVideoRoom(id, booking.datetime);
     }
     
     return booking;
+    }
 };
 
 export const getBookingsForTutor = async (tutor_id) => {

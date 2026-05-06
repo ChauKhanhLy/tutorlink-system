@@ -9,6 +9,7 @@ import bookingRoutes from './routes/booking.routes.js'
 import reviewRoutes from './routes/review.routes.js'
 import paymentRoutes from './routes/payment.routes.js'
 import videoRoomRoutes from './routes/videoRoom.routes.js'
+import walletRoutes from './routes/wallet.routes.js'
 import authMiddleware, {isAdmin} from './middlewares/auth.middleware.js'
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -47,6 +48,7 @@ app.use('/api/bookings', bookingRoutes)
 app.use('/api/reviews', reviewRoutes)
 app.use('/api/payments', paymentRoutes)
 app.use('/api/video-rooms', videoRoomRoutes)
+app.use('/api/wallet', walletRoutes)
 
 
 /*app.get('/api/users/me', authMiddleware, (req, res) => {

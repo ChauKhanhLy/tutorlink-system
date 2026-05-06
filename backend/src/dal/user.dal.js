@@ -10,15 +10,17 @@ export const findByEmail = async (email) => {
 }
 
 // tạo user
-export const createUser = async ({ email, password, name, role }) => {
+export const createUser = async ({ email, password, name, role, verified }) => {
   const result = await db.query(
-    'INSERT INTO users (email, password, name, role) VALUES ($1, $2, $3, $4) RETURNING *',
-    [email, password, name, role]
+    `INSERT INTO users (email, password, name, role, verified)
+     VALUES ($1, $2, $3, $4, $5)
+     RETURNING *`,
+    [email, password, name, role, verified]
   )
+
   console.log("USER CREATED:", result.rows[0])
   return result.rows[0]
 }
-
 // lấy tất cả user
 export const getAllUsers = async () => {
   const result = await db.query(
