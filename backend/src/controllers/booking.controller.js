@@ -1,13 +1,20 @@
 import * as BookingService from '../services/booking.service.js';
+import * as WalletService from '../services/wallet.service.js';
 import db from '../config/db.js';
+
 export const postBooking = async (req, res) => {
     try {
         const learner_id = req.user?.id;
         const tutor_id = req.body?.tutor_id || req.body?.tutorId;
         const datetime = req.body?.datetime || req.body?.startTime;
-        const fee = req.body?.fee ?? 0;
+        const fee = parseFloat(req.body?.fee) || 0; // Chuyển fee sang số
         const type = req.body?.type || 'regular'; // 'trial' hoặc 'regular'
         let subject_id = req.body?.subject_id || req.body?.subjectId;
+
+        // Chỉ trừ tiền từ wallet cho buổi học thật (regular)
+        if (type === 'regular' && fee > 0) {
+            await WalletService.spendFromWallet(learner_id, fee, null, `Thanh toán buổi học - ${tutor_id}`);
+        }
 
         // Nếu subject_id bị thiếu, thử lấy từ tutor_subjects hoặc bảng subjects mặc định
         if (!subject_id || subject_id === tutor_id) {
@@ -38,9 +45,9 @@ export const postBooking = async (req, res) => {
             tutor_id,
             subject_id,
             datetime,
-            fee,
+            fee: type === 'trial' ? 0 : fee, // Học thử thường miễn phí
             type,
-            status: 'pending'
+            status: type === 'trial' ? 'confirmed' : 'pending'
         });
         
         res.status(201).json({ success: true, data: newBooking});

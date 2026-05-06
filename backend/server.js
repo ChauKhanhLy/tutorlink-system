@@ -4,6 +4,7 @@ import http from 'http'
 import { Server } from 'socket.io'
 import sequelize from './src/config/database.js'
 import { initChatSocket } from './src/socket/chat.socket.js'
+import './src/jobs/settlement.job.js'
 
 const server = http.createServer(app)
 

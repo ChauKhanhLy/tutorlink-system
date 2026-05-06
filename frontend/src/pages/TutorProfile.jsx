@@ -169,11 +169,24 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
   };*/
     try {
       // --- BẮT ĐẦU ĐOẠN SỬA ---
-      // 1. Tạo đối tượng Date từ Ngày và Giờ đã chọn
-      // Lưu ý: selectedTime của bạn thường có dạng "08:30"
-      const datetimeToSend = new Date(`${selectedDate}T${selectedTime}`);
+      // 1. Xử lý selectedTime để chuyển từ "24.00" thành "00:00" (ngày hôm sau)
+      let [hours, minutes] = selectedTime.split(':');
+      hours = parseInt(hours);
+      minutes = parseInt(minutes);
+      
+      // Nếu giờ >= 24, chuyển thành 0 và tăng ngày lên 1
+      let dateToUse = selectedDate;
+      if (hours >= 24) {
+        hours = hours - 24;
+        const nextDay = new Date(selectedDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        dateToUse = nextDay.toISOString().split('T')[0];
+      }
+      
+      // 2. Tạo đối tượng Date từ Ngày và Giờ đã xử lý
+      const datetimeToSend = new Date(`${dateToUse}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`);
 
-      // 2. ÉP GIÂY VÀ MILI GIÂY VỀ 0 (Cực kỳ quan trọng để Backend check trùng)
+      // 3. ÉP GIÂY VÀ MILI GIÂY VỀ 0 (Cực kỳ quan trọng để Backend check trùng)
       datetimeToSend.setSeconds(0);
       datetimeToSend.setMilliseconds(0);
 
