@@ -26,20 +26,24 @@ export function AdminLogin() {
       const password = e.target.password.value;
 
       const res = await authApi.login({ email, password });
-      const userData = {
-        ...res.data.user,
-        token: res.data.token,
-      };
 
-      // Kiểm tra role admin
-      if (userData.role !== "admin") {
-        toast.error("Tài khoản không có quyền truy cập admin");
-        return;
-      }
+        // ❗ check role trực tiếp từ res
+        if (res.data.user.role !== "admin") {
+          toast.error("Tài khoản không có quyền truy cập admin");
+          setLoading(false); // 🔥 thêm dòng này
+          return;
+        }
 
-      login(userData);
-      toast.success("Đăng nhập admin thành công!");
-      //navigate("/admin/dashboard");
+        // 🔥 format đúng cho AuthContext
+        login({
+          user: res.data.user,
+          token: res.data.token,
+        });
+
+        toast.success("Đăng nhập admin thành công!");
+
+        // 🔥 điều hướng luôn (không cần chờ useEffect)
+        navigate("/admin/dashboard");
     } catch (err) {
       toast.error(err.response?.data?.message || "Đăng nhập thất bại");
     } finally {

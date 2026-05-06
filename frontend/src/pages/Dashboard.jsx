@@ -199,14 +199,6 @@ export function DashboardPage() {
                 </p>
               </div>
               <div className="flex items-center space-x-3">
-                {user?.role !== "tutor" && (
-                  <Link
-                    to="/become-tutor"
-                    className="bg-amber-500 px-5 py-3 rounded-2xl text-sm font-bold text-white flex items-center hover:bg-amber-600 transition-all shadow-sm"
-                  >
-                    Trở thành gia sư
-                  </Link>
-                )}
                 <Link
                   to="/search"
                   className="bg-white px-5 py-3 rounded-2xl border border-slate-200 text-sm font-bold text-slate-700 flex items-center hover:bg-slate-50 transition-all shadow-sm"

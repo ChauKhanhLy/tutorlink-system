@@ -1,14 +1,27 @@
 import * as authService from '../services/auth.service.js'
-
-const register = async (req, res) => {
+import * as userDAL from '../dal/user.dal.js'
+const registerLearner = async (req, res) => {
   try {
     const { email, password, name } = req.body
-    const user = await authService.register({ email, password, name })
+    const user = await authService.registerLearner({ email, password, name })
     res.json(user)
   } catch (err) {
     res.status(400).json({ message: err.message })
   }
 }
+export const registerTutor = async (req, res) => {
+  try {
+    const { email, password, name } = req.body
+    const user = await authService.registerTutor({ email, password, name })
+    res.json(user)
+  } catch (err) {
+    res.status(400).json({ message: err.message })
+  }
+}
+export const getMe = async (req, res) => {
+  const user = await userDAL.findById(req.user.id);
+  res.json(user);
+};
 
 const login = async (req, res) => {
   try {
@@ -20,4 +33,9 @@ const login = async (req, res) => {
   }
 }
 
-export default { register, login }
+
+export default {
+  registerLearner,
+  registerTutor,
+  login
+}
