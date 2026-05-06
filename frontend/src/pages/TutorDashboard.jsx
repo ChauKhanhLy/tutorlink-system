@@ -1,5 +1,4 @@
 import React from "react";
-import { Calendar, Users, Wallet, Star, Clock } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { tutorApi } from "../api/tutorApi";
@@ -21,13 +20,6 @@ export function TutorDashboard() {
   const [upcomingSessions, setUpcomingSessions] = React.useState([]);
   const [availability, setAvailability] = React.useState([]);
 
-  const formatVND = (amount) => {
-    return new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-    }).format(amount);
-  };
-
   React.useEffect(() => {
     const fetchTutorData = async () => {
       try {
@@ -38,9 +30,6 @@ export function TutorDashboard() {
         ]);
         setStats(statsRes.data.data || statsRes.data);
         setUpcomingSessions(sessionsRes.data || []);
-        setAvailability(
-          availabilityRes.data?.availableSlots || availabilityRes.data || [],
-        );
       } catch (err) {
         console.error(err);
       }
@@ -131,9 +120,6 @@ if (loadingUser) return <div>Loading...</div>;
                   <SessionCard key={session.id} session={session} isPending= {isPending}/>
                 ))
               ) : (
-                <p className="text-slate-400 text-center py-8">
-                  Chưa có lịch dạy nào sắp tới
-                </p>
               )}
             </div>
           </div>
@@ -147,24 +133,11 @@ if (loadingUser) return <div>Loading...</div>;
             <div className="space-y-6 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
               {availability.length > 0 ? (
                 availability.map((slot, index) => (
-                  <div
-                    key={index}
-                    className="border-b border-slate-50 last:border-0 pb-4 last:pb-0"
-                  >
                     <p className="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
                       <div className="w-2 h-2 rounded-full bg-indigo-400" />
-                      {new Date(slot.date).toLocaleDateString("vi-VN", {
-                        weekday: "long",
-                        day: "numeric",
-                        month: "long",
-                      })}
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {slot.times.map((time, tIndex) => (
-                        <span
-                          key={tIndex}
-                          className="px-3 py-1 bg-slate-50 text-slate-600 text-xs font-medium rounded-lg border border-slate-100"
-                        >
                           {time}
                         </span>
                       ))}
@@ -172,13 +145,8 @@ if (loadingUser) return <div>Loading...</div>;
                   </div>
                 ))
               ) : (
-                <p className="text-slate-400 text-center py-8">
-                  Chưa cập nhật lịch rảnh
-                </p>
               )}
             </div>
-            <Link
-              to="/become-tutor"
               className="mt-6 w-full flex items-center justify-center px-4 py-3 border-2 border-dashed border-slate-200 rounded-2xl text-slate-500 font-bold text-sm hover:border-indigo-300 hover:text-indigo-600 transition-all"
             >
               Cập nhật lịch rảnh
@@ -202,7 +170,6 @@ function StatCard({ icon: Icon, label, value, color }) {
     <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
       <div className="flex items-center gap-3 mb-4">
         <div className={`p-3 rounded-xl ${color}`}>
-          <Icon className="h-6 w-6" /> {/* <-- Sử dụng Icon ở đây */}
         </div>
         <span className="text-sm font-medium text-slate-500">{label}</span>
       </div>
@@ -213,16 +180,7 @@ function StatCard({ icon: Icon, label, value, color }) {
 
 function SessionCard({ session, isPending }) {
   const now = new Date();
-  const startTime = new Date(
-    session.room_start_time || session.datetime || session.date,
-  );
-  const endTime = new Date(
-    session.room_end_time || new Date(startTime).getTime() + 60 * 60 * 1000,
-  );
-
   // Cho phép vào phòng bất cứ lúc nào nếu có room_id (phục vụ testing)
-  const canJoin = !!session.room_id && session.status !== 'cancel' && session.status !== 'done';
-
 
   return (
     <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
@@ -231,22 +189,13 @@ function SessionCard({ session, isPending }) {
           <Clock className="h-6 w-6 text-indigo-600" />
         </div>
         <div>
-          <p className="font-bold text-slate-900">
-            {session.subject || "Lớp học"}
-          </p>
           <p className="text-sm text-slate-500">
-            {session.studentName} •{" "}
-            {session.time ||
-              new Date(startTime).toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
           </p>
         </div>
       </div>
       {canJoin ? (
         <Link 
-          to={`/room/${session.room_id}`}
+          //to={`/room/${session.room_id}`}
           className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all"
         >
           Vào lớp
