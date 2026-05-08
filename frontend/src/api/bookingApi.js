@@ -27,7 +27,7 @@ export const bookingApi = {
       datetime: data?.datetime || data?.startTime,
       fee: data?.fee ?? 0,
       type: data?.type || "regular",
-      subject_id: data?.subject_id || data?.subjectId || data?.tutorId || data?.tutor_id,
+      subject_id: data?.subject_id || data?.subjectId,
     }),
 
   getMyBookings: async () => {

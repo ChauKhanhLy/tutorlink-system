@@ -13,11 +13,7 @@ export const postBooking = async (req, res) => {
 
         console.log(`Booking Request: type=${type}, fee=${fee}, learner=${learner_id}, tutor=${tutor_id}`);
 
-        // Chỉ trừ tiền từ wallet cho buổi học thật (regular)
-        if (type === 'regular' && fee > 0) {
-            console.log(`Deducting ${fee} from wallet for regular lesson`);
-            await WalletService.spendFromWallet(learner_id, fee, null, `Thanh toán buổi học - ${tutor_id}`);
-        }
+        console.log(`Booking Request: type=${type}, fee=${fee}, learner=${learner_id}, tutor=${tutor_id}`);
 
         // Nếu subject_id bị thiếu hoặc không hợp lệ, thử lấy từ tutor_subjects hoặc bảng subjects mặc định
         let validSubject = null;
@@ -47,6 +43,18 @@ export const postBooking = async (req, res) => {
                 success: false,
                 message: "Thiếu thông tin đặt lịch bắt buộc (tutor, thời gian)."
             });
+        }
+
+        // Kiểm tra trùng lịch trước khi trừ tiền
+        const existing = await db.query('SELECT * FROM bookings WHERE tutor_id = $1 AND datetime = $2 AND status != \'cancel\'', [tutor_id, datetime]);
+        if (existing.rows.length > 0) {
+            return res.status(400).json({ success: false, message: 'Gia sư đã có lịch dạy khác!' });
+        }
+
+        // Chỉ trừ tiền từ wallet cho buổi học thật (regular)
+        if (type === 'regular' && fee > 0) {
+            console.log(`Deducting ${fee} from wallet for regular lesson`);
+            await WalletService.spendFromWallet(learner_id, fee, null, `Thanh toán buổi học - ${tutor_id}`);
         }
 
         console.log(`Creating booking: status=${type === 'trial' ? 'confirmed' : 'pending'}`);
@@ -97,6 +105,23 @@ export const getMyBookings = async (req, res) => {
 export const payBooking = async (req, res) => {
     try {
         const { id } = req.params; // Lấy ID từ URL
+        
+        // Lấy thông tin booking để trừ tiền
+        const bookingReq = await db.query('SELECT learner_id, fee, tutor_id, status FROM bookings WHERE id = $1', [id]);
+        if (bookingReq.rows.length === 0) {
+            return res.status(404).json({ success: false, message: "Không tìm thấy booking" });
+        }
+        
+        const booking = bookingReq.rows[0];
+        if (booking.status !== 'pending') {
+            return res.status(400).json({ success: false, message: "Trạng thái booking không hợp lệ để thanh toán" });
+        }
+
+        // Trừ tiền từ wallet
+        if (parseFloat(booking.fee) > 0) {
+            await WalletService.spendFromWallet(booking.learner_id, booking.fee, id, `Thanh toán booking - ${booking.tutor_id}`);
+        }
+
         const updated = await BookingService.updateStatus(id, 'confirmed');
         res.status(200).json({ success: true, message: "Thanh toán thành công!", data: updated });
     } catch (error) {

@@ -151,25 +151,11 @@ export const updateStatus = async (id, status) => {
     if (status === 'confirmed') {
         const existingRoom = await VideoRoom.findOne({ where: { booking_id: id } });
         if (!existingRoom) {
-        //     // Giả định mỗi buổi học kéo dài 1 tiếng
-        //     const startTime = new Date(booking.datetime);
-        //     const endTime = new Date(startTime.getTime() + 60 * 60 * 1000);
-            
-        //     await VideoRoom.create({
-        //         id: uuidv4(),
-        //         booking_id: id,
-        //         room_id: `tutorlink-${id}`, // ID định danh cho room (có thể dùng làm Jitsi room name)
-        //         provider: 'jitsi', // Mặc định dùng Jitsi
-        //         start_time: startTime.toISOString(),
-        //         end_time: endTime.toISOString(),
-        //         status: 'scheduled'
-        //     });
-        // }
-        await createVideoRoom(id, booking.datetime);
+            await createVideoRoom(id, booking.datetime);
+        }
     }
     
     return booking;
-    }
 };
 
 export const getBookingsForTutor = async (tutor_id) => {
