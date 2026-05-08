@@ -49,8 +49,7 @@ export function DashboardPage() {
       badge: messages?.length || 0,
     },
     { id: "favorites", name: "Gia sư đã lưu", icon: Heart },
-    { id: "billing", name: "Thanh toán", icon: CreditCard },
-    { id: "wallet", name: "Ví của tôi", icon: Wallet },
+    { id: "wallet", name: "Ví của tôi", icon: Wallet, href: "/wallet" },
     { id: "settings", name: "Cài đặt", icon: Settings },
   ];
 
@@ -143,6 +142,22 @@ export function DashboardPage() {
                             {item.badge}
                           </span>
                         )}
+                      </Link>
+                    );
+                  }
+
+                  // Nếu có href, chuyển thẳng đến trang đó
+                  if (item.href) {
+                    return (
+                      <Link
+                        key={item.id}
+                        to={item.href}
+                        className={commonClasses}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <item.icon className="h-5 w-5" />
+                          <span>{item.name}</span>
+                        </div>
                       </Link>
                     );
                   }

@@ -17,6 +17,7 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { walletApi } from "../api/walletApi";
 import { useAuth } from "../context/AuthContext";
+import socket from "../socket";
 
 export function WalletPage() {
   const navigate = useNavigate();
@@ -48,7 +49,34 @@ export function WalletPage() {
     loadWalletData();
     loadTransactions();
     loadSettlements();
-  }, []);
+    
+    if (user?.id) {
+      const registerUser = () => {
+        console.log("Emitting register_user for", user.id);
+        socket.emit('register_user', user.id);
+      };
+      
+      registerUser();
+      socket.on('connect', registerUser);
+      
+      const handlePaymentSuccess = (data) => {
+        console.log("Payment success received!", data);
+        toast.success(`Nạp tiền thành công ${formatVND(data.amount)}!`);
+        document.getElementById('qr-popup')?.remove();
+        setShowDeposit(false);
+        setDepositAmount(100000);
+        loadWalletData();
+        loadTransactions();
+      };
+      
+      socket.on('payment_success', handlePaymentSuccess);
+      
+      return () => {
+        socket.off('connect', registerUser);
+        socket.off('payment_success', handlePaymentSuccess);
+      };
+    }
+  }, [user?.id]);
 
   const loadWalletData = async () => {
     try {
@@ -81,6 +109,49 @@ export function WalletPage() {
     }
   };
 
+  const showQRCodePopup = (paymentData) => {
+    // Remove any existing popup to prevent duplicates
+    document.getElementById('qr-popup')?.remove();
+    
+    // Tạo popup QR code payment
+    const popup = document.createElement('div');
+    popup.id = 'qr-popup';
+    popup.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    popup.innerHTML = `
+      <div class="bg-white rounded-2xl p-8 max-w-md w-full mx-4">
+        <div class="text-center">
+          <h3 class="text-2xl font-bold text-gray-900 mb-6">Quét mã QR để thanh toán</h3>
+          
+          <div class="bg-gray-50 rounded-xl p-6 mb-6">
+            <div title="Sử dụng ứng dụng hoặc camera để quét">
+              <img src="${paymentData.qr_code}" alt="QR Code" class="w-64 h-64 mx-auto mb-4 border border-slate-200 rounded-xl" />
+              <p class="text-sm text-blue-600 text-center mt-2 font-medium">
+                Dùng thiết bị khác quét mã để xác nhận
+              </p>
+            </div>
+            <p class="text-sm text-gray-600 mb-2 mt-4">Số tiền: <span class="font-bold text-lg text-slate-900">${paymentData.amount.toLocaleString('vi-VN')} VNĐ</span></p>
+            <p class="text-xs text-gray-500">Mã giao dịch: ${paymentData.transaction_id}</p>
+            <p class="text-xs text-orange-600 mt-2">Đang chờ thanh toán (Hết hạn sau 5 phút)</p>
+          </div>
+          
+          <div class="space-y-3">
+            <button onclick="document.getElementById('qr-popup').remove()" class="w-full bg-slate-100 text-slate-600 py-3 rounded-xl font-bold hover:bg-slate-200 transition-colors">
+              Đóng
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(popup);
+    
+    // Tự động đóng sau 5 phút
+    setTimeout(() => {
+      if (document.body.contains(popup)) {
+        popup.remove();
+      }
+    }, 5 * 60 * 1000);
+  };
+
   const handleDeposit = async () => {
     if (!depositAmount || depositAmount <= 0) {
       toast.error("Vui lòng nhập số tiền hợp lệ");
@@ -103,14 +174,33 @@ export function WalletPage() {
         console.log("Redirecting to VNPay:", res.data.data.payment_url);
         window.location.href = res.data.data.payment_url;
       } else {
-        // Nạp tiền thành công (mock hoặc các phương thức khác)
-        console.log("Deposit successful (mock) - No payment_url found");
-        console.log("res.data.data:", res.data.data);
-        toast.success("Nạp tiền thành công!");
-        setShowDeposit(false);
-        setDepositAmount(100000);
-        loadWalletData();
-        loadTransactions();
+        if (res.data.data?.qr_payment) {
+          // QR Code payment
+          console.log("QR payment created:", res.data.data);
+          
+          // Hiển thị QR code popup
+          showQRCodePopup(res.data.data);
+          
+        } else if (res.data.data?.mock_payment) {
+          // Mock payment với UI popup
+          console.log("Mock payment completed:", res.data.data);
+          
+          // Hiển thị popup thanh toán thành công
+          showMockPaymentPopup(res.data.data);
+          
+          // Cập nhật UI
+          toast.success("Thanh toán thành công!");
+          setShowDeposit(false);
+          setDepositAmount(100000);
+          loadWalletData();
+          loadTransactions();
+        } else {
+          console.error("Deposit error:", error);
+          console.error("Error response:", error.response);
+          console.error("Error status:", error.response?.status);
+          console.error("Error data:", error.response?.data);
+          toast.error(error.response?.data?.message || "Nạp tiền thất bại");
+        }
       }
     } catch (error) {
       console.error("Deposit error:", error);
