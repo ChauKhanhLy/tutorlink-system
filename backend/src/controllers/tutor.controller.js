@@ -1,4 +1,4 @@
-import { buildAvailabilitySlots } from '../services/tutorAvailability.service.js'
+import { buildAvailabilitySlots, saveAvailabilityPreferences } from '../services/tutorAvailability.service.js'
 import { getTutorById as getTutorByIdDAL } from '../dal/tutor.dal.js'
 
 export const getTutorById = async (req, res) => {
@@ -80,5 +80,38 @@ export const getTutorAvailability = async (req, res) => {
     res.json(slots)
   } catch (err) {
     res.status(400).json({ message: err.message })
+  }
+}
+
+export const updateTutorAvailability = async (
+  req,
+  res
+) => {
+  try {
+    const tutorId = req.params.id
+
+    const payload = req.body
+
+    await saveAvailabilityPreferences(
+      tutorId,
+      payload
+    )
+
+    const updatedSlots =
+      await buildAvailabilitySlots(tutorId)
+
+    res.json({
+      success: true,
+      message:
+        'Availability updated successfully',
+      data: updatedSlots,
+    })
+  } catch (err) {
+    console.error(err)
+
+    res.status(400).json({
+      success: false,
+      message: err.message,
+    })
   }
 }
