@@ -80,6 +80,13 @@ export const getPendingTutors = async () => {
   `)
   return result.rows
 }
+export const updateAvatar = async (userId, avatar) => {
+  const result = await db.query(
+    `UPDATE users SET avatar = $1 WHERE id = $2 RETURNING *`,
+    [avatar, userId]
+  )
+  return result.rows[0]
+}
 
 
 
