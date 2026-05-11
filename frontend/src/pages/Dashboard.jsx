@@ -79,6 +79,43 @@ export function DashboardPage() {
     if (user?.id) fetchData();
   }, [user?.id]);
 
+  // Socket listener cho booking status changes
+  React.useEffect(() => {
+    if (!user?.id) return;
+
+    console.log('Setting up socket listener for user:', user.id);
+
+    // Import socket
+    import('../socket.js').then(({ default: socket }) => {
+      if (socket) {
+        console.log('Socket connected, registering user:', user.id);
+        
+        // Register user với socket
+        socket.emit('register_user', user.id);
+        
+        // Lắng nghe thay đổi status của booking
+        socket.on('booking_status_changed', (data) => {
+          console.log('Booking status changed received:', data);
+          
+          // Refresh lại data bookings
+          fetchData();
+          
+          // Show toast notification
+          import('sonner').then(({ toast }) => {
+            toast.info(data.message || 'Trạng thái lịch học đã thay đổi');
+          });
+        });
+
+        return () => {
+          console.log('Cleaning up socket listener');
+          socket.off('booking_status_changed');
+        };
+      } else {
+        console.log('Socket not available');
+      }
+    });
+  }, [user?.id]);
+
   const nextSession = sessions
     ?.filter((s) => new Date(s.date) > new Date()) // buổi trong tương lai
     .sort((a, b) => new Date(a.date) - new Date(b.date))[0];
@@ -316,8 +353,8 @@ export function DashboardPage() {
                         const endTime = new Date(session.room_end_time || (new Date(startTime).getTime() + 60 * 60 * 1000));
 
                         // Cho phép vào phòng bất cứ lúc nào nếu có room_id (phục vụ testing)
-                        //const canJoin = !!session.room_id && session.status !== 'cancel' && session.status !== 'done';
-                        const canJoin = (!!session.room_id || !!session.roomId) && session.status !== 'cancel' && session.status !== 'done';
+                        //const canJoin = !!session.room_id && session.status !== 'cancelled' && session.status !== 'done';
+                        const canJoin = (!!session.room_id || !!session.roomId) && session.status !== 'cancelled' && session.status !== 'done';
                         
                         if (session.type === 'trial' || session.status === 'confirmed') {
                           console.log('Confirmed/Trial Session details:', JSON.stringify(session, null, 2));
@@ -388,7 +425,7 @@ export function DashboardPage() {
                                 </Link>
                               ) : (
                                 <button className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-400 cursor-not-allowed">
-                                  {session.status === 'cancel' ? "Đã hủy" : (session.room_id || session.roomId ? "Chưa đến giờ" : "Chờ xác nhận")}
+                                  {session.status === 'cancelled' ? "Gia sư đã từ chối" : (session.room_id || session.roomId ? "Chưa đến giờ" : "Chờ xác nhận")}
                                 </button>
                               )}
                             </div>

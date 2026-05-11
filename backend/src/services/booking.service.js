@@ -161,6 +161,35 @@ export const updateStatus = async (id, status) => {
     booking.status = status;
     await booking.save();
 
+    // Emit socket notification cho learner khi status thay đổi
+    try {
+        console.log('Attempting to emit socket notification for booking:', booking.id, 'status:', status, 'learner:', booking.learner_id);
+        
+        // Import io từ app instance
+        const { app } = await import('../app.js');
+        const io = app.get('io');
+        
+        if (io) {
+            console.log('Socket IO found, emitting to room:', booking.learner_id.toString());
+            
+            // Gửi notification cho learner
+            io.to(booking.learner_id.toString()).emit('booking_status_changed', {
+                bookingId: booking.id,
+                status: booking.status,
+                oldStatus: oldStatus,
+                message: status === 'cancelled' ? 'Lịch học đã bị từ chối/hủy' : 
+                        status === 'confirmed' ? 'Lịch học đã được xác nhận' : 
+                        `Trạng thái lịch học đã thay đổi thành: ${status}`
+            });
+            
+            console.log('Socket notification sent successfully');
+        } else {
+            console.log('Socket IO not found in app');
+        }
+    } catch (error) {
+        console.error('Error emitting socket notification:', error);
+    }
+
     // Tự động tạo VideoRoom khi xác nhận
     if (status === 'confirmed') {
         const existingRoom = await VideoRoom.findOne({ where: { booking_id: id } });
