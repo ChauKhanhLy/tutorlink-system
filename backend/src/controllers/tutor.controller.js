@@ -30,13 +30,13 @@ export const getTutorStats = async (req, res) => {
     todayEnd.setDate(todayEnd.getDate() + 1);
 
     const todayRes = await db.query(
-      "SELECT count(*) FROM bookings WHERE tutor_id = $1 AND datetime >= $2 AND datetime < $3 AND status != 'cancel'",
+      "SELECT count(*) FROM bookings WHERE tutor_id = $1 AND datetime >= $2 AND datetime < $3 AND status != 'cancelled'",
       [tutorId, todayStart, todayEnd]
     );
 
     // Total Students
     const studentsRes = await db.query(
-      "SELECT count(DISTINCT learner_id) FROM bookings WHERE tutor_id = $1 AND status != 'cancel'",
+      "SELECT count(DISTINCT learner_id) FROM bookings WHERE tutor_id = $1 AND status != 'cancelled'",
       [tutorId]
     );
 
@@ -46,7 +46,7 @@ export const getTutorStats = async (req, res) => {
     monthStart.setHours(0, 0, 0, 0);
 
     const earningsRes = await db.query(
-      "SELECT COALESCE(sum(fee), 0) as total FROM bookings WHERE tutor_id = $1 AND datetime >= $2 AND status != 'cancel'",
+      "SELECT COALESCE(sum(fee), 0) as total FROM bookings WHERE tutor_id = $1 AND datetime >= $2 AND status != 'cancelled'",
       [tutorId, monthStart]
     );
 

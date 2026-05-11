@@ -61,7 +61,7 @@ export const buildAvailabilitySlots = async (tutorId, daysAhead = 14) => {
 
   // Lấy các booking đã tồn tại
   const bookingsRes = await db.query(
-    "SELECT datetime FROM bookings WHERE tutor_id = $1 AND datetime >= $2 AND datetime < $3 AND status != 'cancel'",
+    "SELECT datetime FROM bookings WHERE tutor_id = $1 AND datetime >= $2 AND datetime < $3 AND status != 'cancelled'",
     [tutorId, today, endDate]
   )
   const bookedSlots = bookingsRes.rows.map(row => {

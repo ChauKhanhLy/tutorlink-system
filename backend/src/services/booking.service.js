@@ -14,7 +14,7 @@ export const createBooking = async (data) => {
     const {tutor_id, datetime} = data;
     
     // Kiểm tra xem đã có lịch nào trùng chưa
-    const query = 'SELECT * FROM bookings WHERE tutor_id = $1 AND datetime = $2 AND status != \'cancel\'';
+    const query = 'SELECT * FROM bookings WHERE tutor_id = $1 AND datetime = $2 AND status != \'cancelled\'';
     const existing = await db.query(query, [tutor_id, datetime]);
 
     if (existing.rows.length > 0) {

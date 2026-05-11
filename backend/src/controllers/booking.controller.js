@@ -46,7 +46,7 @@ export const postBooking = async (req, res) => {
         }
 
         // Kiểm tra trùng lịch trước khi trừ tiền
-        const existing = await db.query('SELECT * FROM bookings WHERE tutor_id = $1 AND datetime = $2 AND status != \'cancel\'', [tutor_id, datetime]);
+        const existing = await db.query('SELECT * FROM bookings WHERE tutor_id = $1 AND datetime = $2 AND status != \'cancelled\'', [tutor_id, datetime]);
         if (existing.rows.length > 0) {
             return res.status(400).json({ success: false, message: 'Gia sư đã có lịch dạy khác!' });
         }
@@ -135,7 +135,7 @@ export const payBooking = async (req, res) => {
 export const cancelBooking = async (req, res) => {
     try {
         const { id } = req.params;
-        const updated = await BookingService.updateStatus(id, 'cancel');
+        const updated = await BookingService.updateStatus(id, 'cancelled');
         res.status(200).json({ success: true, message: "Hủy lịch thành công", data: updated });
     } catch (error) {
         res.status(400).json({ success: false, message: error.message });
@@ -184,7 +184,7 @@ export const rejectBooking = async (req, res) => {
             return res.status(403).json({ success: false, message: "Bạn không có quyền từ chối lịch học này" });
         }
 
-        const updated = await BookingService.updateStatus(id, 'cancel'); // Hoặc trạng thái 'rejected' nếu có
+        const updated = await BookingService.updateStatus(id, 'cancelled'); // Sửa lại cho khớp với constraint
         res.status(200).json({ success: true, message: "Đã từ chối lịch học", data: updated });
     } catch (error) {
         res.status(400).json({ success: false, message: error.message });
