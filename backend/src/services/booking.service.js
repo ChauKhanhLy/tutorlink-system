@@ -3,6 +3,7 @@ import VideoRoom from '../models/videoRoom.model.js';
 import { v4 as uuidv4 } from 'uuid';
 import { Op } from 'sequelize';
 import db from '../config/db.js';
+import { spendFromWallet } from './wallet.service.js';
 
 export const getTutorSubjects = async (tutorId) => {
     const result = await db.query('SELECT subject_id FROM tutor_subjects WHERE tutor_id = $1', [tutorId]);
@@ -144,6 +145,19 @@ export const updateStatus = async (id, status) => {
     if (!booking) throw new Error("Không tìm thấy lịch học");
     
     const oldStatus = booking.status;
+    
+    // Nếu chuyển từ pending sang confirmed, thực hiện trừ tiền
+     if (oldStatus === 'pending' && status === 'confirmed') {
+         if (booking.type === 'regular' && booking.fee > 0) {
+             await spendFromWallet(
+                 booking.learner_id, 
+                 booking.fee, 
+                 booking.id, 
+                 `Thanh toán buổi học #${booking.id} - Gia sư chấp nhận`
+             );
+         }
+     }
+
     booking.status = status;
     await booking.save();
 
@@ -163,6 +177,7 @@ export const getBookingsForTutor = async (tutor_id) => {
         SELECT 
             b.*,
             u.name as studentName,
+            u.avatar as studentAvatar,
             s.name as subject,
             vs.id as room_id,
             vs.status as room_status,

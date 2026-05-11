@@ -345,12 +345,12 @@ export function DashboardPage() {
 
                                 <div className="flex items-center text-slate-500 text-sm mt-1">
                                   <span className="font-bold">
-                                    {session.date || session.datetime
-                                      ? new Date(session.date || session.datetime).toLocaleDateString("vi-VN")
-                                      : "Chưa có ngày"}
+                                    {session.dateObj
+                                      ? session.dateObj.toLocaleDateString("vi-VN")
+                                      : (session.date || session.datetime ? new Date(session.date || session.datetime).toLocaleDateString("vi-VN") : "Chưa có ngày")}
                                   </span>
                                   <span className="mx-2">•</span>
-                                  <span>{session.time || new Date(startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                  <span>{session.time || (session.dateObj ? session.dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : "--:--")}</span>
                                 </div>
 
                                 <div className="text-xs text-slate-400 mt-1">
@@ -388,7 +388,7 @@ export function DashboardPage() {
                                 </Link>
                               ) : (
                                 <button className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-400 cursor-not-allowed">
-                                  {session.room_id || session.roomId ? "Chưa đến giờ" : "Chờ xác nhận"}
+                                  {session.status === 'cancel' ? "Đã hủy" : (session.room_id || session.roomId ? "Chưa đến giờ" : "Chờ xác nhận")}
                                 </button>
                               )}
                             </div>

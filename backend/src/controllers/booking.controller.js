@@ -51,10 +51,15 @@ export const postBooking = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Gia sư đã có lịch dạy khác!' });
         }
 
-        // Chỉ trừ tiền từ wallet cho buổi học thật (regular)
+        // Chỉ trừ tiền từ wallet cho buổi học thật (regular) nếu nó được confirm ngay (ví dụ admin đặt hoặc luồng cũ)
+        // Tuy nhiên, theo yêu cầu mới: Regular booking sẽ ở trạng thái pending và chỉ trừ tiền khi gia sư Accept.
+        // Vậy ở đây chúng ta CHỈ kiểm tra số dư nếu là regular, nhưng CHƯA trừ tiền.
         if (type === 'regular' && fee > 0) {
-            console.log(`Deducting ${fee} from wallet for regular lesson`);
-            await WalletService.spendFromWallet(learner_id, fee, null, `Thanh toán buổi học - ${tutor_id}`);
+            const wallet = await WalletService.getOrCreateWallet(learner_id);
+            if (parseFloat(wallet.balance) < parseFloat(fee)) {
+                return res.status(400).json({ success: false, message: 'Số dư ví không đủ để đặt lịch!' });
+            }
+            console.log(`User has enough balance (${wallet.balance}) for fee ${fee}. Deduction will happen on tutor acceptance.`);
         }
 
         console.log(`Creating booking: status=${type === 'trial' ? 'confirmed' : 'pending'}`);
@@ -67,6 +72,8 @@ export const postBooking = async (req, res) => {
             type,
             status: type === 'trial' ? 'confirmed' : 'pending'
         });
+
+        // Nếu là trial (confirmed ngay), tạo phòng luôn (Service đã làm việc này nếu status là confirmed)
         
         console.log(`Booking created successfully: ${newBooking.id}`);
         res.status(201).json({ success: true, data: newBooking});
@@ -106,7 +113,7 @@ export const payBooking = async (req, res) => {
     try {
         const { id } = req.params; // Lấy ID từ URL
         
-        // Lấy thông tin booking để trừ tiền
+        // Lấy thông tin booking để kiểm tra
         const bookingReq = await db.query('SELECT learner_id, fee, tutor_id, status FROM bookings WHERE id = $1', [id]);
         if (bookingReq.rows.length === 0) {
             return res.status(404).json({ success: false, message: "Không tìm thấy booking" });
@@ -117,11 +124,7 @@ export const payBooking = async (req, res) => {
             return res.status(400).json({ success: false, message: "Trạng thái booking không hợp lệ để thanh toán" });
         }
 
-        // Trừ tiền từ wallet
-        if (parseFloat(booking.fee) > 0) {
-            await WalletService.spendFromWallet(booking.learner_id, booking.fee, id, `Thanh toán booking - ${booking.tutor_id}`);
-        }
-
+        // Gọi updateStatus để xử lý logic confirm và trừ tiền (đã được tập trung trong service)
         const updated = await BookingService.updateStatus(id, 'confirmed');
         res.status(200).json({ success: true, message: "Thanh toán thành công!", data: updated });
     } catch (error) {
@@ -134,6 +137,55 @@ export const cancelBooking = async (req, res) => {
         const { id } = req.params;
         const updated = await BookingService.updateStatus(id, 'cancel');
         res.status(200).json({ success: true, message: "Hủy lịch thành công", data: updated });
+    } catch (error) {
+        res.status(400).json({ success: false, message: error.message });
+    }
+};
+
+export const acceptBooking = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const tutorId = req.user?.id;
+
+        // Kiểm tra quyền: chỉ gia sư của booking này mới được accept
+        const booking = await db.query('SELECT * FROM bookings WHERE id = $1', [id]);
+        if (booking.rows.length === 0) {
+            return res.status(404).json({ success: false, message: "Không tìm thấy booking" });
+        }
+        
+        if (booking.rows[0].tutor_id !== tutorId) {
+            return res.status(403).json({ success: false, message: "Bạn không có quyền chấp nhận lịch học này" });
+        }
+
+        if (booking.rows[0].status !== 'pending') {
+            return res.status(400).json({ success: false, message: "Lịch học này không ở trạng thái chờ xác nhận" });
+        }
+
+        const updated = await BookingService.updateStatus(id, 'confirmed');
+        res.status(200).json({ success: true, message: "Đã chấp nhận lịch học và hoàn tất thanh toán", data: updated });
+    } catch (error) {
+        console.error("Accept Booking Error:", error);
+        res.status(400).json({ success: false, message: error.message });
+    }
+};
+
+export const rejectBooking = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const tutorId = req.user?.id;
+
+        // Kiểm tra quyền
+        const booking = await db.query('SELECT * FROM bookings WHERE id = $1', [id]);
+        if (booking.rows.length === 0) {
+            return res.status(404).json({ success: false, message: "Không tìm thấy booking" });
+        }
+        
+        if (booking.rows[0].tutor_id !== tutorId) {
+            return res.status(403).json({ success: false, message: "Bạn không có quyền từ chối lịch học này" });
+        }
+
+        const updated = await BookingService.updateStatus(id, 'cancel'); // Hoặc trạng thái 'rejected' nếu có
+        res.status(200).json({ success: true, message: "Đã từ chối lịch học", data: updated });
     } catch (error) {
         res.status(400).json({ success: false, message: error.message });
     }

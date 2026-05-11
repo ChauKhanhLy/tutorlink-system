@@ -1,10 +1,27 @@
 import axiosClient from "./axiosClient";
 
 const normalizeBooking = (booking) => {
-  const datetime = booking?.datetime || booking?.startTime || booking?.date;
-  const dateObj = datetime ? new Date(datetime) : null;
+  const rawDatetime = booking?.datetime || booking?.startTime || booking?.date;
+  if (!rawDatetime) return booking;
 
-  const isValidDate = dateObj && !isNaN(dateObj.getTime());
+  let dateObj;
+  
+  if (rawDatetime instanceof Date) {
+    dateObj = rawDatetime;
+  } else {
+    let dateStr = String(rawDatetime).trim();
+    
+    // Xử lý định dạng PostgreSQL: "2024-05-11 03:00:00+00" hoặc "2024-05-11 03:00:00"
+    if (dateStr.includes(' ')) {
+      dateStr = dateStr.replace(' ', 'T');
+    }
+    
+    // Database trả về timestamp với timezone, giữ nguyên để xử lý đúng
+    // Không ép thành UTC nữa để tránh lệch giờ
+    dateObj = new Date(dateStr);
+  }
+
+  const isValidDate = !isNaN(dateObj.getTime());
   
   return {
     ...booking,
@@ -12,9 +29,15 @@ const normalizeBooking = (booking) => {
     tutorId: booking?.tutor_id || booking?.tutorId,
     learnerId: booking?.learner_id || booking?.learnerId,
     status: booking?.status,
-    date: isValidDate ? dateObj.toISOString() : null,
+    dateObj: isValidDate ? dateObj : null,
+    isoDate: isValidDate ? dateObj.toISOString() : null,
     time: isValidDate
-      ? dateObj.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })
+      ? dateObj.toLocaleTimeString("vi-VN", { 
+          hour: "2-digit", 
+          minute: "2-digit", 
+          hour12: false,
+          timeZone: "Asia/Ho_Chi_Minh" 
+        })
       : "",
     startTime: isValidDate ? dateObj.toISOString() : null,
   };
@@ -49,4 +72,8 @@ export const bookingApi = {
   },
 
   cancel: (bookingId) => axiosClient.patch(`/bookings/${bookingId}/cancel`),
+
+  accept: (bookingId) => axiosClient.patch(`/bookings/${bookingId}/accept`),
+
+  reject: (bookingId) => axiosClient.patch(`/bookings/${bookingId}/reject`),
 };
