@@ -224,7 +224,7 @@ export function WalletPage() {
   const tabs = [
     { id: "overview", name: "Tổng quan", icon: Wallet },
     { id: "transactions", name: "Giao dịch", icon: History },
-    { id: "settlements", name: "Settlements", icon: Calendar },
+    { id: "settlements", name: "Thu nhập", icon: Calendar },
   ];
 
   if (!user) {
@@ -437,7 +437,7 @@ export function WalletPage() {
             <div className="bg-white rounded-3xl border border-slate-200 p-6">
               <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center">
                 <Calendar className="h-5 w-5 text-indigo-600 mr-2" />
-                Settlements hàng tuần
+                Thu nhập hàng tuần
               </h3>
               <div className="space-y-4">
                 {settlements.slice(0, 5).map((settlement) => (
@@ -526,7 +526,7 @@ export function WalletPage() {
 
         {activeTab === "settlements" && (
           <div className="bg-white rounded-3xl border border-slate-200 p-6">
-            <h3 className="text-lg font-bold text-slate-900 mb-6">Settlements hàng tuần</h3>
+            <h3 className="text-lg font-bold text-slate-900 mb-6">Thu nhập hàng tuần</h3>
             <div className="space-y-4">
               {settlements.map((settlement) => (
                 <div key={settlement.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
@@ -581,12 +581,12 @@ export function WalletPage() {
         <div className="mt-8 bg-blue-50 rounded-2xl p-5 border border-blue-100 flex items-start gap-4">
           <AlertCircle className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-bold text-blue-800">Thông tin thanh toán theo tuần</p>
+            <p className="text-sm font-bold text-blue-800">Thông tin thu nhập theo tuần</p>
             <p className="text-sm text-blue-700 mt-1">
-              • Tiền nạp vào ví sẽ được giữ trong 7 ngày trước khi settlement<br/>
-              • Admin sẽ xử lý settlement hàng tuần vào Chủ nhật<br/>
-              • Các giao dịch đã settlement sẽ được chuyển cho admin<br/>
-              • Bạn có thể xem lịch sử giao dịch và settlements ở đây
+              • Thu nhập từ buổi học sẽ được giữ trong 7 ngày trước khi thanh toán<br/>
+              • Admin sẽ xử lý thanh toán hàng tuần vào Chủ nhật<br/>
+              • Các khoản thu nhập đã xử lý sẽ được chuyển vào ví của bạn<br/>
+              • Bạn có thể xem lịch sử giao dịch và thu nhập ở đây
             </p>
           </div>
         </div>

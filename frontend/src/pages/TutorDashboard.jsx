@@ -1,5 +1,5 @@
 import React from "react";
-import { Calendar, Users, DollarSign, Star, Clock } from "lucide-react";
+import { Calendar, Users, DollarSign, Star, Clock, Wallet } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { tutorApi } from "../api/tutorApi";
@@ -7,6 +7,7 @@ import { bookingApi } from "../api/bookingApi";
 import { useNavigate } from "react-router-dom";
 import { ImageWithFallback } from "../components/Image/ImageWithFallback";
 import { toast } from "sonner";
+import { WalletPage } from "./Wallet.jsx";
 
 export function TutorDashboard() {
   const navigate = useNavigate();
@@ -22,6 +23,7 @@ export function TutorDashboard() {
   const [loadingUser, setLoadingUser] = React.useState(true);
   const [upcomingSessions, setUpcomingSessions] = React.useState([]);
   const [availability, setAvailability] = React.useState([]);
+  const [activeTab, setActiveTab] = React.useState("sessions"); // sessions, wallet, availability
   
   const fetchTutorData = async () => {
     try {
@@ -137,73 +139,103 @@ if (loadingUser) return <div>Loading...</div>;
           />
         </div>
       )}
-        {/* Grid: Upcoming Sessions & Availability */}
+        {/* Tabs Navigation */}
       {!isPending && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Upcoming Sessions */}
-          <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-200 shadow-sm p-8">
-            <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-indigo-600" />
-              Lịch dạy sắp tới
-            </h2>
-            <div className="space-y-4">
-              {upcomingSessions.length > 0 ? (
-                upcomingSessions.map((session) => (
-                  <SessionCard 
-                    key={session.id} 
-                    session={session} 
-                    isPending={isPending}
-                    onAccept={() => handleAccept(session.id)}
-                    onReject={() => handleReject(session.id)}
-                  />
-                ))
-              ) : (
-                <p className="text-slate-400 text-center py-8">Chưa có lịch dạy nào sắp tới</p>
-              )}
-            </div>
+        <>
+          <div className="flex gap-2 mb-8 bg-white p-1.5 rounded-2xl border border-slate-200 w-fit shadow-sm">
+            {[
+              { id: "sessions", label: "Lịch dạy", icon: Calendar },
+              { id: "wallet", label: "Ví của tôi", icon: Wallet },
+              { id: "availability", label: "Lịch rảnh", icon: Clock },
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${
+                  activeTab === tab.id
+                    ? "bg-indigo-600 text-white shadow-md"
+                    : "text-slate-500 hover:bg-slate-50"
+                }`}
+              >
+                <tab.icon className="h-4 w-4" />
+                {tab.label}
+              </button>
+            ))}
           </div>
 
-          {/* My Availability */}
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-8">
-            <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
-              <Clock className="h-5 w-5 text-indigo-600" />
-              Lịch rảnh của tôi
-            </h2>
-            <div className="space-y-6 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
-              {availability.length > 0 ? (
-                availability.map((slot, index) => {
-                  // Đảm bảo parse ngày đúng định dạng YYYY-MM-DD mà không bị lệch múi giờ
-                  const [year, month, day] = slot.date.split('-').map(Number);
-                  const dateObj = new Date(year, month - 1, day);
-                  
-                  return (
-                    <div key={index} className="border-b border-slate-50 last:border-0 pb-4 last:pb-0">
-                      <p className="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-indigo-400" />
-                        {dateObj.toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' })}
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {slot.times.map((time, tIndex) => (
-                          <span key={tIndex} className="px-3 py-1 bg-slate-50 text-slate-600 text-xs font-medium rounded-lg border border-slate-100">
-                            {time}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <p className="text-slate-400 text-center py-8">Chưa cập nhật lịch rảnh</p>
-              )}
+          {/* Tab Content */}
+          {activeTab === "sessions" && (
+            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-8">
+              <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-indigo-600" />
+                Lịch dạy sắp tới
+              </h2>
+              <div className="space-y-4">
+                {upcomingSessions.length > 0 ? (
+                  upcomingSessions.map((session) => (
+                    <SessionCard 
+                      key={session.id} 
+                      session={session} 
+                      isPending={isPending}
+                      onAccept={() => handleAccept(session.id)}
+                      onReject={() => handleReject(session.id)}
+                    />
+                  ))
+                ) : (
+                  <p className="text-slate-400 text-center py-8">Chưa có lịch dạy nào sắp tới</p>
+                )}
+              </div>
             </div>
-            <Link 
-              to="/become-tutor" 
-              className="mt-6 w-full flex items-center justify-center px-4 py-3 border-2 border-dashed border-slate-200 rounded-2xl text-slate-500 font-bold text-sm hover:border-indigo-300 hover:text-indigo-600 transition-all"
-            >
-              Cập nhật lịch rảnh
-            </Link>
-          </div>
-        </div>
+          )}
+
+          {activeTab === "wallet" && (
+            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+              <WalletPage />
+            </div>
+          )}
+
+          {activeTab === "availability" && (
+            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-8">
+              <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+                <Clock className="h-5 w-5 text-indigo-600" />
+                Lịch rảnh của tôi
+              </h2>
+              <div className="space-y-6 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                {availability.length > 0 ? (
+                  availability.map((slot, index) => {
+                    // Đảm bảo parse ngày đúng định dạng YYYY-MM-DD mà không bị lệch múi giờ
+                    const [year, month, day] = slot.date.split('-').map(Number);
+                    const dateObj = new Date(year, month - 1, day);
+                    
+                    return (
+                      <div key={index} className="border-b border-slate-50 last:border-0 pb-4 last:pb-0">
+                        <p className="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-indigo-400" />
+                          {dateObj.toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' })}
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {slot.times.map((time, tIndex) => (
+                            <span key={tIndex} className="px-3 py-1 bg-slate-50 text-slate-600 text-xs font-medium rounded-lg border border-slate-100">
+                              {time}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p className="text-slate-400 text-center py-8">Chưa cập nhật lịch rảnh</p>
+                )}
+              </div>
+              <Link 
+                to="/become-tutor" 
+                className="mt-6 w-full flex items-center justify-center px-4 py-3 border-2 border-dashed border-slate-200 rounded-2xl text-slate-500 font-bold text-sm hover:border-indigo-300 hover:text-indigo-600 transition-all"
+              >
+                Cập nhật lịch rảnh
+              </Link>
+            </div>
+          )}
+        </>
       )}
       {/* 🔥 PENDING: placeholder thay thế */}
       {isPending && (
