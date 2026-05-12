@@ -6,12 +6,16 @@ import {
     getTransactions,
     getSettlements,
     processSettlements,
-    getWalletStats
+    getWalletStats,
+    confirmQRPayment
 } from '../controllers/wallet.controller.js';
 
 const router = express.Router();
 
-// Áp dụng auth middleware cho tất cả routes
+// Xác nhận thanh toán QR code (Public route)
+router.post('/confirm-qr-payment', confirmQRPayment);
+
+// Áp dụng auth middleware cho các routes còn lại
 router.use(authMiddleware);
 
 // Lấy thông tin wallet
@@ -31,6 +35,8 @@ router.get('/stats', getWalletStats);
 
 // Admin: Xử lý settlements hàng tuần
 router.post('/process-settlements', processSettlements);
+
+
 
 // VNPay return cho wallet deposit
 router.get('/deposit/return', (req, res) => {

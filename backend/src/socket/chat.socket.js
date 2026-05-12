@@ -3,6 +3,10 @@ import Message from '../models/message.model.js';
 
 const onlineUsers = new Map();
 
+export const getOnlineUserSocket = (userId) => {
+  return onlineUsers.get(userId);
+};
+
 export const initChatSocket = (io) => {
   io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
@@ -10,7 +14,8 @@ export const initChatSocket = (io) => {
     // Đăng ký user online
     socket.on('register_user', (userId) => {
       onlineUsers.set(userId, socket.id);
-      console.log(`User ${userId} connected with socket ${socket.id}`);
+      socket.join(userId.toString()); // Đưa vào phòng riêng của user để gửi tới nhiều tab
+      console.log(`User ${userId} connected with socket ${socket.id} and joined room`);
     });
 
     // Gửi tin nhắn
