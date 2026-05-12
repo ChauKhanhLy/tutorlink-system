@@ -1,4 +1,3 @@
-import { getTutorAvailabilityRules, replaceTutorAvailability } from '../dal/tutorAvailability.dal.js'
 import db from '../config/db.js'
 import {
   getTutorAvailabilityRules,
