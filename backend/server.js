@@ -22,6 +22,7 @@ const io = new Server(server, {
 })
 
 initChatSocket(io)
+app.set('io', io)
 
 const PORT = process.env.PORT || 3000
 

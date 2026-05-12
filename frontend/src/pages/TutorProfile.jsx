@@ -183,26 +183,15 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
         dateToUse = nextDay.toISOString().split('T')[0];
       }
       
-      // 2. Tạo đối tượng Date từ Ngày và Giờ đã xử lý
-      const datetimeToSend = new Date(`${dateToUse}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`);
-
-      // 3. ÉP GIÂY VÀ MILI GIÂY VỀ 0 (Cực kỳ quan trọng để Backend check trùng)
-      datetimeToSend.setSeconds(0);
-      datetimeToSend.setMilliseconds(0);
-
-      const startTimeISO = datetimeToSend.toISOString();
-      // --- KẾT THÚC ĐOẠN SỬA ---
-
-      const endTime = new Date(datetimeToSend.getTime() + 50 * 60000);
-
-      // Lấy subject_id (đảm bảo khớp UUID đã test ở BE)
+      // 2. Tạo datetime đúng cách - giữ nguyên giờ Việt Nam
+      const datetimeString = `${dateToUse}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
+      
+      // 3. Gửi datetime lên backend với timezone Việt Nam
       const subjectId = tutor.subject_ids?.[0] || "900b2ea5-16ea-4c80-93b1-0f1cc50b4adf";
-
-      // Gọi API với các key trùng khớp 100% với Backend
       const bookingData = {
         tutor_id: tutor.id,
         subject_id: subjectId,
-        datetime: startTimeISO,
+        datetime: datetimeString, // Không ép về UTC, để backend xử lý
         type: bookingType,
         fee: bookingType === "trial" ? 0 : (tutor.hourly_fee || 0)
       };

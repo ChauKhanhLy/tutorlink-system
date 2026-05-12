@@ -20,6 +20,7 @@ import { VideoRoomPage } from "./pages/VideoRoom";
 import { AdminMessagesPage } from "./pages/admin/AdminMessagesPage";
 import { AdminUsersPage } from "./pages/admin/AdminUsersPage";
 import { WalletPage } from "./pages/Wallet";
+import { QRConfirmPage } from "./pages/QRConfirm";
 
 export const router = createBrowserRouter([
   {
@@ -163,6 +164,8 @@ export const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
+      
+      { path: "qr-pay/:transactionId", element: <QRConfirmPage /> },
 
       { path: "login", element: <AuthPage /> },
       { path: "signup", element: <AuthPage /> },

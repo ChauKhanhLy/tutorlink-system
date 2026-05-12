@@ -25,7 +25,9 @@ import {
   postBooking,
   getMyBookings,
   payBooking,
-  cancelBooking
+  cancelBooking,
+  acceptBooking,
+  rejectBooking
 } from '../controllers/booking.controller.js'
 import * as BookingService from '../services/booking.service.js'
 import authMiddleware from '../middlewares/auth.middleware.js'
@@ -36,6 +38,8 @@ router.post('/', authMiddleware, postBooking)
 router.get('/', authMiddleware, getMyBookings)
 router.put('/:id/pay', authMiddleware, payBooking)
 router.patch('/:id/cancel', authMiddleware, cancelBooking)
+router.patch('/:id/accept', authMiddleware, acceptBooking)
+router.patch('/:id/reject', authMiddleware, rejectBooking)
 
 router.get('/tutor/:tutor_id', async (req, res) => {
   try {

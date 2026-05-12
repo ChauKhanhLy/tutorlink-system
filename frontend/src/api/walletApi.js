@@ -28,4 +28,8 @@ export const walletApi = {
   // Admin: Xử lý settlements
   processSettlements: () => 
     axiosClient.post("/wallet/process-settlements"),
+    
+  // Xác nhận thanh toán QR
+  confirmQRPayment: (transactionId) => 
+    axiosClient.post("/wallet/confirm-qr-payment", { transactionId }),
 };
