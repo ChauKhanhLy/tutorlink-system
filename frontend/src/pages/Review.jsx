@@ -50,17 +50,22 @@ export function ReviewPage() {
 
       setTutor(tutorRes.data);
 
-      // ✅ tìm booking hợp lệ (>= 30 ngày)
+      // ✅ tìm booking hợp lệ (đã kết thúc buổi học)
       const validBooking = bookingsRes.data.find((b) => {
         if (bookingId && b.id !== bookingId) return false;
         if (b.tutorId !== tutorId) return false;
+        if (b.status !== 'completed') return false; // Chỉ đánh giá khi hoàn thành
 
-        const diffDays = (new Date() - new Date(b.startTime)) / (1000 * 60 * 60 * 24);
-        return diffDays >= 0;
+        // Kiểm tra buổi học đã kết thúc chưa
+        const bookingEndTime = new Date(b.startTime || b.datetime);
+        bookingEndTime.setHours(bookingEndTime.getHours() + 2); // Thêm 2 tiếng học
+        const now = new Date();
+        
+        return now >= bookingEndTime; // Cho phép đánh giá sau khi kết thúc
       });
 
       if (!validBooking) {
-        toast.error("Bạn cần học ít nhất 1 tháng để đánh giá");
+        toast.error("Bạn chỉ có thể đánh giá sau khi buổi học đã kết thúc và hoàn thành");
         navigate("/dashboard");
         return;
       }

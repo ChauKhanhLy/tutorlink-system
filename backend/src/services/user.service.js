@@ -65,6 +65,7 @@ exports.getPendingTutors = async () => {
   return await userDAL.getPendingTutors()
 }*/
 //import userDAL from '../dal/user.dal.js'
+import express from 'express'
 import * as userDAL from '../dal/user.dal.js'
 import isUUID from 'validator/lib/isUUID.js'
 import { saveAvailabilityPreferences } from './tutorAvailability.service.js'
@@ -201,4 +202,8 @@ export const verifyTutor = async (userId) => {
 // pending tutor
 export const getPendingTutors = async () => {
   return await userDAL.getPendingTutors()
+}
+//update avatar
+export const updateAvatar = async (userId, avatar) => {
+  return await userDAL.updateAvatar(userId, avatar)
 }
