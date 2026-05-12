@@ -13,12 +13,26 @@ export const getTutorSubjects = async (tutorId) => {
 export const createBooking = async (data) => {
     const {tutor_id, datetime} = data;
     
-    // Kiểm tra xem đã có lịch nào trùng chưa
-    const query = 'SELECT * FROM bookings WHERE tutor_id = $1 AND datetime = $2 AND status != \'cancelled\'';
-    const existing = await db.query(query, [tutor_id, datetime]);
+    // Kiểm tra xem đã có lịch nào trùng chưa (tính đến khoảng cách thời gian)
+    // Regular booking: 2 tiếng, Trial booking: 1 tiếng
+    const bookingType = data.type || 'regular';
+    const duration = bookingType === 'trial' ? 1 : 2; // giờ
+    
+    const conflictQuery = `
+        SELECT * FROM bookings 
+        WHERE tutor_id = $1 
+        AND status != 'cancelled'
+        AND (
+            -- Lớp mới bắt đầu trong khoảng thời gian của một lớp đã có
+            datetime >= $2::timestamp - INTERVAL '${duration} hours' 
+            AND datetime < $2::timestamp + INTERVAL '${duration} hours'
+        )
+    `;
+    const existing = await db.query(conflictQuery, [tutor_id, datetime]);
 
     if (existing.rows.length > 0) {
-        throw new Error ('Gia su da ban vao khung gio nay!');
+        const durationText = duration === 1 ? '1 tiếng' : '2 tiếng';
+        throw new Error(`Gia sư đã có lịch dạy trong khung giờ này! Vui lòng chọn thời gian khác ít nhất ${durationText} so với lịch hiện tại.`);
     }
 
     const insertQuery = `
@@ -41,7 +55,8 @@ export const createBooking = async (data) => {
 
     // Nếu booking ở trạng thái confirmed, tạo phòng học ngay lập tức
     if (booking.status === 'confirmed') {
-        const room = await createVideoRoom(booking.id, booking.datetime);
+        const duration = booking.type === 'trial' ? 1 : 2;
+        const room = await createVideoRoom(booking.id, booking.datetime, duration);
         if (room) {
             booking.room_id = room.id;
             booking.room_status = room.status;
@@ -54,13 +69,13 @@ export const createBooking = async (data) => {
 };
 
 // Hàm bổ trợ để tạo phòng học video
-export const createVideoRoom = async (bookingId, datetime) => {
+export const createVideoRoom = async (bookingId, datetime, duration = 1) => {
     try {
         const existingRoom = await VideoRoom.findOne({ where: { booking_id: bookingId } });
         if (existingRoom) return existingRoom;
 
         const startTime = new Date(datetime);
-        const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // Mặc định 1 tiếng
+        const endTime = new Date(startTime.getTime() + duration * 60 * 60 * 1000); // Theo duration (1 tiếng cho trial, 2 tiếng cho regular)
 
         return await VideoRoom.create({
             id: uuidv4(),
@@ -124,7 +139,8 @@ async function ensureVideoRoomsExist(bookings) {
             //         status: 'scheduled'
             //     });
             console.log(`Creating missing room for confirmed booking: ${booking.id}`);
-            const newRoom = await createVideoRoom(booking.id, booking.datetime);
+            const duration = booking.type === 'trial' ? 1 : 2;
+            const newRoom = await createVideoRoom(booking.id, booking.datetime, duration);
             if (newRoom) {
                 
                 // Cập nhật lại đối tượng booking trong memory để frontend nhận được ngay
@@ -194,7 +210,8 @@ export const updateStatus = async (id, status) => {
     if (status === 'confirmed') {
         const existingRoom = await VideoRoom.findOne({ where: { booking_id: id } });
         if (!existingRoom) {
-            await createVideoRoom(id, booking.datetime);
+            const duration = booking.type === 'trial' ? 1 : 2;
+            await createVideoRoom(id, booking.datetime, duration);
         }
     }
     
@@ -216,7 +233,7 @@ export const getBookingsForTutor = async (tutor_id) => {
         JOIN users u ON b.learner_id = u.id
         LEFT JOIN subjects s ON b.subject_id = s.id
         LEFT JOIN video_sessions vs ON b.id = vs.booking_id
-        WHERE b.tutor_id = $1
+        WHERE b.tutor_id = $1 AND b.status != 'cancelled'
         ORDER BY b.datetime ASC
     `;
     const result = await db.query(query, [tutor_id]);

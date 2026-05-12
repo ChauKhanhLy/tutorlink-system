@@ -45,10 +45,35 @@ export const postBooking = async (req, res) => {
             });
         }
 
-        // Kiểm tra trùng lịch trước khi trừ tiền
-        const existing = await db.query('SELECT * FROM bookings WHERE tutor_id = $1 AND datetime = $2 AND status != \'cancelled\'', [tutor_id, datetime]);
+        // Kiểm tra trùng lịch (tính đến khoảng cách thời gian) trước khi trừ tiền
+        // Regular booking: 2 tiếng, Trial booking: 1 tiếng
+        const duration = type === 'trial' ? 1 : 2;
+        const conflictQuery = `
+            SELECT * FROM bookings 
+            WHERE tutor_id = $1 
+            AND status != 'cancelled'
+            AND (
+                -- Lớp mới bắt đầu trong khoảng thời gian của một lớp đã có
+                datetime >= $2::timestamp - INTERVAL '${duration} hours' 
+                AND datetime < $2::timestamp + INTERVAL '${duration} hours'
+            )
+        `;
+        const existing = await db.query(conflictQuery, [tutor_id, datetime]);
         if (existing.rows.length > 0) {
-            return res.status(400).json({ success: false, message: 'Gia sư đã có lịch dạy khác!' });
+            const conflictTime = new Date(existing.rows[0].datetime).toLocaleTimeString('vi-VN', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            const conflictDate = new Date(existing.rows[0].datetime).toLocaleDateString('vi-VN', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            });
+            const durationText = duration === 1 ? '1 tiếng' : '2 tiếng';
+            return res.status(400).json({ 
+                success: false, 
+                message: `Gia sư đã có lớp học vào ${conflictDate} lúc ${conflictTime}. Lớp ${type === 'trial' ? 'thử' : 'thật'} kéo dài ${durationText}, vui lòng chọn thời gian cách nhau ít nhất ${durationText}.` 
+            });
         }
 
         // Chỉ trừ tiền từ wallet cho buổi học thật (regular) nếu nó được confirm ngay (ví dụ admin đặt hoặc luồng cũ)
@@ -63,20 +88,27 @@ export const postBooking = async (req, res) => {
         }
 
         console.log(`Creating booking: status=${type === 'trial' ? 'confirmed' : 'pending'}`);
-        const newBooking = await BookingService.createBooking({
-            learner_id,
-            tutor_id,
-            subject_id,
-            datetime,
-            fee: type === 'trial' ? 0 : fee, // Học thử thường miễn phí
-            type,
-            status: type === 'trial' ? 'confirmed' : 'pending'
-        });
-
-        // Nếu là trial (confirmed ngay), tạo phòng luôn (Service đã làm việc này nếu status là confirmed)
         
-        console.log(`Booking created successfully: ${newBooking.id}`);
-        res.status(201).json({ success: true, data: newBooking});
+        try {
+            const newBooking = await BookingService.createBooking({
+                learner_id,
+                tutor_id,
+                subject_id,
+                datetime,
+                fee: type === 'trial' ? 0 : fee, // Học thử thường miễn phí
+                type,
+                status: type === 'trial' ? 'confirmed' : 'pending'
+            });
+
+            // Nếu là trial (confirmed ngay), tạo phòng luôn (Service đã làm việc này nếu status là confirmed)
+            
+            console.log(`Booking created successfully: ${newBooking.id}`);
+            res.status(201).json({ success: true, data: newBooking });
+        } catch (bookingError) {
+            // Nếu booking service throw error (conflict), trả về error luôn
+            console.error(`Booking creation failed: ${bookingError.message}`);
+            res.status(400).json({ success: false, message: bookingError.message });
+        }
     } catch (error) {
         console.error(`Booking Error: ${error.message}`);
         res.status(400).json({success: false, message: error.message});

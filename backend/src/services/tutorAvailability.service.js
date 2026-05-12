@@ -109,9 +109,20 @@ export const buildAvailabilitySlots = async (tutorId, daysAhead = 14) => {
     const dayOfMonth = String(date.getDate()).padStart(2, '0')
     const dateStr = `${year}-${month}-${dayOfMonth}`
 
-    // Lọc bỏ các slot đã bị book
+    // Lọc bỏ các slot đã bị book (tính đến khoảng cách 2 tiếng)
     const bookedTimesForDay = bookedSlots.filter(b => b.date === dateStr).map(b => b.time);
-    times = times.filter(t => !bookedTimesForDay.includes(t));
+    times = times.filter(time => {
+      const timeHour = parseInt(time.split(':')[0]);
+      
+      // Kiểm tra xem time có bị ảnh hưởng bởi booked slot nào không
+      return !bookedTimesForDay.some(bookedTime => {
+        const bookedHour = parseInt(bookedTime.split(':')[0]);
+        
+        // Nếu time bắt đầu trong khoảng 2 tiếng của booked time -> bị ảnh hưởng
+        // Ví dụ: booked 8:00, các slot 6:00-9:59 đều bị ảnh hưởng
+        return timeHour >= bookedHour - 2 && timeHour <= bookedHour + 1;
+      });
+    });
 
     if (!times.length) continue
 
