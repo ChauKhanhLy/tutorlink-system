@@ -1,5 +1,8 @@
 import * as authService from '../services/auth.service.js'
 import * as userDAL from '../dal/user.dal.js'
+import {
+  verifyOTP
+} from '../services/auth.service.js'
 const registerLearner = async (req, res) => {
   try {
     const { email, password, name } = req.body
@@ -33,9 +36,34 @@ const login = async (req, res) => {
   }
 }
 
+export const verifyOTPController = async (
+  req,
+  res
+) => {
+
+  try {
+
+    const user =
+      await verifyOTP(req.body)
+
+    res.json({
+      message: 'Register successful',
+      user
+    })
+
+  } catch (error) {
+
+    console.error(error)
+
+  return res.status(400).json({
+    message: error.message
+  })
+  }
+}
 
 export default {
   registerLearner,
   registerTutor,
-  login
+  login,
+  verifyOTPController
 }

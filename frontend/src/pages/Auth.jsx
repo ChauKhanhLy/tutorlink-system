@@ -26,8 +26,21 @@ export function AuthPage() {
   location.pathname === "/admin/login";
 
   const [role, setRole] = React.useState("student"); // mặc định student
+  //thêm otp
+  const [step, setStep] = React.useState(1);
+  const [otp, setOtp] = React.useState("");
+  const [registerEmail, setRegisterEmail] =
+  React.useState("");
+  
+  React.useEffect(() => {
 
-  const handleSubmit = async (e) => {
+  if (isLogin) {
+    setStep(1);
+  }
+
+}, [isLogin]);
+ 
+const handleSubmit = async (e) => {
     e.preventDefault();
 
     try {
@@ -71,14 +84,50 @@ export function AuthPage() {
         await authApi.registerLearner(data);
       }
 
-      toast.success("Đăng ký thành công!");
-      navigate("/login");
+      // toast.success("Đăng ký thành công!");
+      // navigate("/login");
+      setRegisterEmail(data.email);
+      toast.success(
+        "OTP đã được gửi tới email!"
+      );
+
+    setStep(2);
     }
   } catch (err) {
     console.log(err.response?.data);
     toast.error(err.response?.data?.message || "Lỗi server");
   }
 };
+const handleVerifyOTP = async (e) => {
+
+  e.preventDefault();
+  console.log("REGISTER EMAIL:", registerEmail)
+  console.log("OTP:", otp)
+  try {
+
+    await authApi.verifyOTP({
+      email: registerEmail,
+      otp,
+    });
+
+    toast.success(
+      "Xác thực email thành công!"
+    );
+    setStep(1);
+    setOtp("");
+    setRegisterEmail("");
+    navigate("/login");
+
+  } catch (err) {
+
+    toast.error(
+      err.response?.data?.message||
+       err.message ||
+       "Verify OTP failed"
+    );
+
+  }
+}
 
 React.useEffect(() => {
   const userStr = localStorage.getItem("user");
@@ -146,6 +195,8 @@ React.useEffect(() => {
               </button>
             </div>
           )}
+          {
+          step === 1 && (
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {!isLogin && (
@@ -199,6 +250,54 @@ React.useEffect(() => {
               {isLogin ? "Đăng nhập" : "Tạo tài khoản"}
             </button>
           </form>
+           )}
+           
+            {
+              step === 2 && (
+
+                <form
+                  onSubmit={handleVerifyOTP}
+                  className="space-y-5"
+                >
+
+                  <div className="text-center">
+
+                    <h2 className="text-2xl font-bold">
+                      Nhập mã OTP
+                    </h2>
+
+                    <p className="text-slate-500 mt-2">
+                      Kiểm tra email của bạn
+                    </p>
+
+                  </div>
+
+                  <div className="relative group">
+
+                    <input
+                      value={otp}
+                      onChange={(e) =>
+                        setOtp(e.target.value)
+                      }
+                      type="text"
+                      placeholder="Nhập OTP"
+                      required
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl"
+                    />
+
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full py-5 bg-indigo-600 text-white font-bold rounded-2xl"
+                  >
+                    Xác thực OTP
+                  </button>
+
+                </form>
+
+              )
+            }
 
           <div className="my-10 flex items-center">
             <div className="flex-1 border-t border-slate-100"></div>

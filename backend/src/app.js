@@ -1,3 +1,5 @@
+import dotenv from 'dotenv'
+dotenv.config()
 import express from 'express'
 import authRoutes from './routes/auth.routes.js'
 import tutorRoutes from './routes/tutor.routes.js'

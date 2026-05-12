@@ -12,6 +12,11 @@ const authApi = {
   registerTutor: (data) => {
     return axiosClient.post("/auth/register/tutor", data);
   },
+  verifyOTP: (data) =>
+  axiosClient.post(
+    "/auth/verify-otp",
+    data
+  ),
 };
 
 export default authApi;
