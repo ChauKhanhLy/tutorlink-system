@@ -66,7 +66,7 @@ import * as userDAL from '../dal/user.dal.js'
 
 import { transporter } from "./mail.service.js";
 const SECRET = process.env.JWT_SECRET
-//const pendingUsers = new Map();
+const pendingUsers = new Map();
 if (!SECRET) {
   throw new Error("JWT_SECRET is not defined")
 }
@@ -97,20 +97,21 @@ export const registerLearner = async ({
   const otpExpires =
     new Date(Date.now() + 5 * 60 * 1000);
 
-  await userDAL.createUser({
-    email,
-    password: hashedPassword,
-    name,
+  // Save temp user
+  pendingUsers.set(email, {
+  email,
+  password: hashedPassword,
+  name,
 
-    role: 'learner',
+  role: 'learner',
 
-    verified: true,
+  verified: true,
 
-    email_verified: false,
+  email_verified: false,
 
-    otp_code: otp,
-    otp_expires: otpExpires,
-  });
+  otp_code: otp,
+  otp_expires: otpExpires,
+});
 
   await transporter.sendMail({
     from: process.env.EMAIL_USER,
@@ -152,7 +153,8 @@ export const registerTutor = async ({
   const otpExpires =
     new Date(Date.now() + 5 * 60 * 1000);
 
-  await userDAL.createUser({
+  // SAVE TEMP USER
+  pendingUsers.set(email, {
     email,
     password: hashedPassword,
     name,
@@ -219,19 +221,26 @@ export const verifyOTP = async ({
 
   console.log("EMAIL:", email)
   console.log("INPUT OTP:", otp)
+ 
+  // GET TEMP USER
+  const pendingUser =
+    pendingUsers.get(email);
 
-  const user =
-    await userDAL.findByEmail(email);
+  console.log("PENDING USER:", pendingUser)
 
-  console.log("USER:", user)
+  if (!pendingUser) {
+    throw new Error(
+      "Registration expired"
+    );
+  }
 
-  if (!user)
-    throw new Error("User not found");
-
-  console.log("DB OTP:", user.otp_code)
+  console.log(
+    "MAP OTP:",
+    pendingUser.otp_code
+  )
 
   if (
-    String(user.otp_code).trim() !==
+    String(pendingUser.otp_code).trim() !==
     String(otp).trim()
   ) {
     throw new Error("Invalid OTP");
@@ -239,19 +248,40 @@ export const verifyOTP = async ({
 
   if (
     new Date() >
-    new Date(user.otp_expires)
+    new Date(pendingUser.otp_expires)
   ) {
     throw new Error("OTP expired");
   }
 
-  const updatedUser =
-    await userDAL.updateUser(user.id, {
+  // CREATE REAL USER
+  const createdUser =
+    await userDAL.createUser({
+
+      email: pendingUser.email,
+
+      password:
+        pendingUser.password,
+
+      name:
+        pendingUser.name,
+
+      role:
+        pendingUser.role,
+
+      verified:
+        pendingUser.verified,
+
       email_verified: true,
+
       otp_code: null,
+
       otp_expires: null,
     });
 
-  return updatedUser;
+  // DELETE TEMP USER
+  pendingUsers.delete(email);
+
+  return createdUser;
 }
 // login
 export const login = async ({ email, password }) => {
@@ -278,7 +308,8 @@ export const login = async ({ email, password }) => {
       email: user.email,
       name: user.name,
       role: user.role,
-      //verif
+      verified: user.verified,
+      email_verified: user.email_verified
     }
   }
 }
