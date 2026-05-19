@@ -67,6 +67,9 @@ import * as userDAL from '../dal/user.dal.js'
 import { transporter } from "./mail.service.js";
 const SECRET = process.env.JWT_SECRET
 const pendingUsers = new Map();
+const resetPasswordRequests =
+  new Map();
+
 if (!SECRET) {
   throw new Error("JWT_SECRET is not defined")
 }
@@ -385,7 +388,108 @@ export const login = async ({ email, password }) => {
     }
   }
 }
+export const forgotPassword =
+async (email) => {
 
+  const user =
+    await userDAL.findByEmail(email);
+
+  if (!user) {
+    throw new Error(
+      "User not found"
+    );
+  }
+
+  const otp =
+    Math.floor(
+      100000 + Math.random() * 900000
+    ).toString();
+
+  const otpExpires =
+    new Date(Date.now() + 60 * 1000);
+
+  resetPasswordRequests.set(
+    email,
+    {
+      otp,
+      otpExpires
+    }
+  );
+
+  setTimeout(() => {
+    resetPasswordRequests.delete(email);
+  }, 5 * 60 * 1000);
+
+  await transporter.sendMail({
+    from: process.env.EMAIL_USER,
+    to: email,
+    subject:
+      "TutorLink Reset Password OTP",
+
+    html: `
+      <h1>Your OTP: ${otp}</h1>
+    `,
+  });
+
+  return {
+    message:
+      "Reset OTP sent successfully"
+  };
+}
+export const resetPassword =
+async ({
+  email,
+  otp,
+  newPassword
+}) => {
+
+  const resetRequest =
+    resetPasswordRequests.get(email);
+
+  if (!resetRequest) {
+    throw new Error(
+      "Reset request expired"
+    );
+  }
+
+  if (
+    String(resetRequest.otp).trim() !==
+    String(otp).trim()
+  ) {
+    throw new Error("Invalid OTP");
+  }
+
+  if (
+    new Date() >
+    new Date(resetRequest.otpExpires)
+  ) {
+    throw new Error("OTP expired");
+  }
+
+  const hashedPassword =
+    await bcrypt.hash(
+      newPassword,
+      10
+    );
+
+  const user =
+    await userDAL.findByEmail(email);
+
+  await userDAL.updateUser(
+    user.id,
+    {
+      password:
+        hashedPassword
+    }
+  );
+
+  resetPasswordRequests.delete(email);
+
+  return {
+    message:
+      "Password reset successful"
+  };
+}
 /*const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
 const userDAL = require('../dal/user.dal')
