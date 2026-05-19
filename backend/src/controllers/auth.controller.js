@@ -1,7 +1,8 @@
 import * as authService from '../services/auth.service.js'
 import * as userDAL from '../dal/user.dal.js'
 import {
-  verifyOTP
+  verifyOTP,
+  resendOTP
 } from '../services/auth.service.js'
 const registerLearner = async (req, res) => {
   try {
@@ -53,11 +54,29 @@ export const verifyOTPController = async (
 
   } catch (error) {
 
-    console.error(error)
-
   return res.status(400).json({
     message: error.message
   })
+  }
+}
+export const resendOTPController =
+async (req, res) => {
+
+  try {
+
+    const result =
+      await resendOTP(
+        req.body.email
+      );
+
+    return res.json(result);
+
+  } catch (error) {
+
+    return res.status(400).json({
+      message: error.message
+    });
+
   }
 }
 
@@ -65,5 +84,6 @@ export default {
   registerLearner,
   registerTutor,
   login,
-  verifyOTPController
+  verifyOTPController,
+  resendOTPController,
 }

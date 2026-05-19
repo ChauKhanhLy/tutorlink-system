@@ -17,6 +17,11 @@ const authApi = {
     "/auth/verify-otp",
     data
   ),
+  resendOTP: (data) =>
+  axiosClient.post(
+    "/auth/resend-otp",
+    data
+  ),
 };
 
 export default authApi;

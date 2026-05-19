@@ -85,6 +85,18 @@ export const registerLearner = async ({
   if (existingUser) {
     throw new Error("User already exists");
   }
+  const pendingUser =
+  pendingUsers.get(email);
+
+if (
+  pendingUser &&
+  new Date() <
+  new Date(pendingUser.otp_expires)
+) {
+  throw new Error(
+    "OTP already sent. Please verify your email."
+  );
+}
 
   const hashedPassword =
     await bcrypt.hash(password, 10);
@@ -95,7 +107,7 @@ export const registerLearner = async ({
     ).toString();
 
   const otpExpires =
-    new Date(Date.now() + 5 * 60 * 1000);
+    new Date(Date.now() + 60 * 1000);
 
   // Save temp user
   pendingUsers.set(email, {
@@ -112,6 +124,9 @@ export const registerLearner = async ({
   otp_code: otp,
   otp_expires: otpExpires,
 });
+setTimeout(() => {
+  pendingUsers.delete(email);
+}, 5 * 60 * 1000);
 
   await transporter.sendMail({
     from: process.env.EMAIL_USER,
@@ -137,6 +152,18 @@ export const registerTutor = async ({
 
   const existingUser =
     await userDAL.findByEmail(email);
+    const pendingUser =
+  pendingUsers.get(email);
+
+if (
+  pendingUser &&
+  new Date() <
+  new Date(pendingUser.otp_expires)
+) {
+  throw new Error(
+    "OTP already sent. Please verify your email."
+  );
+}
 
   if (existingUser) {
     throw new Error("User already exists");
@@ -151,7 +178,7 @@ export const registerTutor = async ({
     ).toString();
 
   const otpExpires =
-    new Date(Date.now() + 5 * 60 * 1000);
+    new Date(Date.now() + 60 * 1000);
 
   // SAVE TEMP USER
   pendingUsers.set(email, {
@@ -168,6 +195,10 @@ export const registerTutor = async ({
     otp_code: otp,
     otp_expires: otpExpires,
   });
+
+  setTimeout(() => {
+  pendingUsers.delete(email);
+},  5 * 60 * 1000);
 
   await transporter.sendMail({
     from: process.env.EMAIL_USER,
@@ -282,6 +313,47 @@ export const verifyOTP = async ({
   pendingUsers.delete(email);
 
   return createdUser;
+}
+export const resendOTP =
+async (email) => {
+
+  const pendingUser =
+    pendingUsers.get(email);
+
+  if (!pendingUser) {
+    throw new Error(
+      "Registration expired"
+    );
+  }
+
+  const otp =
+    Math.floor(
+      100000 + Math.random() * 900000
+    ).toString();
+
+  pendingUser.otp_code = otp;
+
+  pendingUser.otp_expires =
+    new Date(Date.now() + 60 * 1000);
+
+  pendingUsers.set(
+    email,
+    pendingUser
+  );
+
+  await transporter.sendMail({
+    from: process.env.EMAIL_USER,
+    to: email,
+    subject: "TutorLink OTP",
+    html: `
+      <h1>Your OTP: ${otp}</h1>
+    `,
+  });
+
+  return {
+    message:
+      "OTP resent successfully"
+  };
 }
 // login
 export const login = async ({ email, password }) => {

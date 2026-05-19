@@ -29,6 +29,11 @@ export function AuthPage() {
   //thêm otp
   const [step, setStep] = React.useState(1);
   const [otp, setOtp] = React.useState("");
+  const [timeLeft, setTimeLeft] =
+  React.useState(60);
+  const [canResend, setCanResend] =
+  
+  React.useState(false);
   const [registerEmail, setRegisterEmail] =
   React.useState("");
   
@@ -92,6 +97,8 @@ const handleSubmit = async (e) => {
       );
 
     setStep(2);
+    setTimeLeft(60);
+    setCanResend(false);
     }
   } catch (err) {
     console.log(err.response?.data);
@@ -128,6 +135,50 @@ const handleVerifyOTP = async (e) => {
 
   }
 }
+const handleResendOTP =
+async () => {
+
+  try {
+
+    await authApi.resendOTP({
+      email: registerEmail,
+    });
+
+    toast.success(
+      "Đã gửi lại OTP!"
+    );
+
+    setTimeLeft(60);
+
+    setCanResend(false);
+
+  } catch (err) {
+
+    toast.error(
+      err.response?.data?.message ||
+      "Resend OTP failed"
+    );
+
+  }
+}
+React.useEffect(() => {
+
+  if (step !== 2) return;
+
+  if (timeLeft <= 0) {
+    setCanResend(true);
+    return;
+  }
+
+  const timer = setInterval(() => {
+
+    setTimeLeft(prev => prev - 1);
+
+  }, 1000);
+
+  return () => clearInterval(timer);
+
+}, [timeLeft, step]);
 
 React.useEffect(() => {
   const userStr = localStorage.getItem("user");
@@ -253,51 +304,84 @@ React.useEffect(() => {
            )}
            
             {
-              step === 2 && (
+                step === 2 && (
 
-                <form
-                  onSubmit={handleVerifyOTP}
-                  className="space-y-5"
-                >
-
-                  <div className="text-center">
-
-                    <h2 className="text-2xl font-bold">
-                      Nhập mã OTP
-                    </h2>
-
-                    <p className="text-slate-500 mt-2">
-                      Kiểm tra email của bạn
-                    </p>
-
-                  </div>
-
-                  <div className="relative group">
-
-                    <input
-                      value={otp}
-                      onChange={(e) =>
-                        setOtp(e.target.value)
-                      }
-                      type="text"
-                      placeholder="Nhập OTP"
-                      required
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl"
-                    />
-
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="w-full py-5 bg-indigo-600 text-white font-bold rounded-2xl"
+                  <form
+                    onSubmit={handleVerifyOTP}
+                    className="space-y-5"
                   >
-                    Xác thực OTP
-                  </button>
 
-                </form>
+                    <div className="text-center">
 
-              )
-            }
+                      <h2 className="text-2xl font-bold">
+                        Nhập mã OTP
+                      </h2>
+
+                      <p className="text-slate-500 mt-2">
+                        Kiểm tra email của bạn
+                      </p>
+
+                    </div>
+
+                    <div className="relative group">
+
+                      <input
+                        value={otp}
+                        onChange={(e) =>
+                          setOtp(e.target.value)
+                        }
+                        type="text"
+                        placeholder="Nhập OTP"
+                        required
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl"
+                      />
+
+                    </div>
+
+                    {/* COUNTDOWN */}
+
+                    <div className="text-center">
+
+                      {
+                        !canResend ? (
+
+                          <p className="text-sm text-slate-500">
+
+                            OTP hết hạn sau:
+
+                            <span className="font-bold text-indigo-600">
+                              {" "}
+                              {timeLeft}s
+                            </span>
+
+                          </p>
+
+                        ) : (
+
+                          <button
+                            type="button"
+                            onClick={handleResendOTP}
+                            className="text-sm font-bold text-indigo-600 hover:underline"
+                          >
+                            Gửi lại mã OTP
+                          </button>
+
+                        )
+                      }
+
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="w-full py-5 bg-indigo-600 text-white font-bold rounded-2xl"
+                    >
+                      Xác thực OTP
+                    </button>
+
+                  </form>
+
+                )
+            } 
 
           <div className="my-10 flex items-center">
             <div className="flex-1 border-t border-slate-100"></div>
