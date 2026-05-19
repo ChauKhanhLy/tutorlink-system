@@ -1,6 +1,7 @@
 import { updateProfile as updateProfileService, becomeTutor as becomeTutorService } from '../services/user.service.js'
 import { findById } from '../dal/user.dal.js'
 import * as userService from '../services/user.service.js'
+
 export const getUserById = async (req, res) => {
   try {
     const { id } = req.params
@@ -48,34 +49,35 @@ export const becomeTutor = async (req, res) => {
     res.status(400).json({ message: err.message })
   }
 }
+
 export const updateAvatar = async (req, res) => {
   try {
-    console.log("👉 API HIT")
+    console.log("API HIT")
     const userId = req.user.id
-    console.log("👉 userId:", userId)
+    console.log("userId:", userId)
 
-    console.log("👉 file:", req.file)
-    // ❌ không có file
+    console.log(" file:", req.file)
+    // không có file
     if (!req.file) {
       return res.status(400).json({ message: 'Không có file upload' })
     }
 
-    // ✅ tạo đường dẫn avatar
+    // tạo đường dẫn avatar
     const avatarUrl = `/uploads/${req.file.filename}`
-     console.log("👉 avatarUrl:", avatarUrl)
-    // ✅ update DB
+     console.log("avatarUrl:", avatarUrl)
+    // update DB
     const updatedUser = await userService.updateAvatar(userId, avatarUrl)
-    console.log("👉 updated user:", user)
-    // ❌ nếu không tìm thấy user
+    console.log("updated user:", user)
+    // nếu không tìm thấy user
     if (!updatedUser) {
       
       return res.status(404).json({ message: 'User not found' })
     }
 
-    // ❌ loại bỏ password
+    // loại bỏ password
     const { password, ...userWithoutPassword } = updatedUser
 
-    // ✅ trả về chuẩn
+    // trả về chuẩn
     res.json({
       message: "Update avatar success",
       user: userWithoutPassword
@@ -86,6 +88,7 @@ export const updateAvatar = async (req, res) => {
     res.status(500).json({ message: err.message })
   }
 }
+
 /*const userService = require('../services/user.service')
 
 exports.updateProfile = async (req, res) => {
