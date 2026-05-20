@@ -26,8 +26,34 @@ export function AuthPage() {
   location.pathname === "/admin/login";
 
   const [role, setRole] = React.useState("student"); // mặc định student
+  //thêm otp
+  const [step, setStep] = React.useState(1);
+  const [otp, setOtp] = React.useState("");
+  const [timeLeft, setTimeLeft] =
+  React.useState(60);
+  const [canResend, setCanResend] =
+  
+  React.useState(false);
+  const [registerEmail, setRegisterEmail] =
+  React.useState("");
+  const [resetEmail, setResetEmail] =
+  React.useState("");
 
-  const handleSubmit = async (e) => {
+  const [resetOtp, setResetOtp] =
+  React.useState("");
+
+  const [newPassword, setNewPassword] =
+  React.useState("");
+  
+  React.useEffect(() => {
+
+  if (isLogin) {
+    setStep(1);
+  }
+
+}, [isLogin]);
+ 
+const handleSubmit = async (e) => {
     e.preventDefault();
 
     try {
@@ -71,14 +97,96 @@ export function AuthPage() {
         await authApi.registerLearner(data);
       }
 
-      toast.success("Đăng ký thành công!");
-      navigate("/login");
+      // toast.success("Đăng ký thành công!");
+      // navigate("/login");
+      setRegisterEmail(data.email);
+      toast.success(
+        "OTP đã được gửi tới email!"
+      );
+
+    setStep(2);
+    setTimeLeft(60);
+    setCanResend(false);
     }
   } catch (err) {
     console.log(err.response?.data);
     toast.error(err.response?.data?.message || "Lỗi server");
   }
 };
+const handleVerifyOTP = async (e) => {
+
+  e.preventDefault();
+  console.log("REGISTER EMAIL:", registerEmail)
+  console.log("OTP:", otp)
+  try {
+
+    await authApi.verifyOTP({
+      email: registerEmail,
+      otp,
+    });
+
+    toast.success(
+      "Xác thực email thành công!"
+    );
+    setStep(1);
+    setOtp("");
+    setRegisterEmail("");
+    navigate("/login");
+
+  } catch (err) {
+
+    toast.error(
+      err.response?.data?.message||
+       err.message ||
+       "Verify OTP failed"
+    );
+
+  }
+}
+const handleResendOTP =
+async () => {
+
+  try {
+
+    await authApi.resendOTP({
+      email: registerEmail,
+    });
+
+    toast.success(
+      "Đã gửi lại OTP!"
+    );
+
+    setTimeLeft(60);
+
+    setCanResend(false);
+
+  } catch (err) {
+
+    toast.error(
+      err.response?.data?.message ||
+      "Resend OTP failed"
+    );
+
+  }
+}
+React.useEffect(() => {
+
+  if (step !== 2 && step !== 4) return;
+
+  if (timeLeft <= 0) {
+    setCanResend(true);
+    return;
+  }
+
+  const timer = setInterval(() => {
+
+    setTimeLeft(prev => prev - 1);
+
+  }, 1000);
+
+  return () => clearInterval(timer);
+
+}, [timeLeft, step]);
 
 React.useEffect(() => {
   const userStr = localStorage.getItem("user");
@@ -146,8 +254,10 @@ React.useEffect(() => {
               </button>
             </div>
           )}
+          {
+          step === 1 && (
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} autoComplete="off" className="space-y-5">
             {!isLogin && (
               <div className="relative group">
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:text-indigo-600 transition-colors" />
@@ -166,6 +276,7 @@ React.useEffect(() => {
               <input
                 name="email"
                 type="email"
+                autoComplete="off"
                 placeholder="Địa chỉ email"
                 required
                 className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white transition-all text-sm font-medium shadow-sm"
@@ -177,21 +288,35 @@ React.useEffect(() => {
               <input
                 name="password"
                 type="password"
+                autoComplete="new-password"
                 placeholder="Mật khẩu"
                 required
                 className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white transition-all text-sm font-medium shadow-sm"
               />
             </div>
-            {isLogin && (
-              <div className="text-right">
-                <button
-                  type="button"
-                  className="text-xs font-bold text-indigo-600 hover:text-indigo-700 hover:underline"
-                >
-                  Quên mật khẩu?
-                </button>
-              </div>
-            )}
+                {isLogin && (
+                  <div className="text-right">
+
+                    <button
+                      type="button"
+                      onClick={() => {
+
+                        setStep(3);
+
+                        setResetEmail("");
+
+                        setResetOtp("");
+
+                        setNewPassword("");
+
+                      }}
+                      className="text-xs font-bold text-indigo-600 hover:text-indigo-700 hover:underline"
+                    >
+                      Quên mật khẩu?
+                    </button>
+
+                  </div>
+                )}
             <button
               type="submit"
               className="w-full py-5 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-500/20 active:scale-[0.98] text-lg"
@@ -199,7 +324,317 @@ React.useEffect(() => {
               {isLogin ? "Đăng nhập" : "Tạo tài khoản"}
             </button>
           </form>
+           )}
+           
+            {
+                step === 2 && (
 
+                  <form
+                    onSubmit={handleVerifyOTP}
+                    className="space-y-5"
+                  >
+
+                    <div className="text-center">
+
+                      <h2 className="text-2xl font-bold">
+                        Nhập mã OTP
+                      </h2>
+
+                      <p className="text-slate-500 mt-2">
+                        Kiểm tra email của bạn
+                      </p>
+
+                    </div>
+
+                    <div className="relative group">
+
+                      <input
+                        value={otp}
+                        onChange={(e) =>
+                          setOtp(e.target.value)
+                        }
+                        type="text"
+                        placeholder="Nhập OTP"
+                        required
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl"
+                      />
+
+                    </div>
+
+                    {/* COUNTDOWN */}
+
+                    <div className="text-center">
+
+                      {
+                        !canResend ? (
+
+                          <p className="text-sm text-slate-500">
+
+                            OTP hết hạn sau:
+
+                            <span className="font-bold text-indigo-600">
+                              {" "}
+                              {timeLeft}s
+                            </span>
+
+                          </p>
+
+                        ) : (
+
+                          <button
+                            type="button"
+                            onClick={handleResendOTP}
+                            className="text-sm font-bold text-indigo-600 hover:underline"
+                          >
+                            Gửi lại mã OTP
+                          </button>
+
+                        )
+                      }
+
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="w-full py-5 bg-indigo-600 text-white font-bold rounded-2xl"
+                    >
+                      Xác thực OTP
+                    </button>
+
+                  </form>
+
+                )
+            } 
+                {
+                  step === 3 && (
+
+                    <form
+                      onSubmit={async (e) => {
+
+                        e.preventDefault();
+
+                        try {
+
+                          await authApi.forgotPassword({
+                            email: resetEmail
+                          });
+
+                          toast.success(
+                            "OTP reset password đã được gửi!"
+                          );
+
+                          setStep(4);
+
+                          setTimeLeft(60);
+
+                          setCanResend(false);
+
+                        } catch (err) {
+
+                          toast.error(
+                            err.response?.data?.message
+                          );
+
+                        }
+
+                      }}
+                      className="space-y-5"
+                    >
+
+                      <div className="text-center">
+
+                        <h2 className="text-2xl font-bold">
+                          Quên mật khẩu
+                        </h2>
+
+                        <p className="text-slate-500 mt-2">
+                          Nhập email để nhận OTP
+                        </p>
+
+                      </div>
+
+                      <div className="relative group">
+
+                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+
+                        <input
+                          type="email"
+                          value={resetEmail}
+                          onChange={(e) =>
+                            setResetEmail(e.target.value)
+                          }
+                          placeholder="Nhập email"
+                          required
+                          className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl"
+                        />
+
+                      </div>
+
+                      <button
+                        type="submit"
+                        className="w-full py-5 bg-indigo-600 text-white font-bold rounded-2xl"
+                      >
+                        Gửi OTP
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setStep(1)}
+                        className="w-full py-3 text-sm font-bold text-slate-500 hover:text-indigo-600"
+                      >
+                        Quay lại đăng nhập
+                      </button>
+
+                    </form>
+
+                  )
+                }
+                {
+                  step === 4 && (
+
+                    <form
+                      onSubmit={async (e) => {
+
+                        e.preventDefault();
+
+                        try {
+
+                          await authApi.resetPassword({
+
+                            email: resetEmail,
+
+                            otp: resetOtp,
+
+                            newPassword,
+
+                          });
+
+                          toast.success(
+                            "Đổi mật khẩu thành công!"
+                          );
+
+                          setStep(1);
+
+                          setResetEmail("");
+
+                          setResetOtp("");
+
+                          setNewPassword("");
+
+                        } catch (err) {
+
+                          toast.error(
+                            err.response?.data?.message
+                          );
+
+                        }
+
+                      }}
+                      className="space-y-5"
+                    >
+
+                      <div className="text-center">
+
+                        <h2 className="text-2xl font-bold">
+                          Đặt lại mật khẩu
+                        </h2>
+
+                        <p className="text-slate-500 mt-2">
+                          Nhập OTP và mật khẩu mới
+                        </p>
+
+                      </div>
+
+                      <input
+                        value={resetOtp}
+                        onChange={(e) =>
+                          setResetOtp(e.target.value)
+                        }
+                        type="text"
+                        placeholder="Nhập OTP"
+                        required
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl"
+                      />
+
+                      <input
+                        value={newPassword}
+                        onChange={(e) =>
+                          setNewPassword(e.target.value)
+                        }
+                        type="password"
+                        placeholder="Mật khẩu mới"
+                        required
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl"
+                      />
+
+                      {/* COUNTDOWN */}
+
+                      <div className="text-center">
+
+                        {
+                          !canResend ? (
+
+                            <p className="text-sm text-slate-500">
+
+                              OTP hết hạn sau:
+
+                              <span className="font-bold text-indigo-600">
+                                {" "}
+                                {timeLeft}s
+                              </span>
+
+                            </p>
+
+                          ) : (
+
+                            <button
+                              type="button"
+                              onClick={async () => {
+
+                                try {
+
+                                  await authApi.forgotPassword({
+                                    email: resetEmail
+                                  });
+
+                                  toast.success(
+                                    "Đã gửi lại OTP!"
+                                  );
+
+                                  setTimeLeft(60);
+
+                                  setCanResend(false);
+
+                                } catch (err) {
+
+                                  toast.error(
+                                    err.response?.data?.message
+                                  );
+
+                                }
+
+                              }}
+                              className="text-sm font-bold text-indigo-600 hover:underline"
+                            >
+                              Gửi lại mã OTP
+                            </button>
+
+                          )
+                        }
+
+                      </div>
+
+                      <button
+                        type="submit"
+                        className="w-full py-5 bg-indigo-600 text-white font-bold rounded-2xl"
+                      >
+                        Đổi mật khẩu
+                      </button>
+
+                    </form>
+
+                  )
+                }
           <div className="my-10 flex items-center">
             <div className="flex-1 border-t border-slate-100"></div>
             <span className="mx-4 text-xs font-bold text-slate-400 uppercase tracking-widest">

@@ -1,23 +1,23 @@
-import { getTutorAvailabilityRules, replaceTutorAvailability } from '../dal/tutorAvailability.dal.js'
-import db from '../config/db.js'
+import db from "../config/db.js";
 import {
   getTutorAvailabilityRules,
   replaceTutorAvailability,
-} from '../dal/tutorAvailability.dal.js'
+} from "../dal/tutorAvailability.dal.js";
 
 const addOneHour = (time) => {
-  const [hour, minute] = time.split(':').map(Number)
+  const [hour, minute] = time.split(":").map(Number);
 
-  const nextHour = hour + 1
+  const nextHour = hour + 1;
 
-  return `${String(nextHour).padStart(2, '0')}:${String(
-    minute
-  ).padStart(2, '0')}:00`
-}
+  return `${String(nextHour).padStart(2, "0")}:${String(minute).padStart(
+    2,
+    "0",
+  )}:00`;
+};
 
 const normalizeTime = (time) => {
-  return `${time}:00`
-}
+  return `${time}:00`;
+};
 
 /**
  * Payload frontend:
@@ -31,163 +31,122 @@ const normalizeTime = (time) => {
  *   repeatWeekly: true
  * }
  */
-export const saveAvailabilityPreferences = async (
-  tutorId,
-  payload
-) => {
-  const {
-    dates = [],
-    repeatWeekly = false,
-  } = payload || {}
+export const saveAvailabilityPreferences = async (tutorId, payload) => {
+  const { dates = [], repeatWeekly = false } = payload || {};
 
-  const normalized = []
+  const normalized = [];
 
   for (const item of dates) {
-    const dateObj = new Date(item.date)
+    const dateObj = new Date(item.date);
 
-    const dayOfWeek = dateObj.getDay()
+    const dayOfWeek = dateObj.getDay();
 
     for (const time of item.times || []) {
       normalized.push({
-        dayOfWeek: repeatWeekly
-          ? dayOfWeek
-          : null,
+        dayOfWeek: repeatWeekly ? dayOfWeek : null,
 
-        specificDate: repeatWeekly
-          ? null
-          : item.date,
+        specificDate: repeatWeekly ? null : item.date,
 
         startTime: normalizeTime(time),
 
         endTime: addOneHour(time),
-      })
+      });
     }
   }
 
-  await replaceTutorAvailability(
-    tutorId,
-    normalized
-  )
-}
+  await replaceTutorAvailability(tutorId, normalized);
+};
 
 const toHourSlots = (startTime, endTime) => {
-  const startHour = parseInt(
-    String(startTime).split(':')[0]
-  )
+  const startHour = parseInt(String(startTime).split(":")[0]);
 
-  const endHour = parseInt(
-    String(endTime).split(':')[0]
-  )
+  const endHour = parseInt(String(endTime).split(":")[0]);
 
-  const slots = []
+  const slots = [];
 
   if (isNaN(startHour) || isNaN(endHour)) {
-    return []
+    return [];
   }
 
-  for (
-    let hour = startHour;
-    hour < endHour;
-    hour += 1
-  ) {
-    slots.push(
-      `${String(hour).padStart(2, '0')}:00`
-    )
+  for (let hour = startHour; hour < endHour; hour += 1) {
+    slots.push(`${String(hour).padStart(2, "0")}:00`);
   }
 
-  return slots
-}
+  return slots;
+};
 
-export const buildAvailabilitySlots = async (
-  tutorId,
-  daysAhead = 14
-) => {
-  const rules =
-    await getTutorAvailabilityRules(tutorId)
+export const buildAvailabilitySlots = async (tutorId, daysAhead = 14) => {
+  const rules = await getTutorAvailabilityRules(tutorId);
 
-  if (!rules.length) return []
+  if (!rules.length) return [];
 
-  const now = new Date()
+  const now = new Date();
 
-  const today = new Date(now)
+  const today = new Date(now);
 
-  today.setHours(0, 0, 0, 0)
+  today.setHours(0, 0, 0, 0);
 
-  const result = []
+  const result = [];
 
   for (let i = 0; i < daysAhead; i += 1) {
-    const date = new Date(today)
+    const date = new Date(today);
 
-    date.setDate(today.getDate() + i)
+    date.setDate(today.getDate() + i);
 
-    const dayOfWeek = date.getDay()
+    const dayOfWeek = date.getDay();
 
-    const year = date.getFullYear()
+    const year = date.getFullYear();
 
-    const month = String(
-      date.getMonth() + 1
-    ).padStart(2, '0')
+    const month = String(date.getMonth() + 1).padStart(2, "0");
 
-    const day = String(
-      date.getDate()
-    ).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, "0");
 
-    const dateStr = `${year}-${month}-${day}`
+    const dateStr = `${year}-${month}-${day}`;
 
     // recurring weekly rules
     const weeklyRules = rules.filter(
-      (rule) =>
-        rule.dayOfWeek !== null &&
-        Number(rule.dayOfWeek) === dayOfWeek
-    )
+      (rule) => rule.dayOfWeek !== null && Number(rule.dayOfWeek) === dayOfWeek,
+    );
 
     // exact specific_date rules
-    const specificDateRules = rules.filter(
-      (rule) =>
-        rule.specificDate &&
-        rule.specificDate === dateStr
-    )
+    const specificDateRules = rules.filter((rule) => {
+      if (!rule.specificDate) return false;
+
+      const ruleDate = new Date(rule.specificDate).toISOString().split("T")[0];
+
+      return ruleDate === dateStr;
+    });
 
     // merge cả 2
-    const mergedRules = [
-      ...weeklyRules,
-      ...specificDateRules,
-    ]
+    const mergedRules = [...weeklyRules, ...specificDateRules];
 
-    if (!mergedRules.length) continue
+    if (!mergedRules.length) continue;
 
     let times = [
       ...new Set(
         mergedRules.flatMap((rule) =>
-          toHourSlots(
-            rule.startTime,
-            rule.endTime
-          )
-        )
+          toHourSlots(rule.startTime, rule.endTime),
+        ),
       ),
-    ].sort()
+    ].sort();
 
     // remove passed hours today
     if (i === 0) {
-      const currentHour = now.getHours()
+      const currentHour = now.getHours();
 
-      times = times.filter(
-        (t) =>
-          parseInt(t.split(':')[0]) >
-          currentHour
-      )
+      times = times.filter((t) => parseInt(t.split(":")[0]) > currentHour);
     }
 
-    if (!times.length) continue
+    if (!times.length) continue;
 
     result.push({
       date: dateStr,
       times,
-    })
+    });
   }
 
-  return result
-}
+  return result;
+};
 /*import { getTutorAvailabilityRules, replaceTutorAvailability } from '../dal/tutorAvailability.dal.js'
 
 const AVAILABILITY_TEMPLATES = {

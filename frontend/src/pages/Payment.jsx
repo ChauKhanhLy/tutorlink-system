@@ -1,4 +1,4 @@
-// src/pages/Payment.jsx
+
 import React from "react";
 import {
   CreditCard,
