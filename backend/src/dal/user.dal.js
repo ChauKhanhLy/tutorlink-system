@@ -10,15 +10,46 @@ export const findByEmail = async (email) => {
 }
 
 // tạo user
-export const createUser = async ({ email, password, name, role, verified }) => {
+export const createUser = async ({
+  email,
+  password,
+  name,
+  role,
+  verified,
+  email_verified,
+  otp_code,
+  otp_expires
+}) => {
+
   const result = await db.query(
-    `INSERT INTO users (email, password, name, role, verified)
-     VALUES ($1, $2, $3, $4, $5)
-     RETURNING *`,
-    [email, password, name, role, verified]
-  )
+    `
+    INSERT INTO users (
+      email,
+      password,
+      name,
+      role,
+      verified,
+      email_verified,
+      otp_code,
+      otp_expires
+    )
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+    RETURNING *
+    `,
+    [
+      email,
+      password,
+      name,
+      role,
+      verified,
+      email_verified,
+      otp_code,
+      otp_expires
+    ]
+  );
 
   console.log("USER CREATED:", result.rows[0])
+
   return result.rows[0]
 }
 // lấy tất cả user
@@ -87,8 +118,6 @@ export const updateAvatar = async (userId, avatar) => {
   )
   return result.rows[0]
 }
-
-
 
 /*const pool = require('../config/db')
 
