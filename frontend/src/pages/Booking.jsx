@@ -145,7 +145,11 @@ export function BookingPage() {
                     <div className="flex-shrink-0">
                       <div className="w-24 h-24 rounded-2xl overflow-hidden">
                         <ImageWithFallback
-                          src={tutor?.avatar || "https://i.pravatar.cc/150"}
+                          src={
+                            user?.avatar
+                            ? user.avatar
+                            : `https://api.dicebear.com/7.x/initials/svg?seed=${user?.name}`
+                          }
                           alt={tutor?.name}
                           className="w-full h-full object-cover"
                         />

@@ -314,7 +314,11 @@ export function SearchPage() {
                       <div className="flex-shrink-0">
                         <div className="relative w-full md:w-48 h-48 rounded-2xl overflow-hidden mb-4">
                           <ImageWithFallback
-                            src={tutor.avatar}
+                            src={
+                                tutor?.avatar
+                                ? tutor.avatar
+                                : `https://api.dicebear.com/7.x/initials/svg?seed=${tutor?.name}`
+                            }
                             alt={tutor.name}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                           />
