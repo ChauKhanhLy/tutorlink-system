@@ -16,8 +16,47 @@ export const getUserById = async (req, res) => {
     res.status(400).json({ message: err.message })
   }
 }
-
 export const updateProfile = async (req, res) => {
+  try {
+    console.log(req.user)
+    const userId = req.user.id
+
+    const {
+      name,
+      phone,
+      location,
+      bio,
+      avatar
+    } = req.body
+
+    const updatedUser =
+      await updateProfileService(
+        userId,
+        {
+          name,
+          phone,
+          location,
+          bio,
+          avatar
+        }
+      )
+
+    res.json({
+      message: "Update profile success",
+      user: updatedUser
+    })
+
+  } catch (err) {
+
+    console.error(err)
+
+    res.status(400).json({
+      message: err.message
+    })
+
+  }
+}
+/*export const updateProfile = async (req, res) => {
   try {
     const userId = req.user.id
     const { name, phone, avatar } = req.body
@@ -35,7 +74,7 @@ export const updateProfile = async (req, res) => {
   } catch (err) {
     res.status(400).json({ message: err.message })
   }
-}
+}*/
 
 export const becomeTutor = async (req, res) => {
   try {
@@ -88,6 +127,7 @@ export const updateAvatar = async (req, res) => {
     res.status(500).json({ message: err.message })
   }
 }
+
 
 /*const userService = require('../services/user.service')
 

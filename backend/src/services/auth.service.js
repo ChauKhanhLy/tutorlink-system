@@ -377,16 +377,20 @@ export const login = async ({ email, password }) => {
   )
 
   return {
-    token,
-    user: {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      verified: user.verified,
-      email_verified: user.email_verified
-    }
+  token,
+  user: {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    phone: user.phone,
+    location: user.location,
+    bio: user.bio,
+    avatar: user.avatar,
+    role: user.role,
+    verified: user.verified,
+    email_verified: user.email_verified
   }
+}
 }
 export const forgotPassword =
 async (email) => {

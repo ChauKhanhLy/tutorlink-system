@@ -16,7 +16,10 @@ import { ImageWithFallback } from "../components/Image/ImageWithFallback";
 import api from "../api/axiosClient";
 
 export function ProfilePage() {
-  const { user, updateUser } = useAuth();
+  const {
+  user,
+  setUser
+} = useAuth()
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -46,17 +49,38 @@ export function ProfilePage() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSave = async () => {
-    try {
-      const res = await api.put("/users/me", formData);
-      updateUser(res.data.user);
-      toast.success("Cập nhật thông tin thành công");
-      setIsEditing(false);
-    } catch (err) {
-      console.error(err);
-      toast.error("Cập nhật thất bại");
-    }
-  };
+ const handleSave = async () => {
+  try {
+
+    const res = await api.put(
+      "/users/me",
+      formData
+    );
+
+    setUser(res.data.user);
+
+    localStorage.setItem(
+      "user",
+      JSON.stringify(res.data.user)
+    );
+
+    toast.success(
+      "Cập nhật thông tin thành công"
+    );
+
+    setIsEditing(false);
+
+  } catch (err) {
+
+    console.error(err);
+
+    toast.error(
+      err.response?.data?.message ||
+      "Cập nhật thất bại"
+    );
+
+  }
+};
 
   const handleAvatarChange = async (e) => {
     try {
@@ -68,7 +92,7 @@ export function ProfilePage() {
 
       const res = await api.post("/users/avatar", formData);
 
-      updateUser(res.data.user);
+      ;
       toast.success("Cập nhật avatar thành công");
     } catch (err) {
       console.error(err);
