@@ -118,6 +118,20 @@ export const updateAvatar = async (userId, avatar) => {
   )
   return result.rows[0]
 }
+export const updatePassword =
+  async (userId, password) => {
+
+    const query = `
+      UPDATE users
+      SET password = $1
+      WHERE id = $2
+    `;
+
+    await pool.query(query, [
+      password,
+      userId
+    ]);
+};
 
 /*const pool = require('../config/db')
 

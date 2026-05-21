@@ -9,6 +9,8 @@ import {
   Camera,
   Save,
   Lock,
+  Eye,
+  EyeOff
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../context/AuthContext";
@@ -99,7 +101,53 @@ export function ProfilePage() {
       toast.error("Upload avatar thất bại");
     }
   };
+   const [showPasswordModal, setShowPasswordModal] =
+  useState(false);
 
+const [passwordData, setPasswordData] =
+  useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+});
+
+const [showPasswords, setShowPasswords] =
+  useState({
+    current: false,
+    new: false,
+    confirm: false,
+});
+const handleChangePassword = async () => {
+
+  if (
+    !passwordData.currentPassword ||
+    !passwordData.newPassword ||
+    !passwordData.confirmPassword
+  ) {
+    return toast.error(
+      "Vui lòng nhập đầy đủ thông tin"
+    );
+  }
+
+  if (
+    passwordData.newPassword !==
+    passwordData.confirmPassword
+  ) {
+    return toast.error(
+      "Mật khẩu xác nhận không khớp"
+    );
+  }
+
+  if (
+    passwordData.newPassword.length < 8
+  ) {
+    return toast.error(
+      "Mật khẩu mới tối thiểu 8 ký tự"
+    );
+  }
+
+  console.log("VALID OK");
+};
   if (loading) {
     return (
       <div className="pt-32 flex justify-center">
@@ -107,8 +155,8 @@ export function ProfilePage() {
       </div>
     );
   }
-
   return (
+    <>
     <div className="pt-24 pb-16 bg-slate-50 min-h-screen">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
@@ -299,14 +347,207 @@ export function ProfilePage() {
                     Cập nhật mật khẩu định kỳ để bảo vệ tài khoản
                   </p>
                 </div>
-                <button className="px-5 py-2.5 border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-all">
-                  Đổi mật khẩu
-                </button>
+                  <button
+                    onClick={() =>
+                      setShowPasswordModal(true)
+                    }
+                    className="px-5 py-2.5 border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-all"
+                  >
+                    Đổi mật khẩu
+                  </button>
               </div>
             </div>
           </div>
         </div>
       </div>
     </div>
+    {
+  showPasswordModal && (
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
+
+      <div className="bg-white w-full max-w-md rounded-3xl p-6 shadow-xl">
+
+        <h2 className="text-2xl font-bold mb-6">
+          Đổi mật khẩu
+        </h2>
+
+        <div className="space-y-4">
+
+          {/* Current password */}
+          <label className="block text-sm font-bold text-slate-700 mb-2">
+            Mật khẩu hiện tại
+          </label>
+          <div className="relative">
+
+            <input
+              type={
+                showPasswords.current
+                  ? "text"
+                  : "password"
+              }
+              placeholder="Mật khẩu hiện tại"
+              value={passwordData.currentPassword}
+              onChange={(e) =>
+                setPasswordData({
+                  ...passwordData,
+                  currentPassword:
+                    e.target.value
+                })
+              }
+              className="w-full px-4 py-3 border rounded-xl pr-12"
+            />
+
+            <button
+              type="button"
+              onClick={() =>
+                setShowPasswords({
+                  ...showPasswords,
+                  current:
+                    !showPasswords.current
+                })
+              }
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
+            >
+              {
+                showPasswords.current
+                  ? <EyeOff size={20} />
+                  : <Eye size={20} />
+              }
+            </button>
+
+          </div>
+
+          {/* New password */}
+          <label className="block text-sm font-bold text-slate-700 mb-2">
+            Mật khẩu mới
+          </label>
+          <div className="relative">
+
+            <input
+              type={
+                showPasswords.new
+                  ? "text"
+                  : "password"
+              }
+              placeholder="Mật khẩu mới"
+              value={passwordData.newPassword}
+              onChange={(e) =>
+                setPasswordData({
+                  ...passwordData,
+                  newPassword:
+                    e.target.value
+                })
+              }
+              className="w-full px-4 py-3 border rounded-xl pr-12"
+            />
+
+            <button
+              type="button"
+              onClick={() =>
+                setShowPasswords({
+                  ...showPasswords,
+                  new:
+                    !showPasswords.new
+                })
+              }
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
+            >
+              {
+                showPasswords.new
+                  ? <EyeOff size={20} />
+                  : <Eye size={20} />
+              }
+            </button>
+
+          </div>
+
+          {/* Confirm password */}
+          <label className="block text-sm font-bold text-slate-700 mb-2">
+            Mật khẩu mới
+          </label>
+          <div className="relative">
+
+            <input
+              type={
+                showPasswords.confirm
+                  ? "text"
+                  : "password"
+              }
+              placeholder="Xác nhận mật khẩu mới"
+              value={passwordData.confirmPassword}
+              onChange={(e) =>
+                setPasswordData({
+                  ...passwordData,
+                  confirmPassword:
+                    e.target.value
+                })
+              }
+              className="w-full px-4 py-3 border rounded-xl pr-12"
+            />
+
+            <button
+              type="button"
+              onClick={() =>
+                setShowPasswords({
+                  ...showPasswords,
+                  confirm:
+                    !showPasswords.confirm
+                })
+              }
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
+            >
+              {
+                showPasswords.confirm
+                  ? <EyeOff size={20} />
+                  : <Eye size={20} />
+              }
+            </button>
+
+          </div>
+
+          <div className="flex gap-3 pt-2">
+
+            <button
+              onClick={handleChangePassword}
+              className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold"
+            >
+              Xác nhận
+            </button>
+
+            <button
+              onClick={() =>
+                setShowPasswordModal(false)
+              }
+              className="flex-1 py-3 border rounded-xl font-bold"
+            >
+              Hủy
+            </button>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+{/* {
+  passwordData.newPassword &&
+  passwordData.confirmPassword &&
+  passwordData.newPassword !==
+  passwordData.confirmPassword && (
+    <p className="text-red-500 text-sm">
+      Mật khẩu xác nhận không khớp
+    </p>
+)
+}
+{
+  passwordData.newPassword &&
+  passwordData.newPassword.length < 8 && (
+    <p className="text-red-500 text-sm">
+      Mật khẩu phải tối thiểu 8 ký tự
+    </p>
+)
+} */}
+    </>
   );
+ 
 }

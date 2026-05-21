@@ -494,6 +494,49 @@ async ({
       "Password reset successful"
   };
 }
+export const changePassword = async (
+  userId,
+  currentPassword,
+  newPassword
+) => {
+
+  const user =
+    await userDAL.findById(userId);
+
+  if (!user) {
+    throw new Error(
+      "Không tìm thấy user"
+    );
+  }
+
+  const isMatch =
+    await bcrypt.compare(
+      currentPassword,
+      user.password
+    );
+
+  if (!isMatch) {
+    throw new Error(
+      "Mật khẩu hiện tại không đúng"
+    );
+  }
+
+  if (newPassword.length < 8) {
+    throw new Error(
+      "Mật khẩu phải tối thiểu 8 ký tự"
+    );
+  }
+
+  const hashedPassword =
+    await bcrypt.hash(newPassword, 10);
+
+  await userDAL.updatePassword(
+    userId,
+    hashedPassword
+  );
+
+  return true;
+};
 /*const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
 const userDAL = require('../dal/user.dal')
