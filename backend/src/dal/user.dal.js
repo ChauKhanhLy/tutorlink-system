@@ -1,4 +1,6 @@
-import db from '../config/db.js'
+import db from '../config/db.js';
+import pool from "../config/db.js"
+
 
 // tìm user theo email
 export const findByEmail = async (email) => {

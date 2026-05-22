@@ -146,7 +146,38 @@ const handleChangePassword = async () => {
     );
   }
 
-  console.log("VALID OK");
+  try {
+
+  const res = await api.put(
+    "/auth/change-password",
+    {
+      currentPassword:
+        passwordData.currentPassword,
+
+      newPassword:
+        passwordData.newPassword,
+    }
+  );
+
+  toast.success(res.data.message);
+
+  setShowPasswordModal(false);
+
+  setPasswordData({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+
+} catch (err) {
+
+  console.error(err);
+
+  toast.error(
+    err.response?.data?.message ||
+    "Đổi mật khẩu thất bại"
+  );
+}
 };
   if (loading) {
     return (
@@ -529,24 +560,7 @@ const handleChangePassword = async () => {
     </div>
   )
 }
-{/* {
-  passwordData.newPassword &&
-  passwordData.confirmPassword &&
-  passwordData.newPassword !==
-  passwordData.confirmPassword && (
-    <p className="text-red-500 text-sm">
-      Mật khẩu xác nhận không khớp
-    </p>
-)
-}
-{
-  passwordData.newPassword &&
-  passwordData.newPassword.length < 8 && (
-    <p className="text-red-500 text-sm">
-      Mật khẩu phải tối thiểu 8 ký tự
-    </p>
-)
-} */}
+
     </>
   );
  
