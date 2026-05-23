@@ -4,7 +4,7 @@ import {
   replaceTutorAvailability,
 } from "../dal/tutorAvailability.dal.js";
 
-const addOneHour = (time) => {
+/*const addOneHour = (time) => {
   const [hour, minute] = time.split(":").map(Number);
 
   const nextHour = hour + 1;
@@ -13,7 +13,13 @@ const addOneHour = (time) => {
     2,
     "0",
   )}:00`;
-};
+};*/
+const addOneHour = (time) => {
+  const [hour, minute] = time.split(':').map(Number)
+  let nextHour = hour + 1
+  if (nextHour >= 24) nextHour = 23  // giới hạn đến 23:00
+  return `${String(nextHour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`
+}
 
 const normalizeTime = (time) => {
   return `${time}:00`;
