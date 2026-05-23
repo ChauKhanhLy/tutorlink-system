@@ -81,9 +81,16 @@ export const AuthProvider = ({ children }) => {
     console.error("Refresh user lỗi:", err);
   }
 };
+const updateUser = (newUser) => {
+  localStorage.setItem(
+    "user",
+    JSON.stringify(newUser)
+  );
 
+  setUser(newUser);
+};
   return (
-    <AuthContext.Provider value={{ user, setUser, login, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, setUser, login, logout, refreshUser, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

@@ -52,6 +52,40 @@ export const becomeTutor = async (req, res) => {
 
 export const updateAvatar = async (req, res) => {
   try {
+    console.log("API HIT");
+    console.log("file:", req.file);
+
+    const userId = req.user.id;
+
+    if (!req.file) {
+      return res.status(400).json({
+        message: "Không có file upload",
+      });
+    }
+
+    const avatarUrl = req.file.path;
+
+    const updatedUser = await userService.updateAvatar(
+      userId,
+      avatarUrl
+    );
+
+    res.json({
+      message: "Upload thành công",
+      user: updatedUser,
+    });
+
+  } catch (err) {
+    console.error(err);
+
+    res.status(500).json({
+      message: err.message,
+    });
+  }
+};
+
+/*export const updateAvatar = async (req, res) => {
+  try {
     console.log("API HIT")
     const userId = req.user.id
     console.log("userId:", userId)

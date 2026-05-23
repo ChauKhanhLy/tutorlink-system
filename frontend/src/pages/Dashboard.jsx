@@ -132,7 +132,11 @@ export function DashboardPage() {
               <div className="flex flex-col items-center mb-10 p-4 bg-indigo-50 rounded-2xl relative overflow-hidden">
                 <div className="relative w-20 h-20 rounded-full border-4 border-white shadow-xl overflow-hidden mb-4 z-10">
                   <ImageWithFallback
-                    src={user?.avatar || "https://i.pravatar.cc/150"}
+                    src={
+                          user?.avatar
+                            ? user.avatar
+                            : `https://api.dicebear.com/7.x/initials/svg?seed=${user?.name}`
+                    }
                     alt={user?.name}
                   />
                 </div>

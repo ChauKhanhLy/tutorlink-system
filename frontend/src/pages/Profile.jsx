@@ -26,6 +26,7 @@ export function ProfilePage() {
     bio: "",
   });
   const [loading, setLoading] = useState(true);
+ 
 
   useEffect(() => {
     if (user) {
@@ -42,23 +43,7 @@ export function ProfilePage() {
     }
   }, [user]);
 
-  const handleInputChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handleSave = async () => {
-    try {
-      const res = await api.put("/users/me", formData);
-      updateUser(res.data.user);
-      toast.success("Cập nhật thông tin thành công");
-      setIsEditing(false);
-    } catch (err) {
-      console.error(err);
-      toast.error("Cập nhật thất bại");
-    }
-  };
-
-  const handleAvatarChange = async (e) => {
+ /* const handleAvatarChange = async (e) => {
     try {
       const file = e.target.files[0];
       if (!file) return;
@@ -74,7 +59,42 @@ export function ProfilePage() {
       console.error(err);
       toast.error("Upload avatar thất bại");
     }
-  };
+  };*/
+  const handleAvatarChange = async (e) => {
+  try {
+    const file = e.target.files[0];
+
+    if (!file) return;
+
+    console.log(file);
+
+    const formData = new FormData();
+
+    formData.append("avatar", file);
+
+    const res = await api.post(
+      "/users/avatar",
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+
+    console.log(res.data);
+
+    updateUser(res.data.user);
+
+    toast.success("Upload thành công");
+
+  } catch (err) {
+    console.log(err.response?.data);
+    console.log(err);
+
+    toast.error("Upload avatar thất bại");
+  }
+};
 
   if (loading) {
     return (
@@ -105,8 +125,8 @@ export function ProfilePage() {
                   <ImageWithFallback
                     src={
                       user?.avatar
-                        ? `http://localhost:3000${user.avatar}`
-                        : "https://i.pravatar.cc/150"
+                        ? user.avatar
+                        : `https://api.dicebear.com/7.x/initials/svg?seed=${user?.name}`
                     }
                     alt={user?.name}
                     className="w-full h-full object-cover"
