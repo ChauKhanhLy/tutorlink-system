@@ -17,6 +17,8 @@ import { bookingApi } from "../api/bookingApi";
 
 import { ImageWithFallback } from "../components/Image/ImageWithFallback";
 import { WalletPage } from "./Wallet.jsx";
+import DatePicker from "react-multi-date-picker";
+import "react-multi-date-picker/styles/colors/purple.css";
 
 import { toast } from "sonner";
 
@@ -40,7 +42,8 @@ export function TutorDashboard() {
   const [availability, setAvailability] = React.useState([]);
 
   const [activeTab, setActiveTab] = React.useState("sessions");
-  const [showAvailabilityModal, setShowAvailabilityModal] = React.useState(false);
+  const [showAvailabilityModal, setShowAvailabilityModal] =
+    React.useState(false);
 
   const fetchTutorData = async () => {
     if (!user?.id || isPending) return;
@@ -53,7 +56,9 @@ export function TutorDashboard() {
 
       setStats(statsRes.data.data || statsRes.data);
       setUpcomingSessions(sessionsRes.data || []);
-      setAvailability(availabilityRes.data?.availableSlots || availabilityRes.data || []);
+      setAvailability(
+        availabilityRes.data?.availableSlots || availabilityRes.data || [],
+      );
     } catch (err) {
       console.error(err);
       toast.error("Không thể tải dữ liệu");
@@ -84,7 +89,9 @@ export function TutorDashboard() {
       }
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.message || "Không thể chấp nhận lịch học");
+      toast.error(
+        err.response?.data?.message || "Không thể chấp nhận lịch học",
+      );
     }
   };
 
@@ -110,7 +117,9 @@ export function TutorDashboard() {
       setShowAvailabilityModal(false);
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.message || "Cập nhật thất bại, vui lòng thử lại");
+      toast.error(
+        err.response?.data?.message || "Cập nhật thất bại, vui lòng thử lại",
+      );
     } finally {
       setLoadingAvailability(false);
     }
@@ -235,11 +244,13 @@ export function TutorDashboard() {
                 <h2 className="text-xl font-bold text-slate-900 mb-6">
                   Lịch rảnh của tôi
                 </h2>
-                <div className="max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+                <div className="max-h-[420px] overflow-y-auto pr-3 custom-scrollbar">
                   <div className="space-y-6">
                     {availability.length > 0 ? (
                       availability.map((slot, index) => {
-                        const [year, month, day] = slot.date.split("-").map(Number);
+                        const [year, month, day] = slot.date
+                          .split("-")
+                          .map(Number);
                         const dateObj = new Date(year, month - 1, day);
                         return (
                           <div key={index}>
@@ -423,8 +434,8 @@ function SessionCard({ session, onAccept, onReject }) {
               {session.status === "cancel"
                 ? "Đã hủy"
                 : session.room_id || session.roomId
-                ? "Chưa đến giờ"
-                : "Đã xong"}
+                  ? "Chưa đến giờ"
+                  : "Đã xong"}
             </div>
           )}
         </div>
@@ -435,28 +446,52 @@ function SessionCard({ session, onAccept, onReject }) {
 
 // ========== AvailabilityModal ==========
 function AvailabilityModal({ onClose, onSave, isLoading = false }) {
-  const [selectedDate, setSelectedDate] = React.useState("");
+  const [selectedDates, setSelectedDates] = React.useState([]);
   const [selectedTimes, setSelectedTimes] = React.useState([]);
   const [availabilityMap, setAvailabilityMap] = React.useState({});
-  const [repeatWeekly, setRepeatWeekly] = React.useState(false);
 
   const TIMES = [
-    "08:00", "09:00", "10:00", "11:00",
-    "13:00", "14:00", "15:00", "16:00",
-    "19:00", "20:00", "21:00",
+    "08:00",
+    "09:00",
+    "10:00",
+    "11:00",
+    "13:00",
+    "14:00",
+    "15:00",
+    "16:00",
+    "19:00",
+    "20:00",
+    "21:00",
   ];
+
+  const toggleDate = (date) => {
+    setSelectedDates((prev) =>
+      prev.includes(date) ? prev.filter((d) => d !== date) : [...prev, date],
+    );
+  };
 
   const toggleTime = (time) => {
     setSelectedTimes((prev) =>
-      prev.includes(time) ? prev.filter((t) => t !== time) : [...prev, time]
+      prev.includes(time) ? prev.filter((t) => t !== time) : [...prev, time],
     );
   };
 
   const addCurrentDate = () => {
-    if (!selectedDate) return alert("Vui lòng chọn ngày");
-    if (selectedTimes.length === 0) return alert("Vui lòng chọn ít nhất một khung giờ");
-    setAvailabilityMap((prev) => ({ ...prev, [selectedDate]: selectedTimes }));
-    setSelectedDate("");
+    if (selectedDates.length === 0) return alert("Vui lòng chọn ngày");
+
+    if (selectedTimes.length === 0) return alert("Vui lòng chọn giờ");
+
+    const newMap = { ...availabilityMap };
+
+    selectedDates.forEach((dateObj) => {
+      const date = dateObj.format("YYYY-MM-DD");
+
+      newMap[date] = selectedTimes;
+    });
+
+    setAvailabilityMap(newMap);
+
+    setSelectedDates([]);
     setSelectedTimes([]);
   };
 
@@ -478,7 +513,7 @@ function AvailabilityModal({ onClose, onSave, isLoading = false }) {
       date,
       times,
     }));
-    await onSave({ dates: datesArray, repeatWeekly });
+    await onSave({ dates: datesArray });
   };
 
   return (
@@ -486,8 +521,12 @@ function AvailabilityModal({ onClose, onSave, isLoading = false }) {
       <div className="bg-white w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden">
         <div className="px-8 py-5 border-b border-slate-100 flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-extrabold text-slate-900">Cập nhật lịch rảnh</h2>
-            <p className="text-slate-500 text-sm">Chọn ngày + giờ → Thêm ngày → Lưu</p>
+            <h2 className="text-xl font-extrabold text-slate-900">
+              Cập nhật lịch rảnh
+            </h2>
+            <p className="text-slate-500 text-sm">
+              Chọn ngày + giờ → Thêm ngày → Lưu
+            </p>
           </div>
           <button
             onClick={onClose}
@@ -500,30 +539,50 @@ function AvailabilityModal({ onClose, onSave, isLoading = false }) {
 
         <div className="grid grid-cols-1 md:grid-cols-2">
           <div className="p-6 border-r border-slate-100 bg-slate-50">
-            <label className="text-sm font-bold text-slate-700 block mb-2">Chọn ngày</label>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-4 py-3 focus:ring-2 focus:ring-indigo-500"
-              disabled={isLoading}
-            />
+            <label className="text-sm font-bold text-slate-700 block mb-2">
+              Chọn ngày
+            </label>
+            <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
+              <DatePicker
+                multiple
+                value={selectedDates}
+                onChange={setSelectedDates}
+                format="YYYY-MM-DD"
+                minDate={new Date()}
+                numberOfMonths={1}
+                className="purple"
+                calendarPosition="bottom-center"
+                inputClass="hidden"
+                containerClassName="w-full"
+                render={(value, openCalendar) => (
+                  <button
+                    onClick={openCalendar}
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 hover:border-indigo-300 hover:bg-indigo-50 transition text-left"
+                  >
+                    <p className="text-sm font-bold text-slate-700 mb-1">
+                      Chọn ngày dạy
+                    </p>
 
-            <div className="mt-6 bg-white rounded-2xl p-4 border shadow-sm">
-              <p className="font-bold text-slate-800 mb-3">Lặp lại hàng tuần</p>
-              <button
-                onClick={() => setRepeatWeekly(!repeatWeekly)}
-                disabled={isLoading}
-                className={`w-full py-3 rounded-xl font-bold transition ${
-                  repeatWeekly
-                    ? "bg-indigo-600 text-white"
-                    : "bg-slate-100 text-slate-500"
-                } disabled:opacity-50`}
-              >
-                {repeatWeekly ? "✓ Bật lặp 8 tuần" : "Bật lặp mỗi tuần"}
-              </button>
+                    {selectedDates.length > 0 ? (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {selectedDates.map((date, index) => (
+                          <span
+                            key={index}
+                            className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-lg text-xs font-bold"
+                          >
+                            {date.format("DD/MM")}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-slate-400 text-sm">
+                        Chọn một hoặc nhiều ngày
+                      </p>
+                    )}
+                  </button>
+                )}
+              />
             </div>
-
             <button
               onClick={addCurrentDate}
               disabled={isLoading}
@@ -534,7 +593,9 @@ function AvailabilityModal({ onClose, onSave, isLoading = false }) {
           </div>
 
           <div className="p-6">
-            <label className="text-sm font-bold text-slate-700 block mb-3">Chọn khung giờ</label>
+            <label className="text-sm font-bold text-slate-700 block mb-3">
+              Chọn khung giờ
+            </label>
             <div className="grid grid-cols-3 gap-3">
               {TIMES.map((time) => {
                 const active = selectedTimes.includes(time);
@@ -562,7 +623,9 @@ function AvailabilityModal({ onClose, onSave, isLoading = false }) {
             📋 Preview lịch sẽ tạo
           </p>
           {Object.keys(availabilityMap).length === 0 ? (
-            <p className="text-indigo-700 text-sm italic">Chưa có ngày nào được thêm</p>
+            <p className="text-indigo-700 text-sm italic">
+              Chưa có ngày nào được thêm
+            </p>
           ) : (
             <div className="space-y-2 max-h-36 overflow-y-auto">
               {Object.entries(availabilityMap).map(([date, times]) => (
