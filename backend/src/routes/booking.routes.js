@@ -27,7 +27,8 @@ import {
   payBooking,
   cancelBooking,
   acceptBooking,
-  rejectBooking
+  rejectBooking,
+  getBookingById
 } from '../controllers/booking.controller.js'
 import * as BookingService from '../services/booking.service.js'
 import authMiddleware from '../middlewares/auth.middleware.js'
@@ -37,6 +38,7 @@ const router = express.Router()
 router.post('/', authMiddleware, postBooking)
 router.get('/', authMiddleware, getMyBookings)
 router.put('/:id/pay', authMiddleware, payBooking)
+router.get('/:id', authMiddleware, getBookingById)
 router.patch('/:id/cancel', authMiddleware, cancelBooking)
 router.patch('/:id/accept', authMiddleware, acceptBooking)
 router.patch('/:id/reject', authMiddleware, rejectBooking)

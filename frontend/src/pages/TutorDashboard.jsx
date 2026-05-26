@@ -371,7 +371,9 @@ function SessionCard({ session, onAccept, onReject }) {
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2 mb-1">
               <h4 className="font-bold text-slate-900 truncate">
-                {session.subject || "Lớp học"}
+                <Link to={`/classroom/${session.tutor_id || session.tutorId}/${session.subject_id || session.subjectId}`} className="hover:text-indigo-600 transition-colors">
+                  {session.subject || "Lớp học"}
+                </Link>
               </h4>
               <span
                 className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider whitespace-nowrap ${

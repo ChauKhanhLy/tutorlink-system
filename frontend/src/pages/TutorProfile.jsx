@@ -198,10 +198,16 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
       
       console.log("Sending booking data:", bookingData);
       
-      await bookingApi.create(bookingData);
+      const response = await bookingApi.create(bookingData);
+      const newBooking = response.data?.data || response.data;
 
       toast.success(bookingType === "trial" ? "Đặt lịch học thử thành công!" : "Đặt lịch học thành công!");
-      navigate("/dashboard");
+      
+      if (newBooking?.id) {
+        navigate(`/booking-success/${newBooking.id}`);
+      } else {
+        navigate("/dashboard");
+      }
     } catch (err) {
       console.error("Lỗi đặt lịch:", err);
       // Hiển thị thông báo lỗi cụ thể từ Backend ném về

@@ -222,3 +222,18 @@ export const rejectBooking = async (req, res) => {
         res.status(400).json({ success: false, message: error.message });
     }
 };
+
+export const getBookingById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const booking = await BookingService.getBookingById(id);
+        
+        if (!booking) {
+            return res.status(404).json({ success: false, message: "Không tìm thấy thông tin đặt lịch" });
+        }
+        
+        res.status(200).json({ success: true, data: booking });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};

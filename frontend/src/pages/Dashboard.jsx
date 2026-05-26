@@ -289,7 +289,9 @@ export function DashboardPage() {
                             </div>
 
                             <h2 className="text-3xl font-bold mb-2">
-                              {nextSession.subject || "Chưa có môn"} với{" "}
+                              <Link to={`/classroom/${nextSession.tutor_id || nextSession.tutorId}/${nextSession.subject_id || nextSession.subjectId}`} className="hover:underline">
+                                {nextSession.subject || "Chưa có môn"}
+                              </Link> với{" "}
                               {nextTutor?.name || "Gia sư"}
                             </h2>
 
@@ -377,7 +379,9 @@ export function DashboardPage() {
 
                               <div>
                                 <h4 className="font-bold text-slate-900 text-lg">
-                                  {session.subject || "Chưa có môn"}
+                                  <Link to={`/classroom/${session.tutor_id || session.tutorId}/${session.subject_id || session.subjectId}`} className="hover:text-indigo-600 transition-colors">
+                                    {session.subject || "Chưa có môn"}
+                                  </Link>
                                 </h4>
 
                                 <div className="flex items-center text-slate-500 text-sm mt-1">

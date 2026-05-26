@@ -76,4 +76,13 @@ export const bookingApi = {
   accept: (bookingId) => axiosClient.patch(`/bookings/${bookingId}/accept`),
 
   reject: (bookingId) => axiosClient.patch(`/bookings/${bookingId}/reject`),
+
+  getById: async (id) => {
+    const res = await axiosClient.get(`/bookings/${id}`);
+    const raw = res?.data?.data || res.data;
+    return {
+      ...res,
+      data: normalizeBooking(raw),
+    };
+  },
 };

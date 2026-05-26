@@ -118,6 +118,40 @@ export const getMyBookings = async (learner_id) => {
     return bookings;
 };
 
+export const getBookingById = async (id) => {
+    const query = `
+        SELECT 
+            b.*,
+            u.name as tutorName,
+            u.avatar as tutorAvatar,
+            u.id as tutorId,
+            l.name as studentName,
+            s.name as subjectName,
+            vs.id as room_id,
+            vs.status as room_status,
+            vs.start_time as room_start_time,
+            vs.end_time as room_end_time
+        FROM bookings b
+        JOIN users u ON b.tutor_id = u.id
+        JOIN users l ON b.learner_id = l.id
+        LEFT JOIN subjects s ON b.subject_id = s.id
+        LEFT JOIN video_sessions vs ON b.id = vs.booking_id
+        WHERE b.id = $1
+    `;
+    const result = await db.query(query, [id]);
+    const booking = result.rows[0];
+    
+    if (booking && booking.status === 'confirmed' && !booking.room_id) {
+        const duration = booking.type === 'trial' ? 1 : 2;
+        const newRoom = await createVideoRoom(booking.id, booking.datetime, duration);
+        if (newRoom) {
+            booking.room_id = newRoom.id;
+        }
+    }
+    
+    return booking;
+};
+
 // Hàm bổ trợ để tự động tạo phòng nếu thiếu
 async function ensureVideoRoomsExist(bookings) {
     console.log(`Checking video rooms for ${bookings.length} bookings`);

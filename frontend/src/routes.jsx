@@ -21,6 +21,8 @@ import { AdminMessagesPage } from "./pages/admin/AdminMessagesPage";
 import { AdminUsersPage } from "./pages/admin/AdminUsersPage";
 import { WalletPage } from "./pages/Wallet";
 import { QRConfirmPage } from "./pages/QRConfirm";
+import { BookingSuccessPage } from "./pages/BookingSuccess";
+import { ClassroomPage } from "./pages/Classroom";
 
 export const router = createBrowserRouter([
   {
@@ -166,6 +168,9 @@ export const router = createBrowserRouter([
       },
       
       { path: "qr-pay/:transactionId", element: <QRConfirmPage /> },
+      
+      { path: "booking-success/:id", element: <BookingSuccessPage /> },
+      { path: "classroom/:tutorId/:subjectId", element: <ClassroomPage /> },
 
       { path: "login", element: <AuthPage /> },
       { path: "signup", element: <AuthPage /> },
