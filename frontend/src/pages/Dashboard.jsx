@@ -25,6 +25,7 @@ import { ImageWithFallback } from "../components/Image/ImageWithFallback";
 import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { TutorDashboard } from "./TutorDashboard";
+import { getAvatarUrl } from "../utils/avatar";
 
 export function DashboardPage() {
   const { user, logout } = useAuth();
@@ -89,17 +90,17 @@ export function DashboardPage() {
     import('../socket.js').then(({ default: socket }) => {
       if (socket) {
         console.log('Socket connected, registering user:', user.id);
-        
+
         // Register user với socket
         socket.emit('register_user', user.id);
-        
+
         // Lắng nghe thay đổi status của booking
         socket.on('booking_status_changed', (data) => {
           console.log('Booking status changed received:', data);
-          
+
           // Refresh lại data bookings
           fetchData();
-          
+
           // Show toast notification
           import('sonner').then(({ toast }) => {
             toast.info(data.message || 'Trạng thái lịch học đã thay đổi');
@@ -131,9 +132,25 @@ export function DashboardPage() {
             <div className="sticky top-28 bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden p-6 mb-8 lg:mb-0">
               <div className="flex flex-col items-center mb-10 p-4 bg-indigo-50 rounded-2xl relative overflow-hidden">
                 <div className="relative w-20 h-20 rounded-full border-4 border-white shadow-xl overflow-hidden mb-4 z-10">
-                  <ImageWithFallback
+                  {/* <ImageWithFallback
                     src={user?.avatar || "https://i.pravatar.cc/150"}
                     alt={user?.name}
+                  /> */}
+                  {/* <ImageWithFallback
+                    src={
+                      user?.avatar
+                        ? user.avatar.startsWith("http")
+                          ? user.avatar
+                          : `http://localhost:3000${user.avatar}`
+                        : "https://i.pravatar.cc/150"
+                    }
+                    alt={user?.name}
+                    className="w-full h-full object-cover"
+                  /> */}
+                  <ImageWithFallback
+                    src={getAvatarUrl(user?.avatar)}
+                    alt={user?.name}
+                    className="w-full h-full object-cover"
                   />
                 </div>
                 <h3 className="font-bold text-slate-900 z-10">
@@ -152,11 +169,10 @@ export function DashboardPage() {
               <nav className="space-y-2">
                 {sidebarItems.map((item) => {
                   const isActive = activeTab === item.id;
-                  const commonClasses = `w-full flex items-center justify-between px-4 py-3.5 rounded-2xl font-bold text-sm transition-all ${
-                    isActive
-                      ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
-                      : "text-slate-500 hover:bg-slate-50 hover:text-indigo-600"
-                  }`;
+                  const commonClasses = `w-full flex items-center justify-between px-4 py-3.5 rounded-2xl font-bold text-sm transition-all ${isActive
+                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
+                    : "text-slate-500 hover:bg-slate-50 hover:text-indigo-600"
+                    }`;
 
                   if (item.id === "messages") {
                     return (
@@ -172,9 +188,8 @@ export function DashboardPage() {
                         </div>
                         {item.badge && (
                           <span
-                            className={`px-2 py-0.5 rounded-lg text-[10px] font-bold ${
-                              isActive ? "bg-white text-indigo-600" : "bg-indigo-600 text-white"
-                            }`}
+                            className={`px-2 py-0.5 rounded-lg text-[10px] font-bold ${isActive ? "bg-white text-indigo-600" : "bg-indigo-600 text-white"
+                              }`}
                           >
                             {item.badge}
                           </span>
@@ -211,9 +226,8 @@ export function DashboardPage() {
                       </div>
                       {item.badge && (
                         <span
-                          className={`px-2 py-0.5 rounded-lg text-[10px] font-bold ${
-                            isActive ? "bg-white text-indigo-600" : "bg-indigo-600 text-white"
-                          }`}
+                          className={`px-2 py-0.5 rounded-lg text-[10px] font-bold ${isActive ? "bg-white text-indigo-600" : "bg-indigo-600 text-white"
+                            }`}
                         >
                           {item.badge}
                         </span>
@@ -355,7 +369,7 @@ export function DashboardPage() {
                         // Cho phép vào phòng bất cứ lúc nào nếu có room_id (phục vụ testing)
                         //const canJoin = !!session.room_id && session.status !== 'cancelled' && session.status !== 'done';
                         const canJoin = (!!session.room_id || !!session.roomId) && session.status !== 'cancelled' && session.status !== 'done';
-                        
+
                         if (session.type === 'trial' || session.status === 'confirmed') {
                           console.log('Confirmed/Trial Session details:', JSON.stringify(session, null, 2));
                         }
@@ -397,9 +411,29 @@ export function DashboardPage() {
                             </div>
 
                             <div className="flex items-center space-x-3">
-                              <ImageWithFallback
+                              {/* <ImageWithFallback
                                 src={tutor?.avatar || ""}
                                 className="w-10 h-10 rounded-full border-2 border-white shadow-sm"
+                              /> */}
+
+                              {/* <ImageWithFallback
+                                src={
+                                  tutor?.avatar
+                                    ? tutor.avatar.startsWith("http")
+                                      ? tutor.avatar
+                                      : `http://localhost:3000${tutor.avatar}`
+                                    : "https://i.pravatar.cc/150"
+                                }
+                                className="w-10 h-10 rounded-full border-2 border-white shadow-sm object-cover"
+                              /> */}
+
+                              <ImageWithFallback
+                                src={
+                                  tutor?.avatar
+                                    ? getAvatarUrl(tutor.avatar)
+                                    : "/img/images.jpg"
+                                }
+                                className="w-10 h-10 rounded-full border-2 border-white shadow-sm object-cover"
                               />
 
                               {/* {canJoin ? (
@@ -409,13 +443,13 @@ export function DashboardPage() {
                                 >
                                   Vào phòng
                                 </Link> */}
-                                {canJoin ? (
-                                  <Link
-                                    to={`/room/${session.room_id || session.roomId}`}
-                                    className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all"
-                                  >
-                                    Vào phòng
-                                  </Link>
+                              {canJoin ? (
+                                <Link
+                                  to={`/room/${session.room_id || session.roomId}`}
+                                  className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all"
+                                >
+                                  Vào phòng
+                                </Link>
                               ) : canReview ? (
                                 <Link
                                   to={`/review?tutorId=${session.tutorId}&bookingId=${session.id}`}
@@ -504,7 +538,8 @@ export function DashboardPage() {
                         className="bg-white rounded-3xl border border-slate-200 p-6 flex items-start space-x-4 shadow-sm"
                       >
                         <ImageWithFallback
-                          src={tutor?.avatar}
+                          //src={tutor?.avatar}
+                          src={getAvatarUrl(tutor?.avatar)}
                           className="w-16 h-16 rounded-2xl object-cover"
                         />
                         <div className="flex-1">
