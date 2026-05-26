@@ -21,6 +21,7 @@ import { tutorApi } from "../api/tutorApi";
 import { bookingApi } from "../api/bookingApi";
 import { reviewApi } from "../api/reviewApi";
 import { ImageWithFallback } from "../components/Image/ImageWithFallback";
+import { getAvatarUrl } from "../utils/avatar.js";
 
 export function TutorProfilePage() {
   const { id } = useParams();
@@ -173,7 +174,7 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
       let [hours, minutes] = selectedTime.split(':');
       hours = parseInt(hours);
       minutes = parseInt(minutes);
-      
+
       // Nếu giờ >= 24, chuyển thành 0 và tăng ngày lên 1
       let dateToUse = selectedDate;
       if (hours >= 24) {
@@ -182,10 +183,10 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
         nextDay.setDate(nextDay.getDate() + 1);
         dateToUse = nextDay.toISOString().split('T')[0];
       }
-      
+
       // 2. Tạo datetime đúng cách - giữ nguyên giờ Việt Nam
       const datetimeString = `${dateToUse}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
-      
+
       // 3. Gửi datetime lên backend với timezone Việt Nam
       const subjectId = tutor.subject_ids?.[0] || "900b2ea5-16ea-4c80-93b1-0f1cc50b4adf";
       const bookingData = {
@@ -195,9 +196,9 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
         type: bookingType,
         fee: bookingType === "trial" ? 0 : (tutor.hourly_fee || 0)
       };
-      
+
       console.log("Sending booking data:", bookingData);
-      
+
       await bookingApi.create(bookingData);
 
       toast.success(bookingType === "trial" ? "Đặt lịch học thử thành công!" : "Đặt lịch học thành công!");
@@ -250,7 +251,8 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
                 <div className="flex-shrink-0">
                   <div className="relative w-40 h-40 rounded-[2rem] overflow-hidden shadow-2xl shadow-indigo-500/10">
                     <ImageWithFallback
-                      src={tutor.avatar}
+                      //src={tutor.avatar}
+                      src={getAvatarUrl(tutor?.avatar)}
                       alt={tutor.name}
                       className="w-full h-full object-cover"
                     />
@@ -409,7 +411,8 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
                   </p>
                 </div>
                 <ImageWithFallback
-                  src={tutor.avatar}
+                  //src={tutor.avatar}
+                  src={getAvatarUrl(tutor?.avatar)}
                   alt="Video giới thiệu"
                   className="absolute inset-0 w-full h-full object-cover opacity-40 blur-sm scale-110"
                 />
@@ -442,8 +445,13 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
                         <div className="flex items-center space-x-3">
                           <div className="w-10 h-10 rounded-full bg-slate-100 overflow-hidden">
                             <ImageWithFallback
-                              src={`https://i.pravatar.cc/100?u=${review.reviewerId || review.reviewer_id || review.id}`}
+                              src={
+                                review.reviewerAvatar
+                                  ? getAvatarUrl(review.reviewerAvatar)
+                                  : "/img/images.jpg"
+                              }
                               alt="Học viên"
+                              className="w-full h-full object-cover"
                             />
                           </div>
                           <div>
@@ -574,10 +582,10 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
                               setSelectedTime(null);
                             }}
                             className={`py-2 text-xs font-bold rounded-xl transition-all ${selectedDate === dateStr
-                                ? "bg-indigo-600 text-white shadow-lg"
-                                : isAvailable
-                                  ? "hover:bg-indigo-50 text-slate-700 cursor-pointer"
-                                  : "text-slate-300 cursor-not-allowed opacity-50"
+                              ? "bg-indigo-600 text-white shadow-lg"
+                              : isAvailable
+                                ? "hover:bg-indigo-50 text-slate-700 cursor-pointer"
+                                : "text-slate-300 cursor-not-allowed opacity-50"
                               }`}
                           >
                             {d.getDate()}
