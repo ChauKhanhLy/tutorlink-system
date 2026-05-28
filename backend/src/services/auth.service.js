@@ -388,7 +388,21 @@ export const login = async ({ email, password }) => {
     avatar: user.avatar,
     role: user.role,
     verified: user.verified,
-    email_verified: user.email_verified
+    email_verified: user.email_verified,
+    current_level:
+  user.current_level,
+
+school:
+  user.school,
+
+grade:
+  user.grade,
+
+target:
+  user.target,
+
+learning_goal:
+  user.learning_goal,
   }
 }
 }

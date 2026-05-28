@@ -10,7 +10,8 @@ import {
   Save,
   Lock,
   Eye,
-  EyeOff
+  EyeOff,
+  BookOpen,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../context/AuthContext";
@@ -22,13 +23,27 @@ export function ProfilePage() {
   user,
   setUser
 } = useAuth()
-  const [isEditing, setIsEditing] = useState(false);
+ const [
+  isEditingProfile,
+  setIsEditingProfile
+] = useState(false);
+
+const [
+  isEditingLearning,
+  setIsEditingLearning
+] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     phone: "",
     location: "",
     bio: "",
+    
+    current_level: "",
+    school: "",
+    grade: "",
+    target: "",
+    learning_goal: "",
   });
   const [loading, setLoading] = useState(true);
 
@@ -40,6 +55,13 @@ export function ProfilePage() {
         phone: user.phone || "",
         location: user.location || "",
         bio: user.bio || "",
+       
+        current_level: user.current_level || "",
+        school: user.school || "",
+        grade:user.grade || "",
+        target:user.target || "",
+        learning_goal:
+          user.learning_goal || "",
       });
       setLoading(false);
     } else {
@@ -51,12 +73,17 @@ export function ProfilePage() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
- const handleSave = async () => {
+const handleSaveProfile = async () => {
   try {
 
     const res = await api.put(
-      "/users/me",
-      formData
+      "/users/me/profile",
+      {
+        name: formData.name,
+        phone: formData.phone,
+        location: formData.location,
+        bio: formData.bio,
+      }
     );
 
     setUser(res.data.user);
@@ -67,10 +94,61 @@ export function ProfilePage() {
     );
 
     toast.success(
-      "Cập nhật thông tin thành công"
+      "Cập nhật hồ sơ thành công"
     );
 
-    setIsEditing(false);
+    setIsEditingProfile(false);
+
+  } catch (err) {
+
+    console.error(err);
+
+    toast.error(
+      err.response?.data?.message ||
+      "Cập nhật thất bại"
+    );
+
+  }
+};
+const handleSaveLearning = async () => {
+  try {
+
+    const res = await api.put(
+      "/users/me/learning",
+      {
+        current_level:
+          formData.current_level,
+
+        school:
+          formData.school,
+
+        grade:
+          formData.grade,
+
+        target:
+          formData.target,
+
+        learning_goal:
+          formData.learning_goal,
+      }
+    );
+    const updatedUser = {
+      ...user,
+      ...res.data.user
+    };
+
+    setUser(res.data.user);
+
+    localStorage.setItem(
+      "user",
+      JSON.stringify(res.data.user)
+    );
+
+    toast.success(
+      "Cập nhật thông tin học tập thành công"
+    );
+
+    setIsEditingLearning(false);
 
   } catch (err) {
 
@@ -234,10 +312,10 @@ const handleChangePassword = async () => {
                 </div>
               </div>
               <button
-                onClick={() => setIsEditing(!isEditing)}
+                onClick={() => setIsEditingProfile(!isEditingProfile)}
                 className="w-full mt-6 py-2.5 bg-indigo-50 text-indigo-600 font-bold rounded-xl hover:bg-indigo-100 transition-all"
               >
-                {isEditing ? "Hủy chỉnh sửa" : "Chỉnh sửa hồ sơ"}
+                {isEditingProfile ? "Hủy chỉnh sửa" : "Chỉnh sửa hồ sơ"}
               </button>
             </div>
           </div>
@@ -250,9 +328,9 @@ const handleChangePassword = async () => {
                   <User className="h-5 w-5 text-indigo-600 mr-2" /> Thông tin cá
                   nhân
                 </h2>
-                {!isEditing && (
+                {!isEditingProfile && (
                   <button
-                    onClick={() => setIsEditing(true)}
+                    onClick={() => setIsEditingProfile(true)}
                     className="text-indigo-600 text-sm font-bold hover:underline"
                   >
                     Chỉnh sửa
@@ -265,7 +343,7 @@ const handleChangePassword = async () => {
                   <label className="block text-sm font-bold text-slate-700 mb-1">
                     Họ và tên
                   </label>
-                  {isEditing ? (
+                  {isEditingProfile? (
                     <input
                       type="text"
                       name="name"
@@ -297,7 +375,7 @@ const handleChangePassword = async () => {
                   <label className="block text-sm font-bold text-slate-700 mb-1">
                     Số điện thoại
                   </label>
-                  {isEditing ? (
+                  {isEditingProfile ? (
                     <input
                       type="tel"
                       name="phone"
@@ -317,7 +395,7 @@ const handleChangePassword = async () => {
                   <label className="block text-sm font-bold text-slate-700 mb-1">
                     Địa điểm
                   </label>
-                  {isEditing ? (
+                  {isEditingProfile? (
                     <input
                       type="text"
                       name="location"
@@ -340,7 +418,7 @@ const handleChangePassword = async () => {
                   <label className="block text-sm font-bold text-slate-700 mb-1">
                     Giới thiệu bản thân
                   </label>
-                  {isEditing ? (
+                  {isEditingProfile? (
                     <textarea
                       name="bio"
                       value={formData.bio}
@@ -356,17 +434,190 @@ const handleChangePassword = async () => {
                   )}
                 </div>
 
-                {isEditing && (
+                {isEditingProfile&& (
                   <button
-                    onClick={handleSave}
+                    onClick={handleSaveProfile}
                     className="w-full mt-4 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
                   >
-                    <Save className="h-5 w-5" /> Lưu thay đổi
+                    <Save className="h-5 w-5" /> Lưu thay đôi
                   </button>
                 )}
               </div>
             </div>
+            {
+  user?.role === "learner" && (
+<div className="mt-6 bg-white rounded-3xl border border-slate-200 p-8 shadow-sm">
 
+ <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
+
+  <h2 className="text-xl font-bold text-slate-900 flex items-center">
+    <BookOpen className="h-5 w-5 text-indigo-600 mr-2" />
+    Thông tin học tập
+  </h2>
+
+  {
+    !isEditingLearning && (
+      <button
+        onClick={() =>
+          setIsEditingLearning(true)
+        }
+        className="text-indigo-600 text-sm font-bold hover:underline"
+      >
+        Chỉnh sửa
+      </button>
+    )
+  }
+
+</div>
+
+  <div className="space-y-5">
+
+    {/* Trình độ hiện tại */}
+    <div>
+      <label className="block text-sm font-bold text-slate-700 mb-1">
+        Trình độ hiện tại
+      </label>
+
+      {
+        isEditingLearning? (
+          <input
+            type="text"
+            name="current_level"
+            value={formData.current_level}
+            onChange={handleInputChange}
+            placeholder="Ví dụ: N3, IELTS 5.5..."
+            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"
+          />
+        ) : (
+          <p className="text-slate-900 font-medium">
+            {
+              user?.current_level ||
+              "Chưa cập nhật"
+            }
+          </p>
+        )
+      }
+    </div>
+
+    {/* Trường học */}
+    <div>
+      <label className="block text-sm font-bold text-slate-700 mb-1">
+        Trường học
+      </label>
+
+      {
+        isEditingLearning ? (
+          <input
+            type="text"
+            name="school"
+            value={formData.school}
+            onChange={handleInputChange}
+            placeholder="Tên trường học"
+            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"
+          />
+        ) : (
+          <p className="text-slate-900 font-medium">
+            {
+              user?.school ||
+              "Chưa cập nhật"
+            }
+          </p>
+        )
+      }
+    </div>
+
+    {/* Lớp / năm học */}
+    <div>
+      <label className="block text-sm font-bold text-slate-700 mb-1">
+        Lớp / Năm học
+      </label>
+
+      {
+        isEditingLearning ? (
+          <input
+            type="text"
+            name="grade"
+            value={formData.grade}
+            onChange={handleInputChange}
+            placeholder="Ví dụ: Lớp 12, Năm 2..."
+            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"
+          />
+        ) : (
+          <p className="text-slate-900 font-medium">
+            {
+              user?.grade ||
+              "Chưa cập nhật"
+            }
+          </p>
+        )
+      }
+    </div>
+
+    {/* Mục tiêu học tập */}
+    <div>
+      <label className="block text-sm font-bold text-slate-700 mb-1">
+        Mục tiêu học tập
+      </label>
+
+      {
+        isEditingLearning ? (
+          <input
+            type="text"
+            name="target"
+            value={formData.target}
+            onChange={handleInputChange}
+            placeholder="Ví dụ: JLPT N2, IELTS 7.0..."
+            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"
+          />
+        ) : (
+          <p className="text-slate-900 font-medium">
+            {
+              user?.target ||
+              "Chưa cập nhật"
+            }
+          </p>
+        )
+      }
+    </div>
+
+    {/* Nhu cầu học */}
+    <div>
+      <label className="block text-sm font-bold text-slate-700 mb-1">
+        Giới thiệu nhu cầu học
+      </label>
+
+      {
+        isEditingLearning ? (
+          <textarea
+            name="learning_goal"
+            value={formData.learning_goal}
+            onChange={handleInputChange}
+            rows={4}
+            placeholder="Ví dụ: Muốn cải thiện giao tiếp..."
+            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"
+          />
+        ) : (
+          <p className="text-slate-600">
+            {
+              user?.learning_goal ||
+              "Chưa cập nhật"
+            }
+          </p>
+        )
+      }
+    </div>
+{isEditingLearning&& (
+                  <button
+                    onClick={handleSaveLearning}
+                    className="w-full mt-4 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
+                  >
+                    <Save className="h-5 w-5" /> Lưu thay đôi
+                  </button>
+                )}
+  </div>
+</div>
+)
+}
             <div className="mt-6 bg-white rounded-3xl border border-slate-200 p-8 shadow-sm">
               <h2 className="text-xl font-bold text-slate-900 mb-4 flex items-center">
                 <Lock className="h-5 w-5 text-indigo-600 mr-2" /> Bảo mật

@@ -16,65 +16,93 @@ export const getUserById = async (req, res) => {
     res.status(400).json({ message: err.message })
   }
 }
-export const updateProfile = async (req, res) => {
-  try {
-    console.log(req.user)
-    const userId = req.user.id
+export const updateProfileInfo =
+  async (req, res) => {
 
-    const {
-      name,
-      phone,
-      location,
-      bio,
-      avatar
-    } = req.body
+    try {
 
-    const updatedUser =
-      await updateProfileService(
-        userId,
-        {
-          name,
-          phone,
-          location,
-          bio,
-          avatar
-        }
-      )
+      const userId =
+        req.user.id;
 
-    res.json({
-      message: "Update profile success",
-      user: updatedUser
-    })
+      const {
+        name,
+        phone,
+        location,
+        bio
+      } = req.body;
 
-  } catch (err) {
+      const updatedUser =
+        await updateProfileService(
+          userId,
+          {
+            name,
+            phone,
+            location,
+            bio
+          }
+        );
 
-    console.error(err)
+      res.json({
+        message:
+          "Cập nhật hồ sơ thành công",
+        user: updatedUser
+      });
 
-    res.status(400).json({
-      message: err.message
-    })
+    } catch (err) {
 
-  }
-}
-/*export const updateProfile = async (req, res) => {
-  try {
-    const userId = req.user.id
-    const { name, phone, avatar } = req.body
+      console.error(err);
 
-    const updatedUser = await updateProfileService(userId, {
-      name,
-      phone,
-      avatar
-    })
+      res.status(400).json({
+        message: err.message
+      });
 
-    res.json({
-      message: "Update profile success",
-      user: updatedUser
-    })
-  } catch (err) {
-    res.status(400).json({ message: err.message })
-  }
-}*/
+    }
+};
+export const updateLearningInfo =
+  async (req, res) => {
+
+    try {
+
+      const userId =
+        req.user.id;
+
+      const {
+        current_level,
+        school,
+        grade,
+        target,
+        learning_goal
+      } = req.body;
+
+      const updatedUser =
+        await updateProfileService(
+          userId,
+          {
+            current_level,
+            school,
+            grade,
+            target,
+            learning_goal
+          }
+        );
+
+      res.json({
+        message:
+          "Cập nhật thông tin học tập thành công",
+        user: updatedUser
+      });
+
+    } catch (err) {
+
+      console.error(err);
+
+      res.status(400).json({
+        message: err.message
+      });
+
+    }
+};
+
 
 export const becomeTutor = async (req, res) => {
   try {
