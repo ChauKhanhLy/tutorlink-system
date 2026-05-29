@@ -242,7 +242,23 @@ export const getBookingById = async (req, res) => {
 export const tutorConfirm = async (req, res) => {
     try {
         const bookingId = req.params.id;
-        const tutorId = req.user?.id;
+        let tutorId = req.user?.id;
+        const userRole = req.user?.role;
+
+        // Tìm thông tin booking để lấy tutor_id gốc
+        const bookingRes = await db.query('SELECT tutor_id FROM bookings WHERE id = $1', [bookingId]);
+        if (bookingRes.rows.length === 0) {
+            return res.status(404).json({ success: false, message: "Không tìm thấy booking cho lịch đặt này" });
+        }
+
+        const realTutorId = bookingRes.rows[0].tutor_id;
+
+        if (userRole === 'admin') {
+            tutorId = realTutorId; // Nếu là admin, gán tutorId thành gia sư thực tế để confirm hộ
+            console.log(`[tutorConfirm] Admin ${req.user?.id} đang xác nhận hộ Gia sư ${realTutorId} cho booking ${bookingId}`);
+        } else if (String(tutorId) !== String(realTutorId)) {
+            return res.status(403).json({ success: false, message: "Bạn không có quyền xác nhận buổi học này" });
+        }
 
         // Tìm lesson_session cho booking này
         const sessionRes = await db.query('SELECT id FROM lesson_sessions WHERE booking_id = $1', [bookingId]);
@@ -264,7 +280,23 @@ export const tutorConfirm = async (req, res) => {
 export const learnerConfirm = async (req, res) => {
     try {
         const bookingId = req.params.id;
-        const learnerId = req.user?.id;
+        let learnerId = req.user?.id;
+        const userRole = req.user?.role;
+
+        // Tìm thông tin booking để lấy learner_id gốc
+        const bookingRes = await db.query('SELECT learner_id FROM bookings WHERE id = $1', [bookingId]);
+        if (bookingRes.rows.length === 0) {
+            return res.status(404).json({ success: false, message: "Không tìm thấy booking cho lịch đặt này" });
+        }
+
+        const realLearnerId = bookingRes.rows[0].learner_id;
+
+        if (userRole === 'admin') {
+            learnerId = realLearnerId; // Nếu là admin, gán learnerId thành học viên thực tế để confirm hộ
+            console.log(`[learnerConfirm] Admin ${req.user?.id} đang xác nhận hộ Học viên ${realLearnerId} cho booking ${bookingId}`);
+        } else if (String(learnerId) !== String(realLearnerId)) {
+            return res.status(403).json({ success: false, message: "Bạn không có quyền xác nhận buổi học này" });
+        }
 
         // Tìm lesson_session cho booking này
         const sessionRes = await db.query('SELECT id FROM lesson_sessions WHERE booking_id = $1', [bookingId]);

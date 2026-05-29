@@ -463,37 +463,66 @@ export function LessonPage() {
                   <CheckCircle className="h-6 w-6 text-indigo-600 mr-2" /> Xác nhận hoàn thành buổi học
                 </h3>
                 <p className="text-slate-500 text-sm max-w-xl">
-                  {user?.role === "tutor"
+                  {user?.role === "admin"
+                    ? "Tài khoản Admin: Bạn có quyền bấm hộ các nút xác nhận dạy/học dưới đây nếu gia sư hoặc học viên quên."
+                    : user?.role === "tutor"
                     ? "Nhấn 'Đã dạy' sau khi bạn hoàn thành buổi dạy. Hệ thống sẽ gửi yêu cầu xác nhận tới học viên."
                     : "Nhấn 'Đã học' sau khi gia sư đã dạy xong để xác nhận tham gia đầy đủ buổi học."}
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-3">
-                {user?.role === "tutor" && !booking.tutor_confirmed && (
-                  <button
-                    onClick={handleTutorConfirm}
-                    className="px-6 py-3 bg-emerald-500 text-white font-bold rounded-2xl hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/25"
-                  >
-                    Đã dạy xong
-                  </button>
+                {/* Admin Override UI */}
+                {user?.role === "admin" && (
+                  <>
+                    {!booking.tutor_confirmed && (
+                      <button
+                        onClick={handleTutorConfirm}
+                        className="px-6 py-3 bg-emerald-500 text-white font-bold rounded-2xl hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/25"
+                      >
+                        Xác nhận đã dạy (Hộ Gia sư)
+                      </button>
+                    )}
+                    {booking.tutor_confirmed && !booking.learner_confirmed && (
+                      <button
+                        onClick={handleLearnerConfirm}
+                        className="px-6 py-3 bg-indigo-500 text-white font-bold rounded-2xl hover:bg-indigo-600 transition-all shadow-lg shadow-indigo-500/25"
+                      >
+                        Xác nhận đã học (Hộ Học viên)
+                      </button>
+                    )}
+                  </>
                 )}
-                {user?.role !== "tutor" && booking.tutor_confirmed && !booking.learner_confirmed && (
-                  <button
-                    onClick={handleLearnerConfirm}
-                    className="px-6 py-3 bg-indigo-500 text-white font-bold rounded-2xl hover:bg-indigo-600 transition-all shadow-lg shadow-indigo-500/25"
-                  >
-                    Đã học xong
-                  </button>
-                )}
-                {user?.role === "tutor" && booking.tutor_confirmed && (
-                  <span className="text-emerald-600 font-bold text-sm bg-emerald-50 border border-emerald-100 px-4 py-2.5 rounded-2xl">
-                    Đã xác nhận. Đang chờ học viên xác nhận.
-                  </span>
-                )}
-                {user?.role !== "tutor" && !booking.tutor_confirmed && (
-                  <span className="text-amber-600 font-bold text-sm bg-amber-50 border border-amber-100 px-4 py-2.5 rounded-2xl">
-                    Đang chờ gia sư xác nhận đã dạy...
-                  </span>
+
+                {/* Normal Users UI */}
+                {user?.role !== "admin" && (
+                  <>
+                    {user?.role === "tutor" && !booking.tutor_confirmed && (
+                      <button
+                        onClick={handleTutorConfirm}
+                        className="px-6 py-3 bg-emerald-500 text-white font-bold rounded-2xl hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/25"
+                      >
+                        Đã dạy xong
+                      </button>
+                    )}
+                    {user?.role !== "tutor" && booking.tutor_confirmed && !booking.learner_confirmed && (
+                      <button
+                        onClick={handleLearnerConfirm}
+                        className="px-6 py-3 bg-indigo-500 text-white font-bold rounded-2xl hover:bg-indigo-600 transition-all shadow-lg shadow-indigo-500/25"
+                      >
+                        Đã học xong
+                      </button>
+                    )}
+                    {user?.role === "tutor" && booking.tutor_confirmed && (
+                      <span className="text-emerald-600 font-bold text-sm bg-emerald-50 border border-emerald-100 px-4 py-2.5 rounded-2xl">
+                        Đã xác nhận. Đang chờ học viên xác nhận.
+                      </span>
+                    )}
+                    {user?.role !== "tutor" && !booking.tutor_confirmed && (
+                      <span className="text-amber-600 font-bold text-sm bg-amber-50 border border-amber-100 px-4 py-2.5 rounded-2xl">
+                        Đang chờ gia sư xác nhận đã dạy...
+                      </span>
+                    )}
+                  </>
                 )}
               </div>
             </div>
