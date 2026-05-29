@@ -2,6 +2,7 @@ import db from "../config/db.js";
 import lessonSessionDal from "../dal/lessonSession.dal.js";
 import videoSessionDal from "../dal/videoSession.dal.js";
 import attendanceLogDal from "../dal/attendanceLog.dal.js";
+import { depositToWallet } from "./wallet.service.js";
 
 function createHttpError(message, statusCode) {
   const error = new Error(message);
@@ -176,6 +177,12 @@ async function confirmLearnerStudied(lessonSessionId, learnerId) {
       throw createHttpError("Gia sư chưa xác nhận đã dạy", 400);
     }
 
+    // Đóng tất cả log còn mở (left_at IS NULL) của learner & tutor
+    // Trường hợp user đóng tab thay vì nhấn nút "Kết thúc"
+    await attendanceLogDal.closeOpenLogsForUser(lessonSessionId, learnerId, client);
+    await attendanceLogDal.closeOpenLogsForUser(lessonSessionId, session.tutor_id, client);
+
+    // Tính tổng thời gian học viên thực sự trong phòng (từ attendance_logs)
     let durationHours = await attendanceLogDal.calculateUserDurationHours(
       lessonSessionId,
       learnerId,
@@ -183,9 +190,12 @@ async function confirmLearnerStudied(lessonSessionId, learnerId) {
     );
 
     if (durationHours <= 0) {
-      // Fallback: Nếu không có logs, lấy thời lượng mặc định
+      // Fallback: Nếu không có logs nào, dùng thời lượng mặc định
       const bookingType = session.type || 'regular';
       durationHours = bookingType === 'trial' ? 1.0 : 2.0;
+      console.log(`[confirmLearnerStudied] Không có attendance logs, dùng fallback duration: ${durationHours}h (type=${bookingType})`);
+    } else {
+      console.log(`[confirmLearnerStudied] Duration từ attendance_logs: ${durationHours}h (session=${lessonSessionId})`);
     }
 
     const updatedSession = await lessonSessionDal.learnerConfirm(
@@ -196,6 +206,26 @@ async function confirmLearnerStudied(lessonSessionId, learnerId) {
     );
 
     await client.query("COMMIT");
+
+    // Giải ngân tiền cho gia sư sau khi commit thành công
+    // Dùng sau COMMIT để không rollback nếu wallet lỗi (tránh mất dữ liệu lesson)
+    try {
+      const pricePerHour = parseFloat(session.lesson_price_per_hour || session.fee || 0);
+      if (pricePerHour > 0 && durationHours > 0) {
+        const earnedAmount = parseFloat((pricePerHour * durationHours).toFixed(0));
+        await depositToWallet(
+          session.tutor_id,
+          earnedAmount,
+          `Thu nhập buổi dạy - ${durationHours}h × ${pricePerHour.toLocaleString('vi-VN')}₫/h`
+        );
+        console.log(`[confirmLearnerStudied] Đã giải ngân ${earnedAmount}₫ cho gia sư ${session.tutor_id}`);
+      } else {
+        console.log(`[confirmLearnerStudied] Bỏ qua giải ngân: pricePerHour=${pricePerHour}, duration=${durationHours}`);
+      }
+    } catch (walletErr) {
+      console.error('[confirmLearnerStudied] Lỗi giải ngân ví gia sư:', walletErr.message);
+      // Không throw - buổi học vẫn được ghi nhận hoàn thành
+    }
 
     return updatedSession;
   } catch (error) {
