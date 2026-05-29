@@ -1,6 +1,7 @@
 import * as BookingService from '../services/booking.service.js';
 import * as WalletService from '../services/wallet.service.js';
 import db from '../config/db.js';
+import lessonSessionService from '../services/lessonSession.service.js';
 
 export const postBooking = async (req, res) => {
     try {
@@ -235,5 +236,49 @@ export const getBookingById = async (req, res) => {
         res.status(200).json({ success: true, data: booking });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+export const tutorConfirm = async (req, res) => {
+    try {
+        const bookingId = req.params.id;
+        const tutorId = req.user?.id;
+
+        // Tìm lesson_session cho booking này
+        const sessionRes = await db.query('SELECT id FROM lesson_sessions WHERE booking_id = $1', [bookingId]);
+        if (sessionRes.rows.length === 0) {
+            return res.status(404).json({ success: false, message: "Không tìm thấy buổi học cho lịch đặt này" });
+        }
+
+        const lessonSessionId = sessionRes.rows[0].id;
+
+        // Gọi lessonSessionService
+        const updated = await lessonSessionService.confirmTutorTaught(lessonSessionId, tutorId);
+        
+        return res.status(200).json({ success: true, data: updated });
+    } catch (error) {
+        return res.status(error.statusCode || 500).json({ success: false, message: error.message || "Xác nhận thất bại" });
+    }
+};
+
+export const learnerConfirm = async (req, res) => {
+    try {
+        const bookingId = req.params.id;
+        const learnerId = req.user?.id;
+
+        // Tìm lesson_session cho booking này
+        const sessionRes = await db.query('SELECT id FROM lesson_sessions WHERE booking_id = $1', [bookingId]);
+        if (sessionRes.rows.length === 0) {
+            return res.status(404).json({ success: false, message: "Không tìm thấy buổi học cho lịch đặt này" });
+        }
+
+        const lessonSessionId = sessionRes.rows[0].id;
+
+        // Gọi lessonSessionService
+        const updated = await lessonSessionService.confirmLearnerStudied(lessonSessionId, learnerId);
+        
+        return res.status(200).json({ success: true, data: updated });
+    } catch (error) {
+        return res.status(error.statusCode || 500).json({ success: false, message: error.message || "Xác nhận thất bại" });
     }
 };

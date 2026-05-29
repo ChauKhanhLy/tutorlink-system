@@ -1,5 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import VideoRoom from '../models/videoRoom.model.js';
+import db from '../config/db.js';
+import lessonSessionService from '../services/lessonSession.service.js';
 
 export const getAllVideoRooms = async (req, res) => {
   try {
@@ -136,6 +138,20 @@ export const updateVideoRoomStatus = async (req, res) => {
     videoRoom.status = status;
     await videoRoom.save();
 
+    // Ghi log rời lớp nếu có lesson_session_id
+    if (status === 'ended') {
+        try {
+            const selectRes = await db.query('SELECT lesson_session_id FROM video_sessions WHERE id = $1', [id]);
+            const lessonSessionId = selectRes.rows[0]?.lesson_session_id;
+            if (lessonSessionId && req.user?.id) {
+                await lessonSessionService.leaveLessonSession(lessonSessionId, req.user.id);
+                console.log(`User ${req.user.id} logged leave for session ${lessonSessionId}`);
+            }
+        } catch (err) {
+            console.error('Error logging leave on ended:', err);
+        }
+    }
+
     res.status(200).json(videoRoom);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -173,6 +189,18 @@ export const joinVideoRoom = async (req, res) => {
     if (videoRoom.status === 'scheduled') {
       videoRoom.status = 'ongoing';
       await videoRoom.save();
+    }
+
+    // Ghi log vào lớp nếu có lesson_session_id
+    try {
+        const selectRes = await db.query('SELECT lesson_session_id FROM video_sessions WHERE id = $1', [id]);
+        const lessonSessionId = selectRes.rows[0]?.lesson_session_id;
+        if (lessonSessionId && req.user?.id) {
+            await lessonSessionService.joinLessonSession(lessonSessionId, req.user.id);
+            console.log(`User ${req.user.id} logged join for session ${lessonSessionId}`);
+        }
+    } catch (err) {
+        console.error('Error logging join:', err);
     }
 
     res.status(200).json({

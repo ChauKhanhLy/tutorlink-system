@@ -17,6 +17,7 @@ import authMiddleware, {isAdmin} from './middlewares/auth.middleware.js'
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { findById } from './dal/user.dal.js'
+import lessonSessionRoutes from './routes/lessonSession.routes.js'
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -53,6 +54,7 @@ app.use('/api/payments', paymentRoutes)
 app.use('/api/video-rooms', videoRoomRoutes)
 app.use('/api/wallet', walletRoutes)
 app.use('/api/subjects', subjectRoutes)
+app.use("/api/lesson-sessions", lessonSessionRoutes);
 
 
 /*app.get('/api/users/me', authMiddleware, (req, res) => {

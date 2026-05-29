@@ -3,36 +3,49 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    try {
+      const storedUser = localStorage.getItem("user");
+      const token = localStorage.getItem("token");
+      if (storedUser && token) {
+        const parsedUser = JSON.parse(storedUser);
+        return {
+          ...parsedUser,
+          verified: parsedUser?.verified ?? false
+        };
+      }
+    } catch (err) {
+      console.error("Lỗi khởi tạo user:", err);
+    }
+    return null;
+  });
 
   // load user từ localStorage khi reload
- useEffect(() => {
-  const storedUser = localStorage.getItem("user");
-  const token = localStorage.getItem("token");
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    const token = localStorage.getItem("token");
 
-  if (storedUser && token) {
-    try {
-      const parsedUser = JSON.parse(storedUser);
+    if (storedUser && token) {
+      try {
+        const parsedUser = JSON.parse(storedUser);
 
-      setUser({
-        ...parsedUser,
-        verified: parsedUser?.verified ?? false
-      });
+        setUser({
+          ...parsedUser,
+          verified: parsedUser?.verified ?? false
+        });
+      } catch (err) {
+        console.error("Lỗi parse user:", err);
 
-    } catch (err) {
-      console.error("Lỗi parse user:", err);
-
-      // 🔥 reset luôn nếu lỗi
+        // 🔥 reset luôn nếu lỗi
+        localStorage.removeItem("user");
+        localStorage.removeItem("token");
+        setUser(null);
+      }
+    } else {
       localStorage.removeItem("user");
       localStorage.removeItem("token");
-      setUser(null);
     }
-
-  } else {
-    localStorage.removeItem("user");
-    localStorage.removeItem("token");
-  }
-}, []);
+  }, []);
 
   // login
   const login = ({user, token}) => {
