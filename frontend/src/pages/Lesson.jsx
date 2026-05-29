@@ -301,6 +301,7 @@ import {
 import { toast } from "sonner";
 import { bookingApi } from "../api/bookingApi";
 import { tutorApi } from "../api/tutorApi";
+import { videoRoomApi } from "../api/videoRoomApi";
 import { ImageWithFallback } from "../components/Image/ImageWithFallback";
 import { useAuth } from "../context/AuthContext";
 
@@ -309,6 +310,7 @@ export function LessonPage() {
   const { user } = useAuth();
   const [booking, setBooking] = React.useState(null);
   const [tutor, setTutor] = React.useState(null);
+  const [videoRoom, setVideoRoom] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
   const joinLink = booking?.meeting_link || booking?.meetingLink || "https://zoom.us/j/123456789";
 
@@ -338,7 +340,12 @@ export function LessonPage() {
   };
 
   const handleViewVideo = async () => {
-    toast.info("Tính năng xem lại ghi hình đang được phát triển.");
+    if (videoRoom?.record_url) {
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+      window.open(`${backendUrl}${videoRoom.record_url}`, "_blank");
+    } else {
+      toast.info("Tính năng xem lại ghi hình đang được phát triển hoặc buổi học chưa được ghi hình.");
+    }
   };
   // ==========================================
 
@@ -349,8 +356,20 @@ export function LessonPage() {
       const foundBooking = bookingRes?.data;
       if (foundBooking) {
         setBooking(foundBooking);
+        
+        // Load thông tin gia sư
         const tutorRes = await tutorApi.getById(foundBooking.tutorId);
         setTutor(tutorRes.data);
+
+        // Fetch thêm thông tin video room để lấy record_url
+        try {
+          const roomRes = await videoRoomApi.getRoomByBookingId(foundBooking.id);
+          if (roomRes?.data) {
+            setVideoRoom(roomRes.data);
+          }
+        } catch (roomErr) {
+          console.warn("Không tìm thấy video room cho booking này:", roomErr);
+        }
       } else {
         toast.error("Không tìm thấy thông tin buổi học");
       }
@@ -546,26 +565,59 @@ export function LessonPage() {
           </div>
 
           {/* Notes / Recording */}
-          <div className="bg-white rounded-3xl border border-slate-200 p-6">
-            <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center">
-              <MessageSquare className="h-5 w-5 text-indigo-600 mr-2" /> Ghi chú & Ghi hình
-            </h3>
-            {isPast ? (
-              <div className="space-y-3">
-                <div className="p-3 bg-amber-50 rounded-xl border border-amber-100">
-                  <p className="text-sm text-amber-800">
-                    <span className="font-bold">Ghi chú từ gia sư:</span> Học viên cần ôn lại phần đạo hàm trước buổi sau.
-                  </p>
+          <div className="bg-white rounded-3xl border border-slate-200 p-6 flex flex-col justify-between">
+            <div>
+              <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center">
+                <MessageSquare className="h-5 w-5 text-indigo-600 mr-2" /> Ghi chú & Ghi hình
+              </h3>
+              
+              <div className="p-3 bg-amber-50 rounded-xl border border-amber-100 mb-4">
+                <p className="text-sm text-amber-800">
+                  <span className="font-bold">Ghi chú từ gia sư:</span> Ôn tập kỹ kiến thức đã học và chuẩn bị bài tập về nhà.
+                </p>
+              </div>
+            </div>
+
+            {videoRoom?.record_url ? (
+              <div className="mt-2">
+                <p className="text-xs text-slate-500 mb-2 font-medium">Bản ghi hình buổi học trực tuyến:</p>
+                <div className="overflow-hidden rounded-2xl border border-slate-200 shadow-md bg-slate-950">
+                  <video
+                    src={`${import.meta.env.VITE_BACKEND_URL || "http://localhost:5000"}${videoRoom.record_url}`}
+                    controls
+                    className="w-full aspect-video object-contain"
+                    poster="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=60"
+                  />
+                  <div className="p-3 bg-slate-900 border-t border-slate-800 flex justify-between items-center text-[10px] text-slate-400">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 block animate-pulse"></span>
+                      <span>Ghi hình ({videoRoom.duration_minutes || 0} phút)</span>
+                    </div>
+                    <a
+                      href={`${import.meta.env.VITE_BACKEND_URL || "http://localhost:5000"}${videoRoom.record_url}`}
+                      download={`buoi-hoc-${id}.webm`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-indigo-400 hover:text-indigo-300 font-bold transition"
+                    >
+                      <Download className="w-3 h-3" /> Tải về
+                    </a>
+                  </div>
                 </div>
+              </div>
+            ) : isPast ? (
+              <div className="space-y-3">
                 <button
                   onClick={handleViewVideo}
-                  className="w-full py-3 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all"
+                  className="w-full py-3 border border-slate-200 rounded-xl text-sm font-bold text-slate-400 bg-slate-50 cursor-not-allowed flex items-center justify-center gap-2"
+                  disabled
                 >
-                  Xem lại ghi hình buổi học
+                  <Video className="w-4 h-4 text-slate-400" /> Chưa có video ghi hình
                 </button>
+                <p className="text-[11px] text-slate-400 text-center">Buổi học này chưa được kích hoạt ghi hình khi diễn ra.</p>
               </div>
             ) : (
-              <p className="text-slate-500 text-sm">Ghi chú và ghi hình sẽ có sau buổi học.</p>
+              <p className="text-slate-500 text-sm">Ghi chú và ghi hình sẽ khả dụng sau khi buổi học kết thúc.</p>
             )}
           </div>
         </div>

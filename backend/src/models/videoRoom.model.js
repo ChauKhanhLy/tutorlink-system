@@ -90,6 +90,19 @@ const VideoRoom = sequelize.define(
       allowNull: false,
       defaultValue: 'scheduled',
     },
+    lesson_session_id: {
+      type: DataTypes.UUID,
+      allowNull: true,
+    },
+    record_url: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    duration_minutes: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: 0,
+    },
   },
   {
     tableName: 'video_sessions',

@@ -215,3 +215,40 @@ export const joinVideoRoom = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+export const uploadRecording = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const durationMinutes = req.body.duration_minutes ? parseInt(req.body.duration_minutes) : 0;
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'Không tìm thấy file video upload' });
+    }
+
+    const videoRoom = await VideoRoom.findByPk(id);
+
+    if (!videoRoom) {
+      return res.status(404).json({ error: 'Không tìm thấy video room' });
+    }
+
+    // Đường dẫn tương đối tĩnh để client truy cập qua static middleware
+    const recordUrl = `/uploads/recordings/${req.file.filename}`;
+
+    videoRoom.record_url = recordUrl;
+    if (durationMinutes > 0) {
+      videoRoom.duration_minutes = durationMinutes;
+    }
+    await videoRoom.save();
+
+    console.log(`[uploadRecording] Đã lưu bản ghi cho video room ${id}: ${recordUrl}`);
+
+    res.status(200).json({
+      message: 'Tải lên bản ghi thành công',
+      record_url: recordUrl,
+      videoRoom
+    });
+  } catch (error) {
+    console.error('uploadRecording error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
