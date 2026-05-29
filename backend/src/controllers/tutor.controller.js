@@ -76,7 +76,8 @@ export const getTutorStats = async (req, res) => {
 export const getTutorAvailability = async (req, res) => {
   try {
     const { id } = req.params
-    const slots = await buildAvailabilitySlots(id)
+    const days = parseInt(req.query.days) || 60 // Mặc định 60 ngày để bao phủ tháng này và tháng sau
+    const slots = await buildAvailabilitySlots(id, days)
     res.json(slots)
   } catch (err) {
     res.status(400).json({ message: err.message })

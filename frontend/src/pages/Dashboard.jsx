@@ -25,6 +25,7 @@ import { ImageWithFallback } from "../components/Image/ImageWithFallback";
 import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { TutorDashboard } from "./TutorDashboard";
+import { ScheduleCalendar } from "../components/ScheduleCalendar";
 
 export function DashboardPage() {
   const { user, logout } = useAuth();
@@ -36,9 +37,10 @@ export function DashboardPage() {
   const [sessions, setSessions] = React.useState([]);
   const [tutors, setTutors] = React.useState([]);
   const [activeTab, setActiveTab] = React.useState("sessions");
-  //const [favorites, setFavorites] = React.useState([]);
+  const [favorites, setFavorites] = React.useState([]);
   const [messages, setMessages] = React.useState([]);
   const [wallet, setWallet] = React.useState(null);
+  const [viewMode, setViewMode] = React.useState("calendar"); // "list" | "calendar"
 
   const sidebarItems = [
     { id: "sessions", name: "Buổi học của tôi", icon: Calendar },
@@ -61,16 +63,22 @@ export function DashboardPage() {
   React.useEffect(() => {
     const fetchData = async () => {
       try {
-        const [tutorRes, bookingRes, messageRes] =
+        const [tutorRes, bookingRes, messageRes, favRes] =
           await Promise.all([
             tutorApi.getAll(),
             bookingApi.getMyBookings(),
             messageApi.getConversations(user.id),
+            favoriteApi.getMyFavorites(),
           ]);
 
         setTutors(tutorRes.data.tutors || []);
-        setSessions(bookingRes.data);
+        const mappedSessions = (bookingRes.data || []).map(s => ({
+          ...s,
+          dateObj: new Date(s.datetime)
+        }));
+        setSessions(mappedSessions);
         setMessages(messageRes.data);
+        setFavorites(favRes.data || []);
       } catch (err) {
         console.log(err);
       }
@@ -116,9 +124,10 @@ export function DashboardPage() {
     });
   }, [user?.id]);
 
+
   const nextSession = sessions
-    ?.filter((s) => new Date(s.date) > new Date()) // buổi trong tương lai
-    .sort((a, b) => new Date(a.date) - new Date(b.date))[0];
+    ?.filter((s) => s.dateObj && s.dateObj > new Date()) // buổi trong tương lai
+    .sort((a, b) => a.dateObj - b.dateObj)[0];
 
   const nextTutor = tutors.find((t) => t.id === nextSession?.tutorId);
 
@@ -232,7 +241,6 @@ export function DashboardPage() {
             </div>
           </aside>
 
-          {/* Main Content Area */}
           <main className="flex-1 space-y-8 pb-20">
             {/* Top Bar for Dashboard */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -268,175 +276,228 @@ export function DashboardPage() {
             <div className="grid gap-8">
               {activeTab === "sessions" && (
                 <div className="space-y-6">
-                  <div className="bg-indigo-600 rounded-3xl p-8 text-white relative overflow-hidden shadow-2xl shadow-indigo-500/20">
-                    <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-8">
-                      <div className="max-w-md">
-                        {nextSession ? (
-                          <>
-                            <div className="inline-flex items-center space-x-2 px-3 py-1 bg-white/20 backdrop-blur-sm rounded-lg text-xs font-bold mb-4">
-                              <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></span>
-                              <span>
-                                Bài học tiếp theo sau{" "}
-                                {Math.max(
-                                  1,
-                                  Math.floor(
-                                    (new Date(nextSession.date) - new Date()) /
+                  {/* Next session banner */}
+                  {nextSession && (
+                    <div className="bg-indigo-600 rounded-3xl p-8 text-white relative overflow-hidden shadow-2xl shadow-indigo-500/20">
+                      <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-8">
+                        <div className="max-w-md">
+                          <div className="inline-flex items-center space-x-2 px-3 py-1 bg-white/20 backdrop-blur-sm rounded-lg text-xs font-bold mb-4">
+                            <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></span>
+                            <span>
+                              Bài học tiếp theo sau{" "}
+                              {Math.max(
+                                1,
+                                Math.floor(
+                                  (nextSession.dateObj - new Date()) /
                                     (1000 * 60 * 60),
-                                  ),
-                                )}{" "}
-                                giờ
-                              </span>
-                            </div>
+                                ),
+                              )}{" "}
+                              giờ
+                            </span>
+                          </div>
 
-                            <h2 className="text-3xl font-bold mb-2">
-                              <Link to={`/classroom/${nextSession.tutor_id || nextSession.tutorId}/${nextSession.subject_id || nextSession.subjectId}`} className="hover:underline">
-                                {nextSession.subject || "Chưa có môn"}
-                              </Link> với{" "}
-                              {nextTutor?.name || "Gia sư"}
-                            </h2>
+                          <h2 className="text-3xl font-bold mb-2">
+                            <Link
+                              to={`/classroom/${nextSession.tutor_id || nextSession.tutorId}/${nextSession.subject_id || nextSession.subjectId}`}
+                              className="hover:underline"
+                            >
+                              {nextSession.subject || "Chưa có môn"}
+                            </Link>{" "}
+                            với {nextTutor?.name || "Gia sư"}
+                          </h2>
 
-                            <p className="text-indigo-100 text-sm mb-6 opacity-80">
-                              {new Date(nextSession.date).toLocaleDateString()}{" "}
-                              lúc {nextSession.time || "??"} •{" "}
-                              {nextSession.meetingLink ? "Online" : "Offline"}
-                            </p>
+                          <p className="text-indigo-100 text-sm mb-6 opacity-80">
+                            {nextSession.dateObj.toLocaleDateString("vi-VN")} lúc{" "}
+                            {nextSession.time || "??"} •{" "}
+                            {nextSession.meetingLink ? "Online" : "Offline"}
+                          </p>
 
-                            <div className="flex flex-wrap gap-4">
-                              {nextSession?.room_id ? (
-                                <Link
-                                  to={`/room/${nextSession.room_id || nextSession.id}`}
-                                  className="px-6 py-3 bg-white text-indigo-600 font-bold rounded-2xl flex items-center hover:bg-slate-50 transition-all shadow-xl"
-                                >
-                                  Tham gia <ExternalLink className="ml-2 h-4 w-4" />
-                                </Link>
-                              ) : nextSession?.meetingLink ? (
-                                <a
-                                  href={nextSession.meetingLink}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="px-6 py-3 bg-white text-indigo-600 font-bold rounded-2xl flex items-center hover:bg-slate-50 transition-all shadow-xl"
-                                >
-                                  Tham gia <ExternalLink className="ml-2 h-4 w-4" />
-                                </a>
-                              ) : null}
+                          <div className="flex flex-wrap gap-4">
+                            {nextSession?.room_id ? (
+                              <Link
+                                to={`/room/${nextSession.room_id || nextSession.id}`}
+                                className="px-6 py-3 bg-white text-indigo-600 font-bold rounded-2xl flex items-center hover:bg-slate-50 transition-all shadow-xl"
+                              >
+                                Tham gia <ExternalLink className="ml-2 h-4 w-4" />
+                              </Link>
+                            ) : nextSession?.meetingLink ? (
+                              <a
+                                href={nextSession.meetingLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-6 py-3 bg-white text-indigo-600 font-bold rounded-2xl flex items-center hover:bg-slate-50 transition-all shadow-xl"
+                              >
+                                Tham gia <ExternalLink className="ml-2 h-4 w-4" />
+                              </a>
+                            ) : null}
 
-                              <button className="px-6 py-3 bg-white/10 backdrop-blur-md border border-white/20 text-white font-bold rounded-2xl hover:bg-white/20 transition-all">
-                                Đổi lịch
-                              </button>
-                            </div>
-                          </>
-                        ) : (
-                          <p className="text-white">Chưa có buổi học sắp tới</p>
-                        )}
-                      </div>
-                      <div className="w-48 h-48 bg-white/10 rounded-full p-4 backdrop-blur-sm">
-                        <div className="w-full h-full bg-indigo-500 rounded-full flex items-center justify-center p-4">
-                          <Calendar className="h-16 w-16 text-white opacity-80" />
+                            <button className="px-6 py-3 bg-white/10 backdrop-blur-md border border-white/20 text-white font-bold rounded-2xl hover:bg-white/20 transition-all">
+                              Đổi lịch
+                            </button>
+                          </div>
+                        </div>
+                        <div className="w-48 h-48 bg-white/10 rounded-full p-4 backdrop-blur-sm">
+                          <div className="w-full h-full bg-indigo-500 rounded-full flex items-center justify-center p-4">
+                            <Calendar className="h-16 w-16 text-white opacity-80" />
+                          </div>
                         </div>
                       </div>
+                      <div className="absolute top-0 right-0 -mt-20 -mr-20 w-80 h-80 bg-white/10 rounded-full blur-3xl"></div>
                     </div>
-                    <div className="absolute top-0 right-0 -mt-20 -mr-20 w-80 h-80 bg-white/10 rounded-full blur-3xl"></div>
-                  </div>
+                  )}
 
+                  {/* Sessions management */}
                   <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-8">
                     <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-100">
                       <h3 className="text-xl font-bold text-slate-900">
-                        Buổi học sắp tới
+                        Buổi học của tôi
                       </h3>
-                      <button className="text-sm font-bold text-indigo-600 hover:underline">
-                        Xem lịch
-                      </button>
+                      <div className="flex bg-slate-100 p-1 rounded-xl">
+                        <button
+                          onClick={() => setViewMode("calendar")}
+                          className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                            viewMode === "calendar"
+                              ? "bg-white text-indigo-600 shadow-sm"
+                              : "text-slate-500 hover:text-slate-700"
+                          }`}
+                        >
+                          Lịch tháng
+                        </button>
+                        <button
+                          onClick={() => setViewMode("list")}
+                          className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                            viewMode === "list"
+                              ? "bg-white text-indigo-600 shadow-sm"
+                              : "text-slate-500 hover:text-slate-700"
+                          }`}
+                        >
+                          Danh sách
+                        </button>
+                      </div>
                     </div>
-                    <div className="space-y-4">
-                      {sessions.map((session) => {
-                        const tutor = tutors.find((t) => t.id === session.tutorId);
-                        const now = new Date();
-                        const startTime = new Date(session.room_start_time || session.datetime || session.date);
-                        const endTime = new Date(session.room_end_time || (new Date(startTime).getTime() + 60 * 60 * 1000));
 
-                        // Cho phép vào phòng bất cứ lúc nào nếu có room_id (phục vụ testing)
-                        //const canJoin = !!session.room_id && session.status !== 'cancelled' && session.status !== 'done';
-                        const canJoin = (!!session.room_id || !!session.roomId) && session.status !== 'cancelled' && session.status !== 'done';
-                        
-                        if (session.type === 'trial' || session.status === 'confirmed') {
-                          console.log('Confirmed/Trial Session details:', JSON.stringify(session, null, 2));
-                        }
+                    {viewMode === "list" ? (
+                      <div className="space-y-4">
+                        {sessions.length > 0 ? (
+                          sessions.map((session) => {
+                            const tutor = tutors.find(
+                              (t) => t.id === session.tutorId,
+                            );
+                            const startTime = new Date(
+                              session.room_start_time ||
+                                session.datetime ||
+                                session.date,
+                            );
+                            const canJoin =
+                              (!!session.room_id || !!session.roomId) &&
+                              session.status !== "cancelled" &&
+                              session.status !== "done";
+                            const now = new Date();
+                            const canReview =
+                              session.status === "completed" &&
+                              now >=
+                                new Date(startTime.getTime() + 2 * 60 * 60 * 1000);
 
+                            return (
+                              <div
+                                key={session.id}
+                                className="group p-5 bg-slate-50 rounded-3xl border border-transparent hover:border-indigo-100 hover:bg-white transition-all duration-300 flex flex-col md:flex-row justify-between items-center gap-4"
+                              >
+                                <div className="flex items-center space-x-5">
+                                  <div className="w-14 h-14 bg-indigo-100 rounded-2xl flex items-center justify-center">
+                                    <Calendar className="h-6 w-6 text-indigo-600" />
+                                  </div>
 
-                        // Kiểm tra xem có thể đánh giá không
-                        const canReview = session.status === 'completed' && now >= new Date(startTime.getTime() + 2 * 60 * 60 * 1000);
+                                  <div>
+                                    <h4 className="font-bold text-slate-900 text-lg">
+                                      <Link
+                                        to={`/classroom/${session.tutor_id || session.tutorId}/${session.subject_id || session.subjectId}`}
+                                        className="hover:text-indigo-600 transition-colors"
+                                      >
+                                        {session.subject || "Chưa có môn"}
+                                      </Link>
+                                    </h4>
 
+                                    <div className="flex items-center text-slate-500 text-sm mt-1">
+                                      <span className="font-bold">
+                                        {session.dateObj
+                                          ? session.dateObj.toLocaleDateString(
+                                              "vi-VN",
+                                            )
+                                          : session.date || session.datetime
+                                            ? new Date(
+                                                session.date || session.datetime,
+                                              ).toLocaleDateString("vi-VN")
+                                            : "Chưa có ngày"}
+                                      </span>
+                                      <span className="mx-2">•</span>
+                                      <span>
+                                        {session.time ||
+                                          (session.dateObj
+                                            ? session.dateObj.toLocaleTimeString(
+                                                [],
+                                                {
+                                                  hour: "2-digit",
+                                                  minute: "2-digit",
+                                                  hour12: false,
+                                                },
+                                              )
+                                            : "--:--")}
+                                      </span>
+                                    </div>
 
-                        return (
-                          <div
-                            key={session.id}
-                            className="group p-5 bg-slate-50 rounded-3xl border border-transparent hover:border-indigo-100 hover:bg-white transition-all duration-300 flex flex-col md:flex-row justify-between items-center gap-4"
-                          >
-                            <div className="flex items-center space-x-5">
-                              <div className="w-14 h-14 bg-indigo-100 rounded-2xl flex items-center justify-center">
-                                <Calendar className="h-6 w-6 text-indigo-600" />
-                              </div>
-
-                              <div>
-                                <h4 className="font-bold text-slate-900 text-lg">
-                                  <Link to={`/classroom/${session.tutor_id || session.tutorId}/${session.subject_id || session.subjectId}`} className="hover:text-indigo-600 transition-colors">
-                                    {session.subject || "Chưa có môn"}
-                                  </Link>
-                                </h4>
-
-                                <div className="flex items-center text-slate-500 text-sm mt-1">
-                                  <span className="font-bold">
-                                    {session.dateObj
-                                      ? session.dateObj.toLocaleDateString("vi-VN")
-                                      : (session.date || session.datetime ? new Date(session.date || session.datetime).toLocaleDateString("vi-VN") : "Chưa có ngày")}
-                                  </span>
-                                  <span className="mx-2">•</span>
-                                  <span>{session.time || (session.dateObj ? session.dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : "--:--")}</span>
+                                    <div className="text-xs text-slate-400 mt-1">
+                                      Gia sư:{" "}
+                                      {tutor?.name ||
+                                        session.tutorName ||
+                                        "Đang cập nhật"}
+                                    </div>
+                                  </div>
                                 </div>
 
-                                <div className="text-xs text-slate-400 mt-1">
-                                  Gia sư: {tutor?.name || session.tutorName || "Đang cập nhật"}
+                                <div className="flex items-center space-x-3">
+                                  <ImageWithFallback
+                                    src={tutor?.avatar || ""}
+                                    className="w-10 h-10 rounded-full border-2 border-white shadow-sm"
+                                  />
+
+                                  {canJoin ? (
+                                    <Link
+                                      to={`/room/${session.room_id || session.roomId}`}
+                                      className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all"
+                                    >
+                                      Vào phòng
+                                    </Link>
+                                  ) : canReview ? (
+                                    <Link
+                                      to={`/review?tutorId=${session.tutorId}&bookingId=${session.id}`}
+                                      className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-all"
+                                    >
+                                      Đánh giá
+                                    </Link>
+                                  ) : (
+                                    <button className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-400 cursor-not-allowed">
+                                      {session.status === "cancelled" ||
+                                      session.status === "cancel"
+                                        ? "Gia sư đã từ chối"
+                                        : session.room_id || session.roomId
+                                          ? "Chưa đến giờ"
+                                          : "Chờ xác nhận"}
+                                    </button>
+                                  )}
                                 </div>
                               </div>
-                            </div>
-
-                            <div className="flex items-center space-x-3">
-                              <ImageWithFallback
-                                src={tutor?.avatar || ""}
-                                className="w-10 h-10 rounded-full border-2 border-white shadow-sm"
-                              />
-
-                              {/* {canJoin ? (
-                                <Link
-                                  to={`/room/${session.room_id}`}
-                                  className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all"
-                                >
-                                  Vào phòng
-                                </Link> */}
-                                {canJoin ? (
-                                  <Link
-                                    to={`/room/${session.room_id || session.roomId}`}
-                                    className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all"
-                                  >
-                                    Vào phòng
-                                  </Link>
-                              ) : canReview ? (
-                                <Link
-                                  to={`/review?tutorId=${session.tutorId}&bookingId=${session.id}`}
-                                  className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-all"
-                                >
-                                  Đánh giá
-                                </Link>
-                              ) : (
-                                <button className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-400 cursor-not-allowed">
-                                  {session.status === 'cancelled' ? "Gia sư đã từ chối" : (session.room_id || session.roomId ? "Chưa đến giờ" : "Chờ xác nhận")}
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                            );
+                          })
+                        ) : (
+                          <p className="text-slate-400 text-center py-8">
+                            Chưa có buổi học nào sắp tới
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <ScheduleCalendar sessions={sessions} />
+                    )}
                   </div>
                 </div>
               )}
@@ -444,8 +505,13 @@ export function DashboardPage() {
               {activeTab === "messages" && (
                 <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
                   <div className="p-8 border-b border-slate-100 flex justify-between items-center">
-                    <h3 className="text-xl font-bold text-slate-900">Tin nhắn gần đây</h3>
-                    <Link to="/messages" className="text-sm font-bold text-indigo-600 hover:underline">
+                    <h3 className="text-xl font-bold text-slate-900">
+                      Tin nhắn gần đây
+                    </h3>
+                    <Link
+                      to="/messages"
+                      className="text-sm font-bold text-indigo-600 hover:underline"
+                    >
                       Mở toàn màn hình
                     </Link>
                   </div>
@@ -470,9 +536,16 @@ export function DashboardPage() {
                           </div>
                           <div className="flex-1">
                             <div className="flex justify-between items-start mb-1">
-                              <h4 className="font-bold text-slate-900">{conv.name}</h4>
+                              <h4 className="font-bold text-slate-900">
+                                {conv.name}
+                              </h4>
                               <span className="text-[10px] text-slate-400 font-medium">
-                                {conv.time ? new Date(conv.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
+                                {conv.time
+                                  ? new Date(conv.time).toLocaleTimeString([], {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    })
+                                  : ""}
                               </span>
                             </div>
                             <p className="text-sm text-slate-500 line-clamp-1 truncate max-w-md">
@@ -485,8 +558,13 @@ export function DashboardPage() {
                     ) : (
                       <div className="p-12 text-center">
                         <MessageSquare className="h-12 w-12 text-slate-200 mx-auto mb-4" />
-                        <p className="text-slate-500 font-medium">Chưa có tin nhắn nào</p>
-                        <Link to="/search" className="text-indigo-600 font-bold text-sm mt-2 inline-block">
+                        <p className="text-slate-500 font-medium">
+                          Chưa có tin nhắn nào
+                        </p>
+                        <Link
+                          to="/search"
+                          className="text-indigo-600 font-bold text-sm mt-2 inline-block"
+                        >
                           Tìm gia sư để trò chuyện
                         </Link>
                       </div>
@@ -589,7 +667,9 @@ export function DashboardPage() {
                     <div className="flex items-center gap-4">
                       <Wallet className="h-8 w-8 text-blue-600" />
                       <div>
-                        <h3 className="text-lg font-bold text-blue-900">Quản lý ví</h3>
+                        <h3 className="text-lg font-bold text-blue-900">
+                          Quản lý ví
+                        </h3>
                         <p className="text-sm text-blue-700">
                           Nạp tiền, xem lịch sử giao dịch và settlements hàng tuần
                         </p>

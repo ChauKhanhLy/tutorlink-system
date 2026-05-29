@@ -8,6 +8,8 @@ import {
   Trash2,
   DollarSign,
   Loader2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -19,6 +21,7 @@ import { ImageWithFallback } from "../components/Image/ImageWithFallback";
 import { WalletPage } from "./Wallet.jsx";
 import DatePicker from "react-multi-date-picker";
 import "react-multi-date-picker/styles/colors/purple.css";
+import { ScheduleCalendar } from "../components/ScheduleCalendar";
 
 import { toast } from "sonner";
 
@@ -42,6 +45,7 @@ export function TutorDashboard() {
   const [availability, setAvailability] = React.useState([]);
 
   const [activeTab, setActiveTab] = React.useState("sessions");
+  const [viewMode, setViewMode] = React.useState("calendar"); // "list" | "calendar"
   const [showAvailabilityModal, setShowAvailabilityModal] =
     React.useState(false);
 
@@ -55,7 +59,11 @@ export function TutorDashboard() {
       ]);
 
       setStats(statsRes.data.data || statsRes.data);
-      setUpcomingSessions(sessionsRes.data || []);
+      const mappedSessions = (sessionsRes.data || []).map(s => ({
+        ...s,
+        dateObj: new Date(s.datetime)
+      }));
+      setUpcomingSessions(mappedSessions);
       setAvailability(
         availabilityRes.data?.availableSlots || availabilityRes.data || [],
       );
@@ -83,8 +91,13 @@ export function TutorDashboard() {
   const handleAccept = async (bookingId) => {
     try {
       if (window.confirm("Bạn có chắc chắn muốn chấp nhận lịch học này?")) {
+        const booking = upcomingSessions.find(s => s.id === bookingId);
         await bookingApi.accept(bookingId);
-        toast.success("Đã chấp nhận lịch học và hoàn tất thanh toán!");
+        if (booking?.type === 'trial') {
+          toast.success("Đã xác nhận buổi học thử!");
+        } else {
+          toast.success("Đã chấp nhận lịch học và hoàn tất thanh toán!");
+        }
         await fetchTutorData();
       }
     } catch (err) {
@@ -173,13 +186,13 @@ export function TutorDashboard() {
               <StatCard
                 icon={Wallet}
                 label="Thu nhập tháng"
-                value={`${stats.monthlyEarnings.toLocaleString("vi-VN")} ₫`}
+                value={`${(stats.monthlyEarnings || 0).toLocaleString("vi-VN")} ₫`}
                 color="bg-emerald-50 text-emerald-600"
               />
               <StatCard
                 icon={Star}
                 label="Đánh giá"
-                value={stats.avgRating.toFixed(1)}
+                value={(stats.avgRating || 0).toFixed(1)}
                 color="bg-amber-50 text-amber-600"
               />
             </div>
@@ -209,25 +222,54 @@ export function TutorDashboard() {
             {/* Sessions */}
             {activeTab === "sessions" && (
               <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-8">
-                <h2 className="text-xl font-bold text-slate-900 mb-6">
-                  Lịch dạy sắp tới
-                </h2>
-                <div className="space-y-4">
-                  {upcomingSessions.length > 0 ? (
-                    upcomingSessions.map((session) => (
-                      <SessionCard
-                        key={session.id}
-                        session={session}
-                        onAccept={() => handleAccept(session.id)}
-                        onReject={() => handleReject(session.id)}
-                      />
-                    ))
-                  ) : (
-                    <p className="text-slate-400 text-center py-8">
-                      Chưa có lịch dạy nào sắp tới
-                    </p>
-                  )}
+                <div className="flex items-center justify-between mb-8">
+                  <h2 className="text-xl font-bold text-slate-900">
+                    Lịch dạy của tôi
+                  </h2>
+                  <div className="flex bg-slate-100 p-1 rounded-xl">
+                    <button
+                      onClick={() => setViewMode("calendar")}
+                      className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        viewMode === "calendar"
+                          ? "bg-white text-indigo-600 shadow-sm"
+                          : "text-slate-500 hover:text-slate-700"
+                      }`}
+                    >
+                      Lịch tháng
+                    </button>
+                    <button
+                      onClick={() => setViewMode("list")}
+                      className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        viewMode === "list"
+                          ? "bg-white text-indigo-600 shadow-sm"
+                          : "text-slate-500 hover:text-slate-700"
+                      }`}
+                    >
+                      Danh sách
+                    </button>
+                  </div>
                 </div>
+
+                {viewMode === "list" ? (
+                  <div className="space-y-4">
+                    {upcomingSessions.length > 0 ? (
+                      upcomingSessions.map((session) => (
+                        <SessionCard
+                          key={session.id}
+                          session={session}
+                          onAccept={() => handleAccept(session.id)}
+                          onReject={() => handleReject(session.id)}
+                        />
+                      ))
+                    ) : (
+                      <p className="text-slate-400 text-center py-8">
+                        Chưa có lịch dạy nào sắp tới
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <ScheduleCalendar sessions={upcomingSessions} />
+                )}
               </div>
             )}
 

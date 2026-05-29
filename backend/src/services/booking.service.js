@@ -11,21 +11,38 @@ export const getTutorSubjects = async (tutorId) => {
 };
 
 export const createBooking = async (data) => {
-    const {tutor_id, datetime} = data;
-    
+    const { tutor_id, learner_id, datetime, type } = data;
+
+    // --- LOGIC MỚI: GIỚI HẠN HỌC THỬ ---
+    if (type === 'trial') {
+        // Tìm xem trong quá khứ, học sinh này đã từng đặt lịch 'trial' với gia sư này chưa
+        const existingTrial = await Booking.findOne({
+            where: {
+                learner_id: learner_id,
+                tutor_id: tutor_id,
+                type: 'trial',
+                status: { [Op.in]: ['confirmed', 'done', 'pending'] } // Chỉ tính các buổi đã/đang/sắp diễn ra
+            }
+        });
+
+        if (existingTrial) {
+            throw new Error('Bạn đã hết lượt học thử với gia sư này. Vui lòng chọn "Học thật"!');
+        }
+    }
+
     // Kiểm tra xem đã có lịch nào trùng chưa (tính đến khoảng cách thời gian)
     // Regular booking: 2 tiếng, Trial booking: 1 tiếng
     const bookingType = data.type || 'regular';
     const duration = bookingType === 'trial' ? 1 : 2; // giờ
-    
+
     const conflictQuery = `
         SELECT * FROM bookings 
         WHERE tutor_id = $1 
         AND status != 'cancelled'
         AND (
             -- Lớp mới bắt đầu trong khoảng thời gian của một lớp đã có
-            datetime >= $2::timestamp - INTERVAL '${duration} hours' 
-            AND datetime < $2::timestamp + INTERVAL '${duration} hours'
+            datetime >= $2::timestamptz - INTERVAL '${duration} hours' 
+            AND datetime < $2::timestamptz + INTERVAL '${duration} hours'
         )
     `;
     const existing = await db.query(conflictQuery, [tutor_id, datetime]);
@@ -49,7 +66,7 @@ export const createBooking = async (data) => {
         data.fee || 0,
         data.type || 'regular'
     ]);
-    
+
     //return result.rows[0];
     const booking = result.rows[0];
 
@@ -64,7 +81,7 @@ export const createBooking = async (data) => {
             booking.room_end_time = room.end_time;
         }
     }
-    
+
     return booking;
 };
 
@@ -111,10 +128,10 @@ export const getMyBookings = async (learner_id) => {
     `;
     const result = await db.query(query, [learner_id]);
     const bookings = result.rows;
-    
+
     // Đảm bảo các buổi đã confirmed đều có phòng họp
     await ensureVideoRoomsExist(bookings);
-    
+
     return bookings;
 };
 
@@ -140,7 +157,7 @@ export const getBookingById = async (id) => {
     `;
     const result = await db.query(query, [id]);
     const booking = result.rows[0];
-    
+
     if (booking && booking.status === 'confirmed' && !booking.room_id) {
         const duration = booking.type === 'trial' ? 1 : 2;
         const newRoom = await createVideoRoom(booking.id, booking.datetime, duration);
@@ -148,7 +165,7 @@ export const getBookingById = async (id) => {
             booking.room_id = newRoom.id;
         }
     }
-    
+
     return booking;
 };
 
@@ -176,14 +193,14 @@ async function ensureVideoRoomsExist(bookings) {
             const duration = booking.type === 'trial' ? 1 : 2;
             const newRoom = await createVideoRoom(booking.id, booking.datetime, duration);
             if (newRoom) {
-                
+
                 // Cập nhật lại đối tượng booking trong memory để frontend nhận được ngay
                 booking.room_id = newRoom.id;
                 booking.room_status = newRoom.status;
                 booking.room_start_time = newRoom.start_time;
                 booking.room_end_time = newRoom.end_time;
-            // } catch (err) {
-            //     console.error(`Lỗi tự động tạo phòng cho booking ${booking.id}:`, err);
+                // } catch (err) {
+                //     console.error(`Lỗi tự động tạo phòng cho booking ${booking.id}:`, err);
                 console.log(`Room created successfully: ${newRoom.id}`);
             }
         }
@@ -193,20 +210,20 @@ async function ensureVideoRoomsExist(bookings) {
 export const updateStatus = async (id, status) => {
     const booking = await Booking.findByPk(id);
     if (!booking) throw new Error("Không tìm thấy lịch học");
-    
+
     const oldStatus = booking.status;
-    
+
     // Nếu chuyển từ pending sang confirmed, thực hiện trừ tiền
-     if (oldStatus === 'pending' && status === 'confirmed') {
-         if (booking.type === 'regular' && booking.fee > 0) {
-             await spendFromWallet(
-                 booking.learner_id, 
-                 booking.fee, 
-                 booking.id, 
-                 `Thanh toán buổi học #${booking.id} - Gia sư chấp nhận`
-             );
-         }
-     }
+    if (oldStatus === 'pending' && status === 'confirmed') {
+        if (booking.type === 'regular' && booking.fee > 0) {
+            await spendFromWallet(
+                booking.learner_id,
+                booking.fee,
+                booking.id,
+                `Thanh toán buổi học #${booking.id} - Gia sư chấp nhận`
+            );
+        }
+    }
 
     booking.status = status;
     await booking.save();
@@ -214,24 +231,24 @@ export const updateStatus = async (id, status) => {
     // Emit socket notification cho learner khi status thay đổi
     try {
         console.log('Attempting to emit socket notification for booking:', booking.id, 'status:', status, 'learner:', booking.learner_id);
-        
+
         // Import io từ app instance
         const { app } = await import('../app.js');
         const io = app.get('io');
-        
+
         if (io) {
             console.log('Socket IO found, emitting to room:', booking.learner_id.toString());
-            
+
             // Gửi notification cho learner
             io.to(booking.learner_id.toString()).emit('booking_status_changed', {
                 bookingId: booking.id,
                 status: booking.status,
                 oldStatus: oldStatus,
-                message: status === 'cancelled' ? 'Lịch học đã bị từ chối/hủy' : 
-                        status === 'confirmed' ? 'Lịch học đã được xác nhận' : 
+                message: status === 'cancelled' ? 'Lịch học đã bị từ chối/hủy' :
+                    status === 'confirmed' ? 'Lịch học đã được xác nhận' :
                         `Trạng thái lịch học đã thay đổi thành: ${status}`
             });
-            
+
             console.log('Socket notification sent successfully');
         } else {
             console.log('Socket IO not found in app');
@@ -248,7 +265,7 @@ export const updateStatus = async (id, status) => {
             await createVideoRoom(id, booking.datetime, duration);
         }
     }
-    
+
     return booking;
 };
 
@@ -272,9 +289,9 @@ export const getBookingsForTutor = async (tutor_id) => {
     `;
     const result = await db.query(query, [tutor_id]);
     const bookings = result.rows;
-    
+
     // Đảm bảo các buổi đã confirmed đều có phòng họp
     await ensureVideoRoomsExist(bookings);
-    
+
     return bookings;
 };

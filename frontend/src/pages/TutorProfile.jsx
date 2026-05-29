@@ -28,6 +28,7 @@ export function TutorProfilePage() {
   const [availableSlots, setAvailableSlots] = React.useState([]);
   const [selectedDate, setSelectedDate] = React.useState(null);
   const [selectedTime, setSelectedTime] = React.useState(null);
+  const [currentMonth, setCurrentMonth] = React.useState(new Date());
   const [bookingType, setBookingType] = React.useState("trial"); // "trial" hoặc "regular"
   const [loading, setLoading] = React.useState(true);
   const [reviews, setReviews] = React.useState([]);
@@ -44,10 +45,12 @@ export function TutorProfilePage() {
         const tutorData = res.data;
         setTutor(tutorData);
 
-        // gọi thêm API availability
-        const slotRes = await tutorApi.getAvailability(id);
+        // gọi thêm API availability - lấy 60 ngày để bao phủ tháng này và tháng sau
+        const slotRes = await tutorApi.getAvailability(id, { days: 60 });
         const slots = slotRes.data?.availableSlots || slotRes.data || [];
         setAvailableSlots(slots);
+        
+        // Mặc định chọn ngày đầu tiên có slot
         if (slots.length > 0) {
           setSelectedDate(slots[0].date);
         }
@@ -183,15 +186,15 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
         dateToUse = nextDay.toISOString().split('T')[0];
       }
       
-      // 2. Tạo datetime đúng cách - giữ nguyên giờ Việt Nam
-      const datetimeString = `${dateToUse}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
+      // 2. Tạo datetime đúng cách - sử dụng chuỗi có offset +07:00 để đảm bảo là giờ VN
+      const isoDatetime = `${dateToUse}T${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00+07:00`;
       
-      // 3. Gửi datetime lên backend với timezone Việt Nam
+      // 3. Gửi datetime lên backend
       const subjectId = tutor.subject_ids?.[0] || "900b2ea5-16ea-4c80-93b1-0f1cc50b4adf";
       const bookingData = {
         tutor_id: tutor.id,
         subject_id: subjectId,
-        datetime: datetimeString, // Không ép về UTC, để backend xử lý
+        datetime: isoDatetime, 
         type: bookingType,
         fee: bookingType === "trial" ? 0 : (tutor.hourly_fee || 0)
       };
@@ -526,22 +529,40 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
                     </div>
                   </div>
 
-                  {/* Calendar Widget Simplified */}
+                  {/* Calendar Widget - Full Monthly View */}
                   <div className="mb-8">
-                    <div className="flex items-center justify-between mb-4">
-                      <h4 className="text-sm font-bold text-slate-900">
-                        Chọn ngày
+                    <div className="flex items-center justify-between mb-6">
+                      <h4 className="text-sm font-bold text-slate-900 capitalize">
+                        {currentMonth.toLocaleDateString("vi-VN", {
+                          month: "long",
+                          year: "numeric",
+                        })}
                       </h4>
-                      <div className="flex space-x-2">
-                        <button className="p-1.5 rounded-lg hover:bg-slate-100">
+                      <div className="flex space-x-1">
+                        <button
+                          onClick={() => {
+                            const prev = new Date(currentMonth);
+                            prev.setMonth(prev.getMonth() - 1);
+                            setCurrentMonth(prev);
+                          }}
+                          className="p-2 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors"
+                        >
                           <ChevronLeft className="h-4 w-4" />
                         </button>
-                        <button className="p-1.5 rounded-lg hover:bg-slate-100">
+                        <button
+                          onClick={() => {
+                            const next = new Date(currentMonth);
+                            next.setMonth(next.getMonth() + 1);
+                            setCurrentMonth(next);
+                          }}
+                          className="p-2 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors"
+                        >
                           <ChevronRight className="h-4 w-4" />
                         </button>
                       </div>
                     </div>
-                    <div className="grid grid-cols-7 gap-2 text-center mb-4">
+
+                    <div className="grid grid-cols-7 gap-1 text-center mb-2">
                       {["T2", "T3", "T4", "T5", "T6", "T7", "CN"].map((d) => (
                         <span
                           key={d}
@@ -550,46 +571,65 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
                           {d}
                         </span>
                       ))}
+                    </div>
 
-                      {/* Render 14 calendar days continuously */}
-                      {Array.from({ length: 14 }).map((_, idx) => {
-                        const d = new Date();
-                        d.setDate(d.getDate() + idx);
-                        const year = d.getFullYear();
-                        const month = String(d.getMonth() + 1).padStart(2, '0');
-                        const dayOfMonth = String(d.getDate()).padStart(2, '0');
-                        const dateStr = `${year}-${month}-${dayOfMonth}`;
+                    <div className="grid grid-cols-7 gap-1 text-center">
+                      {(() => {
+                        const year = currentMonth.getFullYear();
+                        const month = currentMonth.getMonth();
+                        const firstDay = new Date(year, month, 1);
+                        const lastDay = new Date(year, month + 1, 0);
 
-                        const jsDay = d.getDay(); // 0 (Sun) to 6 (Sat)
-                        const colStart = jsDay === 0 ? 7 : jsDay;
+                        // Lấy thứ của ngày 1 (0: CN, 1: T2, ..., 6: T7)
+                        let startDay = firstDay.getDay();
+                        // Chuyển sang định dạng T2=0, ..., CN=6
+                        startDay = startDay === 0 ? 6 : startDay - 1;
 
-                        // Check if this date has available slots from backend
-                        const availableSlot = availableSlots.find(s => s.date === dateStr);
-                        const isAvailable = !!availableSlot;
+                        const days = [];
+                        // Ô trống đầu tháng
+                        for (let i = 0; i < startDay; i++) {
+                          days.push(<div key={`empty-${i}`} />);
+                        }
 
-                        // Only the very first box needs gridColumnStart to align properly
-                        const styleDesc = idx === 0 ? { gridColumnStart: colStart } : {};
+                        // Các ngày trong tháng
+                        for (let d = 1; d <= lastDay.getDate(); d++) {
+                          const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+                          const availableSlot = availableSlots.find(
+                            (s) => s.date === dateStr,
+                          );
+                          const isAvailable = !!availableSlot;
+                          const isSelected = selectedDate === dateStr;
+                          const isToday =
+                            new Date().toISOString().split("T")[0] === dateStr;
 
-                        return (
-                          <button
-                            key={dateStr}
-                            disabled={!isAvailable}
-                            style={styleDesc}
-                            onClick={() => {
-                              setSelectedDate(dateStr);
-                              setSelectedTime(null);
-                            }}
-                            className={`py-2 text-xs font-bold rounded-xl transition-all ${selectedDate === dateStr
-                                ? "bg-indigo-600 text-white shadow-lg"
-                                : isAvailable
-                                  ? "hover:bg-indigo-50 text-slate-700 cursor-pointer"
-                                  : "text-slate-300 cursor-not-allowed opacity-50"
+                          days.push(
+                            <button
+                              key={dateStr}
+                              disabled={!isAvailable}
+                              onClick={() => {
+                                setSelectedDate(dateStr);
+                                setSelectedTime(null);
+                              }}
+                              className={`relative py-2.5 text-xs font-bold rounded-xl transition-all ${
+                                isSelected
+                                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200 scale-105 z-10"
+                                  : isAvailable
+                                    ? "hover:bg-indigo-50 text-slate-700 cursor-pointer"
+                                    : "text-slate-300 cursor-not-allowed opacity-40"
                               }`}
-                          >
-                            {d.getDate()}
-                          </button>
-                        );
-                      })}
+                            >
+                              {d}
+                              {isAvailable && !isSelected && (
+                                <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-indigo-400 rounded-full" />
+                              )}
+                              {isToday && !isSelected && (
+                                <div className="absolute top-1 right-1 w-1 h-1 bg-rose-400 rounded-full" />
+                              )}
+                            </button>,
+                          );
+                        }
+                        return days;
+                      })()}
                     </div>
                   </div>
 

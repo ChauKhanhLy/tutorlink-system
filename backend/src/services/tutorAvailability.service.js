@@ -43,8 +43,9 @@ export const saveAvailabilityPreferences = async (tutorId, payload) => {
   const normalized = [];
 
   for (const item of dates) {
-    const dateObj = new Date(item.date);
-
+    // Parse date manually to avoid timezone shifts: YYYY-MM-DD
+    const [year, month, day] = item.date.split("-").map(Number);
+    const dateObj = new Date(year, month - 1, day);
     const dayOfWeek = dateObj.getDay();
 
     for (const time of item.times || []) {
