@@ -354,9 +354,9 @@ function SessionCard({ session, onAccept, onReject }) {
             <div className="w-14 h-14 rounded-2xl overflow-hidden border-2 border-white shadow-sm">
               <ImageWithFallback
                 src={
-                  user?.avatar
-                            ? user.avatar
-                            : `https://api.dicebear.com/7.x/initials/svg?seed=${user?.name}`
+                  session.studentAvatar
+                    ? session.studentAvatar
+                    : `https://api.dicebear.com/7.x/initials/svg?seed=${session.studentName}`
                 }
                 alt={session.studentName}
               />
