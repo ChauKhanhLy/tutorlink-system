@@ -325,7 +325,7 @@ export function SearchPage() {
                           <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-sm px-2.5 py-1 rounded-lg flex items-center shadow-sm">
                             <Star className="h-3 w-3 text-amber-500 fill-amber-500 mr-1" />
                             <span className="text-xs font-bold text-slate-900">
-                              {tutor.rating}
+                              {Number(tutor.rating || 0).toFixed(1)}
                             </span>
                             <span className="text-slate-400 text-[10px] ml-1">
                               ({tutor.reviewCount || 0})

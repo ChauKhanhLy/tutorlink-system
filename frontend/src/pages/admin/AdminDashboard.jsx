@@ -13,11 +13,30 @@ import {
   LayoutDashboard,
   UserPlus,
   Shield,
+  Flag,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../../context/AuthContext";
 import adminApi from "../../api/adminApi";
 import { ImageWithFallback } from "../../components/Image/ImageWithFallback";
+import {AdminComplaintsPage} from "./AdminComplaintsPage";
+
+// Helper: format số tiền VNĐ
+const formatVND = (value) => {
+  if (!value && value !== 0) return "Chưa có";
+  return Number(value).toLocaleString("vi-VN") + "₫";
+};
+
+// Helper: parse languages nếu là JSON string
+const parseLanguages = (languages) => {
+  if (!languages) return ["Tiếng Việt"];
+  if (Array.isArray(languages)) return languages;
+  try {
+    return JSON.parse(languages);
+  } catch {
+    return ["Tiếng Việt"];
+  }
+};
 
 export function AdminDashboard() {
   const navigate = useNavigate();
@@ -32,6 +51,7 @@ export function AdminDashboard() {
   const sidebarItems = [
     { id: "dashboard", name: "Tổng quan", icon: LayoutDashboard },
     { id: "pending", name: "Duyệt gia sư", icon: UserPlus, badge: pendingTutors.length },
+    { id: "complaints", name: "Khiếu nại", icon: Flag, badge: 0 },
   ];
 
   React.useEffect(() => {
@@ -62,8 +82,7 @@ export function AdminDashboard() {
       fetchData();
       setSelectedTutor(null);
     } catch (err) {
-        console.error(err);
-        
+      console.error(err);
       toast.error("Lỗi khi duyệt gia sư");
     }
   };
@@ -80,7 +99,7 @@ export function AdminDashboard() {
       setSelectedTutor(null);
       setRejectReason("");
     } catch (err) {
-        console.error(err);
+      console.error(err);
       toast.error("Lỗi khi từ chối");
     }
   };
@@ -104,17 +123,9 @@ export function AdminDashboard() {
     </div>
   );
 
-  /*if (user?.role !== "admin") {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-red-500">Bạn không có quyền truy cập</p>
-      </div>
-    );
-  }*/
-
   return (
     <div className="min-h-screen bg-slate-50 flex">
-      {/* Sidebar */}
+      {/* Sidebar (giữ nguyên) */}
       <aside className="w-72 bg-white border-r border-slate-200 flex flex-col">
         <div className="p-6 border-b border-slate-100">
           <h1 className="text-xl font-bold text-slate-900 flex items-center">
@@ -122,7 +133,6 @@ export function AdminDashboard() {
             TutorLink Admin
           </h1>
         </div>
-
         <nav className="flex-1 p-4 space-y-2">
           {sidebarItems.map((item) => (
             <button
@@ -139,18 +149,19 @@ export function AdminDashboard() {
                 <span>{item.name}</span>
               </div>
               {item.badge > 0 && (
-                <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                  activeTab === item.id
-                    ? "bg-white text-indigo-600"
-                    : "bg-indigo-600 text-white"
-                }`}>
+                <span
+                  className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                    activeTab === item.id
+                      ? "bg-white text-indigo-600"
+                      : "bg-indigo-600 text-white"
+                  }`}
+                >
                   {item.badge}
                 </span>
               )}
             </button>
           ))}
         </nav>
-
         <div className="p-4 border-t border-slate-100">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center">
@@ -201,7 +212,7 @@ export function AdminDashboard() {
                 <StatCard
                   icon={DollarSign}
                   label="Doanh thu"
-                  value={`$${stats?.total_revenue || 0}`}
+                  value={`${stats?.total_revenue || 0}₫`}
                   color="bg-amber-50 text-amber-600"
                 />
               </div>
@@ -251,11 +262,13 @@ export function AdminDashboard() {
                           </div>
                           <div className="col-span-2">
                             <span className="text-slate-500">Giới thiệu:</span>
-                            <p className="font-medium">{tutor.bio || "Chưa cập nhật"}</p>
+                            <p className="font-medium line-clamp-2">{tutor.bio || "Chưa cập nhật"}</p>
                           </div>
                           <div>
                             <span className="text-slate-500">Giá mỗi giờ:</span>
-                            <p className="font-medium text-indigo-600">${tutor.hourly_fee}</p>
+                            <p className="font-medium text-indigo-600">
+                              {formatVND(tutor.hourly_fee)}
+                            </p>
                           </div>
                         </div>
 
@@ -325,38 +338,105 @@ export function AdminDashboard() {
               </div>
             </div>
           )}
+
+          {activeTab === "complaints" && <AdminComplaintsPage />}
         </div>
       </main>
 
-      {/* Modal chi tiết */}
+      {/* Modal chi tiết - ĐÃ SỬA */}
       {selectedTutor && !selectedTutor.showReject && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-            <div className="p-6 border-b border-slate-100">
+          <div className="bg-white rounded-3xl max-w-3xl w-full max-h-[85vh] overflow-y-auto">
+            <div className="p-6 border-b border-slate-100 sticky top-0 bg-white z-10">
               <h3 className="text-xl font-bold text-slate-900">
                 Chi tiết đăng ký gia sư
               </h3>
             </div>
-            <div className="p-6 space-y-4">
-              <div className="flex items-center gap-4">
+            <div className="p-6 space-y-5">
+              {/* Thông tin cơ bản */}
+              <div className="flex items-center gap-4 pb-3 border-b border-slate-100">
                 <ImageWithFallback
                   src={selectedTutor.avatar}
                   alt={selectedTutor.name}
                   className="w-20 h-20 rounded-xl object-cover"
                 />
                 <div>
-                  <h4 className="font-bold text-lg">{selectedTutor.name}</h4>
+                  <h4 className="font-bold text-xl">{selectedTutor.name}</h4>
                   <p className="text-slate-500">{selectedTutor.email}</p>
+                  <p className="text-slate-500">{selectedTutor.phone}</p>
                 </div>
               </div>
-              <div>
-                <h5 className="font-bold mb-2">Chứng chỉ/Bằng cấp</h5>
-                <p className="text-slate-600">
-                  {selectedTutor.certificates || "Chưa cung cấp"}
-                </p>
+
+              {/* Chuyên môn chi tiết */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="font-semibold text-slate-600">Môn học:</span>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {selectedTutor.subjects?.length > 0 ? (
+                      selectedTutor.subjects.map((sub, idx) => (
+                        <span
+                          key={idx}
+                          className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-md text-xs"
+                        >
+                          {sub}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-slate-400">Chưa cập nhật</span>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <span className="font-semibold text-slate-600">Giá/giờ:</span>
+                  <p className="mt-1 text-indigo-600 font-bold text-base">
+                    {formatVND(selectedTutor.hourly_fee)}
+                  </p>
+                </div>
+
+                <div className="col-span-2">
+                  <span className="font-semibold text-slate-600">Học vấn:</span>
+                  <p className="mt-1 text-slate-700 bg-slate-50 p-2 rounded-lg">
+                    {selectedTutor.education || "Chưa cập nhật"}
+                  </p>
+                </div>
+
+                <div className="col-span-2">
+                  <span className="font-semibold text-slate-600">Kinh nghiệm giảng dạy:</span>
+                  <p className="mt-1 text-slate-700 bg-slate-50 p-2 rounded-lg whitespace-pre-wrap">
+                    {selectedTutor.experience || "Chưa cập nhật"}
+                  </p>
+                </div>
+
+                <div className="col-span-2">
+                  <span className="font-semibold text-slate-600">Chứng chỉ / Bằng cấp:</span>
+                  <p className="mt-1 text-slate-700 bg-slate-50 p-2 rounded-lg whitespace-pre-wrap">
+                    {selectedTutor.certifications || "Chưa cung cấp"}
+                  </p>
+                </div>
+
+                <div className="col-span-2">
+                  <span className="font-semibold text-slate-600">Giới thiệu bản thân:</span>
+                  <p className="mt-1 text-slate-700 bg-slate-50 p-3 rounded-lg whitespace-pre-wrap">
+                    {selectedTutor.bio || "Chưa cập nhật"}
+                  </p>
+                </div>
+
+                <div>
+                  <span className="font-semibold text-slate-600">Ngôn ngữ dạy:</span>
+                  <p className="mt-1">
+                    {parseLanguages(selectedTutor.languages).join(", ")}
+                  </p>
+                </div>
+
+                <div>
+                  <span className="font-semibold text-slate-600">Phong cách dạy:</span>
+                  <p className="mt-1">{selectedTutor.teaching_style || "Chưa cập nhật"}</p>
+                </div>
               </div>
             </div>
-            <div className="p-6 border-t border-slate-100 flex justify-end gap-3">
+
+            <div className="p-6 border-t border-slate-100 flex justify-end gap-3 sticky bottom-0 bg-white">
               <button
                 onClick={() => setSelectedTutor(null)}
                 className="px-6 py-2 bg-slate-100 text-slate-700 rounded-xl font-medium hover:bg-slate-200"

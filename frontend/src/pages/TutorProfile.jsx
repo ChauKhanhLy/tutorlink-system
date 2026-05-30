@@ -13,7 +13,6 @@ import {
   ChevronLeft,
   Calendar as CalendarIcon,
   ChevronRight,
-  Play,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -273,7 +272,7 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
                         <div className="flex items-center">
                           <Star className="h-4 w-4 text-amber-500 fill-amber-500 mr-1.5" />
                           <span className="text-sm font-bold text-slate-900">
-                            {tutor.rating || 0}
+                            {Number(tutor.rating || 0).toFixed(1)}
                           </span>
                           <span className="text-slate-400 text-sm ml-1">
                             ({tutor.reviewCount || 0} đánh giá)
@@ -393,31 +392,6 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
                 </div>
               </section>
 
-              {/* Video Introduction Placeholder */}
-              <section className="bg-slate-900 rounded-[2.5rem] p-8 relative overflow-hidden aspect-video flex items-center justify-center">
-                <div className="relative z-10 text-center">
-                  <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    className="w-20 h-20 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border-4 border-white/50 mb-6 mx-auto group"
-                  >
-                    <Play className="h-8 w-8 text-white fill-white group-hover:scale-110 transition-transform" />
-                  </motion.button>
-                  <h3 className="text-white text-xl font-bold">
-                    Xem video giới thiệu
-                  </h3>
-                  <p className="text-slate-400 text-sm mt-2">
-                    Nghe trực tiếp từ {tutor.name?.split(" ")[0]}
-                  </p>
-                </div>
-                <ImageWithFallback
-                  //src={tutor.avatar}
-                  src={getAvatarUrl(tutor?.avatar)}
-                  alt="Video giới thiệu"
-                  className="absolute inset-0 w-full h-full object-cover opacity-40 blur-sm scale-110"
-                />
-              </section>
-
               {/* Reviews */}
               <section className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
                 <div className="flex items-center justify-between mb-8">
@@ -427,7 +401,7 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
                   <div className="flex items-center">
                     <Star className="h-5 w-5 text-amber-500 fill-amber-500 mr-2" />
                     <span className="text-2xl font-bold text-slate-900">
-                      {tutor.rating || 0}
+                      {Number(tutor.rating || 0).toFixed(1)}
                     </span>
                     <span className="text-slate-400 font-bold ml-2">/ 5.0</span>
                   </div>

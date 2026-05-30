@@ -14,13 +14,13 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { tutorApi } from "../api/tutorApi";
 import { bookingApi } from "../api/bookingApi";
+import { FeedbackMiniPage } from "../components/FeedbackMiniPage";
 
 import { ImageWithFallback } from "../components/Image/ImageWithFallback";
 import { WalletPage } from "./Wallet.jsx";
 import DatePicker from "react-multi-date-picker";
 import "react-multi-date-picker/styles/colors/purple.css";
 import { getAvatarUrl } from "../utils/avatar.js";
-
 
 import { toast } from "sonner";
 
@@ -196,10 +196,11 @@ export function TutorDashboard() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${activeTab === tab.id
-                    ? "bg-indigo-600 text-white shadow-md"
-                    : "text-slate-500 hover:bg-slate-50"
-                    }`}
+                  className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${
+                    activeTab === tab.id
+                      ? "bg-indigo-600 text-white shadow-md"
+                      : "text-slate-500 hover:bg-slate-50"
+                  }`}
                 >
                   <tab.icon className="h-4 w-4" />
                   {tab.label}
@@ -329,16 +330,18 @@ function StatCard({ icon: Icon, label, value, color }) {
 
 // ========== SessionCard ==========
 function SessionCard({ session, onAccept, onReject }) {
+  const [showFeedback, setShowFeedback] = React.useState(false);
+
   const dateObj = session.dateObj;
   const isValidDate = dateObj && !isNaN(dateObj.getTime());
   const formattedDate = isValidDate
     ? dateObj.toLocaleDateString("vi-VN", {
-      weekday: "short",
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      timeZone: "Asia/Ho_Chi_Minh",
-    })
+        weekday: "short",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        timeZone: "Asia/Ho_Chi_Minh",
+      })
     : "Chưa xác định";
 
   const formattedTime = session.time || "--:--";
@@ -364,8 +367,9 @@ function SessionCard({ session, onAccept, onReject }) {
               />
             </div>
             <div
-              className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${session.type === "trial" ? "bg-amber-500" : "bg-indigo-500"
-                }`}
+              className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${
+                session.type === "trial" ? "bg-amber-500" : "bg-indigo-500"
+              }`}
               title={session.type === "trial" ? "Học thử" : "Học thật"}
             />
           </div>
@@ -376,10 +380,11 @@ function SessionCard({ session, onAccept, onReject }) {
                 {session.subject || "Lớp học"}
               </h4>
               <span
-                className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider whitespace-nowrap ${session.type === "trial"
-                  ? "bg-amber-100 text-amber-700"
-                  : "bg-indigo-100 text-indigo-700"
-                  }`}
+                className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider whitespace-nowrap ${
+                  session.type === "trial"
+                    ? "bg-amber-100 text-amber-700"
+                    : "bg-indigo-100 text-indigo-700"
+                }`}
               >
                 {session.type === "trial" ? "Học thử" : "Học thật"}
               </span>
@@ -439,8 +444,26 @@ function SessionCard({ session, onAccept, onReject }) {
                   : "Đã xong"}
             </div>
           )}
+          {/* Nút báo cáo */}
+          <button
+            onClick={() => setShowFeedback(true)}
+            className="text-red-500 text-sm px-2 py-1 rounded-lg hover:bg-red-50"
+          >
+            Phản hồi
+          </button>
         </div>
       </div>
+
+      {/* Modal ComplaintForm - đặt trong cùng return */}
+      {showFeedback && (
+        <FeedbackMiniPage
+          onClose={() => setShowFeedback(false)}
+          bookingId={session.id}
+          targetUserId={session.studentId || session.learner_id}
+          targetName={session.studentName || session.learner_name}
+          targetRole="student"
+        />
+      )}
     </div>
   );
 }
@@ -605,10 +628,11 @@ function AvailabilityModal({ onClose, onSave, isLoading = false }) {
                     key={time}
                     onClick={() => toggleTime(time)}
                     disabled={isLoading}
-                    className={`py-3 rounded-xl font-bold text-sm transition ${active
-                      ? "bg-indigo-600 text-white shadow-md scale-105"
-                      : "bg-slate-50 border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50"
-                      } disabled:opacity-50`}
+                    className={`py-3 rounded-xl font-bold text-sm transition ${
+                      active
+                        ? "bg-indigo-600 text-white shadow-md scale-105"
+                        : "bg-slate-50 border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50"
+                    } disabled:opacity-50`}
                   >
                     {time}
                   </button>

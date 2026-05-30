@@ -1,12 +1,11 @@
 import express from 'express'
-import { updateProfile, becomeTutor, getUserById } from '../controllers/user.controller.js'
+import {  becomeTutor, getUserById,updateProfileInfo,updateLearningInfo} from '../controllers/user.controller.js'
 import authMiddleware from '../middlewares/auth.middleware.js'
 import { upload } from '../middlewares/upload.middlewares.js'
 import { updateAvatar } from '../controllers/user.controller.js'
-const router = express.Router()
 
+const router = express.Router()
 router.get('/:id', getUserById)
-router.put('/me', authMiddleware, updateProfile)
 router.post('/become-tutor', authMiddleware, becomeTutor)
 router.post(
   '/avatar',
@@ -14,6 +13,17 @@ router.post(
   upload.single('avatar'),
   updateAvatar
 )
+router.put(
+  "/me/profile",
+  authMiddleware,
+  updateProfileInfo
+);
+
+router.put(
+  "/me/learning",
+  authMiddleware,
+  updateLearningInfo
+);
 export default router
 
 /*const express = require('express')

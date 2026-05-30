@@ -121,6 +121,40 @@ async (req, res) => {
 
   }
 }
+export const changePassword = async (
+  req,
+  res
+) => {
+  try {
+
+    const userId = req.user.id;
+
+    const {
+      currentPassword,
+      newPassword
+    } = req.body;
+
+    await authService.changePassword(
+      userId,
+      currentPassword,
+      newPassword
+    );
+
+    res.json({
+      message:
+        "Đổi mật khẩu thành công"
+    });
+
+  } catch (err) {
+
+    console.error(err);
+
+    res.status(400).json({
+      message: err.message
+    });
+
+  }
+};
 export default {
   registerLearner,
   registerTutor,
@@ -129,4 +163,5 @@ export default {
   resendOTPController,
   forgotPasswordController,
   resetPasswordController,
+  changePassword,
 }
