@@ -89,17 +89,17 @@ export const registerLearner = async ({
     throw new Error("User already exists");
   }
   const pendingUser =
-    pendingUsers.get(email);
+  pendingUsers.get(email);
 
-  if (
-    pendingUser &&
-    new Date() <
-    new Date(pendingUser.otp_expires)
-  ) {
-    throw new Error(
-      "OTP already sent. Please verify your email."
-    );
-  }
+if (
+  pendingUser &&
+  new Date() <
+  new Date(pendingUser.otp_expires)
+) {
+  throw new Error(
+    "OTP already sent. Please verify your email."
+  );
+}
 
   const hashedPassword =
     await bcrypt.hash(password, 10);
@@ -114,22 +114,22 @@ export const registerLearner = async ({
 
   // Save temp user
   pendingUsers.set(email, {
-    email,
-    password: hashedPassword,
-    name,
+  email,
+  password: hashedPassword,
+  name,
 
-    role: 'learner',
+  role: 'learner',
 
-    verified: true,
+  verified: true,
 
-    email_verified: false,
+  email_verified: false,
 
-    otp_code: otp,
-    otp_expires: otpExpires,
-  });
-  setTimeout(() => {
-    pendingUsers.delete(email);
-  }, 5 * 60 * 1000);
+  otp_code: otp,
+  otp_expires: otpExpires,
+});
+setTimeout(() => {
+  pendingUsers.delete(email);
+}, 5 * 60 * 1000);
 
   await transporter.sendMail({
     from: process.env.EMAIL_USER,
@@ -155,18 +155,18 @@ export const registerTutor = async ({
 
   const existingUser =
     await userDAL.findByEmail(email);
-  const pendingUser =
-    pendingUsers.get(email);
+    const pendingUser =
+  pendingUsers.get(email);
 
-  if (
-    pendingUser &&
-    new Date() <
-    new Date(pendingUser.otp_expires)
-  ) {
-    throw new Error(
-      "OTP already sent. Please verify your email."
-    );
-  }
+if (
+  pendingUser &&
+  new Date() <
+  new Date(pendingUser.otp_expires)
+) {
+  throw new Error(
+    "OTP already sent. Please verify your email."
+  );
+}
 
   if (existingUser) {
     throw new Error("User already exists");
@@ -200,8 +200,8 @@ export const registerTutor = async ({
   });
 
   setTimeout(() => {
-    pendingUsers.delete(email);
-  }, 5 * 60 * 1000);
+  pendingUsers.delete(email);
+},  5 * 60 * 1000);
 
   await transporter.sendMail({
     from: process.env.EMAIL_USER,
@@ -255,7 +255,7 @@ export const verifyOTP = async ({
 
   console.log("EMAIL:", email)
   console.log("INPUT OTP:", otp)
-
+ 
   // GET TEMP USER
   const pendingUser =
     pendingUsers.get(email);
@@ -318,46 +318,46 @@ export const verifyOTP = async ({
   return createdUser;
 }
 export const resendOTP =
-  async (email) => {
+async (email) => {
 
-    const pendingUser =
-      pendingUsers.get(email);
+  const pendingUser =
+    pendingUsers.get(email);
 
-    if (!pendingUser) {
-      throw new Error(
-        "Registration expired"
-      );
-    }
-
-    const otp =
-      Math.floor(
-        100000 + Math.random() * 900000
-      ).toString();
-
-    pendingUser.otp_code = otp;
-
-    pendingUser.otp_expires =
-      new Date(Date.now() + 60 * 1000);
-
-    pendingUsers.set(
-      email,
-      pendingUser
+  if (!pendingUser) {
+    throw new Error(
+      "Registration expired"
     );
+  }
 
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: "TutorLink OTP",
-      html: `
+  const otp =
+    Math.floor(
+      100000 + Math.random() * 900000
+    ).toString();
+
+  pendingUser.otp_code = otp;
+
+  pendingUser.otp_expires =
+    new Date(Date.now() + 60 * 1000);
+
+  pendingUsers.set(
+    email,
+    pendingUser
+  );
+
+  await transporter.sendMail({
+    from: process.env.EMAIL_USER,
+    to: email,
+    subject: "TutorLink OTP",
+    html: `
       <h1>Your OTP: ${otp}</h1>
     `,
-    });
+  });
 
-    return {
-      message:
-        "OTP resent successfully"
-    };
-  }
+  return {
+    message:
+      "OTP resent successfully"
+  };
+}
 // login
 export const login = async ({ email, password }) => {
   if (!email || !password) {
@@ -377,120 +377,180 @@ export const login = async ({ email, password }) => {
   )
 
   return {
-    token,
-    user: {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      avatar: user.avatar,
-      verified: user.verified,
-      email_verified: user.email_verified
-    }
+  token,
+  user: {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    phone: user.phone,
+    location: user.location,
+    bio: user.bio,
+    avatar: user.avatar,
+    role: user.role,
+    verified: user.verified,
+    email_verified: user.email_verified,
+    current_level:
+  user.current_level,
+
+school:
+  user.school,
+
+grade:
+  user.grade,
+
+target:
+  user.target,
+
+learning_goal:
+  user.learning_goal,
   }
 }
+}
 export const forgotPassword =
-  async (email) => {
+async (email) => {
 
-    const user =
-      await userDAL.findByEmail(email);
+  const user =
+    await userDAL.findByEmail(email);
 
-    if (!user) {
-      throw new Error(
-        "User not found"
-      );
-    }
-
-    const otp =
-      Math.floor(
-        100000 + Math.random() * 900000
-      ).toString();
-
-    const otpExpires =
-      new Date(Date.now() + 60 * 1000);
-
-    resetPasswordRequests.set(
-      email,
-      {
-        otp,
-        otpExpires
-      }
+  if (!user) {
+    throw new Error(
+      "User not found"
     );
+  }
 
-    setTimeout(() => {
-      resetPasswordRequests.delete(email);
-    }, 5 * 60 * 1000);
+  const otp =
+    Math.floor(
+      100000 + Math.random() * 900000
+    ).toString();
 
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject:
-        "TutorLink Reset Password OTP",
+  const otpExpires =
+    new Date(Date.now() + 60 * 1000);
 
-      html: `
+  resetPasswordRequests.set(
+    email,
+    {
+      otp,
+      otpExpires
+    }
+  );
+
+  setTimeout(() => {
+    resetPasswordRequests.delete(email);
+  }, 5 * 60 * 1000);
+
+  await transporter.sendMail({
+    from: process.env.EMAIL_USER,
+    to: email,
+    subject:
+      "TutorLink Reset Password OTP",
+
+    html: `
       <h1>Your OTP: ${otp}</h1>
     `,
-    });
+  });
 
-    return {
-      message:
-        "Reset OTP sent successfully"
-    };
-  }
+  return {
+    message:
+      "Reset OTP sent successfully"
+  };
+}
 export const resetPassword =
-  async ({
-    email,
-    otp,
-    newPassword
-  }) => {
+async ({
+  email,
+  otp,
+  newPassword
+}) => {
 
-    const resetRequest =
-      resetPasswordRequests.get(email);
+  const resetRequest =
+    resetPasswordRequests.get(email);
 
-    if (!resetRequest) {
-      throw new Error(
-        "Reset request expired"
-      );
-    }
+  if (!resetRequest) {
+    throw new Error(
+      "Reset request expired"
+    );
+  }
 
-    if (
-      String(resetRequest.otp).trim() !==
-      String(otp).trim()
-    ) {
-      throw new Error("Invalid OTP");
-    }
+  if (
+    String(resetRequest.otp).trim() !==
+    String(otp).trim()
+  ) {
+    throw new Error("Invalid OTP");
+  }
 
-    if (
-      new Date() >
-      new Date(resetRequest.otpExpires)
-    ) {
-      throw new Error("OTP expired");
-    }
+  if (
+    new Date() >
+    new Date(resetRequest.otpExpires)
+  ) {
+    throw new Error("OTP expired");
+  }
 
-    const hashedPassword =
-      await bcrypt.hash(
-        newPassword,
-        10
-      );
-
-    const user =
-      await userDAL.findByEmail(email);
-
-    await userDAL.updateUser(
-      user.id,
-      {
-        password:
-          hashedPassword
-      }
+  const hashedPassword =
+    await bcrypt.hash(
+      newPassword,
+      10
     );
 
-    resetPasswordRequests.delete(email);
+  const user =
+    await userDAL.findByEmail(email);
 
-    return {
-      message:
-        "Password reset successful"
-    };
+  await userDAL.updateUser(
+    user.id,
+    {
+      password:
+        hashedPassword
+    }
+  );
+
+  resetPasswordRequests.delete(email);
+
+  return {
+    message:
+      "Password reset successful"
+  };
+}
+export const changePassword = async (
+  userId,
+  currentPassword,
+  newPassword
+) => {
+
+  const user =
+    await userDAL.findById(userId);
+
+  if (!user) {
+    throw new Error(
+      "Không tìm thấy user"
+    );
   }
+
+  const isMatch =
+    await bcrypt.compare(
+      currentPassword,
+      user.password
+    );
+
+  if (!isMatch) {
+    throw new Error(
+      "Mật khẩu hiện tại không đúng"
+    );
+  }
+
+  if (newPassword.length < 8) {
+    throw new Error(
+      "Mật khẩu phải tối thiểu 8 ký tự"
+    );
+  }
+
+  const hashedPassword =
+    await bcrypt.hash(newPassword, 10);
+
+  await userDAL.updatePassword(
+    userId,
+    hashedPassword
+  );
+
+  return true;
+};
 /*const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
 const userDAL = require('../dal/user.dal')

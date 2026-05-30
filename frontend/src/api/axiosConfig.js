@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const instance = axios.create({
   baseURL: 'http://localhost:3000/api',
-  headers: { 'Content-Type': 'application/json' },
+  //headers: { 'Content-Type': 'application/json' },
 });
 
 // Tự động gắn token vào request

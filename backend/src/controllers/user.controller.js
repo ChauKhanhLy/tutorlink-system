@@ -16,26 +16,93 @@ export const getUserById = async (req, res) => {
     res.status(400).json({ message: err.message })
   }
 }
+export const updateProfileInfo =
+  async (req, res) => {
 
-export const updateProfile = async (req, res) => {
-  try {
-    const userId = req.user.id
-    const { name, phone, avatar } = req.body
+    try {
 
-    const updatedUser = await updateProfileService(userId, {
-      name,
-      phone,
-      avatar
-    })
+      const userId =
+        req.user.id;
 
-    res.json({
-      message: "Update profile success",
-      user: updatedUser
-    })
-  } catch (err) {
-    res.status(400).json({ message: err.message })
-  }
-}
+      const {
+        name,
+        phone,
+        location,
+        bio
+      } = req.body;
+
+      const updatedUser =
+        await updateProfileService(
+          userId,
+          {
+            name,
+            phone,
+            location,
+            bio
+          }
+        );
+
+      res.json({
+        message:
+          "Cập nhật hồ sơ thành công",
+        user: updatedUser
+      });
+
+    } catch (err) {
+
+      console.error(err);
+
+      res.status(400).json({
+        message: err.message
+      });
+
+    }
+};
+export const updateLearningInfo =
+  async (req, res) => {
+
+    try {
+
+      const userId =
+        req.user.id;
+
+      const {
+        current_level,
+        school,
+        grade,
+        target,
+        learning_goal
+      } = req.body;
+
+      const updatedUser =
+        await updateProfileService(
+          userId,
+          {
+            current_level,
+            school,
+            grade,
+            target,
+            learning_goal
+          }
+        );
+
+      res.json({
+        message:
+          "Cập nhật thông tin học tập thành công",
+        user: updatedUser
+      });
+
+    } catch (err) {
+
+      console.error(err);
+
+      res.status(400).json({
+        message: err.message
+      });
+
+    }
+};
+
 
 export const becomeTutor = async (req, res) => {
   try {
@@ -50,81 +117,45 @@ export const becomeTutor = async (req, res) => {
   }
 }
 
-// export const updateAvatar = async (req, res) => {
-//   try {
-//     console.log("API HIT")
-//     const userId = req.user.id
-//     console.log("userId:", userId)
-
-//     console.log(" file:", req.file)
-//     // không có file
-//     if (!req.file) {
-//       return res.status(400).json({ message: 'Không có file upload' })
-//     }
-
-//     // tạo đường dẫn avatar
-//     const avatarUrl = `/uploads/${req.file.filename}`
-//      console.log("avatarUrl:", avatarUrl)
-//     // update DB
-//     const updatedUser = await userService.updateAvatar(userId, avatarUrl)
-//     console.log("updated user:", user)
-//     // nếu không tìm thấy user
-//     if (!updatedUser) {
-
-//       return res.status(404).json({ message: 'User not found' })
-//     }
-
-//     // loại bỏ password
-//     const { password, ...userWithoutPassword } = updatedUser
-
-//     // trả về chuẩn
-//     res.json({
-//       message: "Update avatar success",
-//       user: userWithoutPassword
-//     })
-
-//   } catch (err) {
-//     console.error(err)
-//     res.status(500).json({ message: err.message })
-//   }
-// }
-
 export const updateAvatar = async (req, res) => {
   try {
+    console.log("API HIT")
     const userId = req.user.id
+    console.log("userId:", userId)
 
+    console.log(" file:", req.file)
+    // không có file
     if (!req.file) {
-      return res.status(400).json({
-        message: "Không có file upload"
-      })
+      return res.status(400).json({ message: 'Không có file upload' })
     }
 
+    // tạo đường dẫn avatar
     const avatarUrl = `/uploads/${req.file.filename}`
-    console.log("avatarUrl:", avatarUrl)
-
+     console.log("avatarUrl:", avatarUrl)
+    // update DB
     const updatedUser = await userService.updateAvatar(userId, avatarUrl)
-
+    console.log("updated user:", updatedUser)
+    // nếu không tìm thấy user
     if (!updatedUser) {
-      return res.status(404).json({
-        message: "User not found"
-      })
+      
+      return res.status(404).json({ message: 'User not found' })
     }
 
+    // loại bỏ password
     const { password, ...userWithoutPassword } = updatedUser
 
-    return res.status(200).json({
+    // trả về chuẩn
+    res.json({
       message: "Update avatar success",
       user: userWithoutPassword
     })
-  } catch (err) {
-    console.error("Lỗi updateAvatar:", err)
 
-    return res.status(500).json({
-      message: "Lỗi server khi upload avatar",
-      error: err.message
-    })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ message: err.message })
   }
 }
+
 
 /*const userService = require('../services/user.service')
 

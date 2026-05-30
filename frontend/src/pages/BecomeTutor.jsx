@@ -244,10 +244,11 @@ export function BecomeTutorPage() {
               <div key={s} className="flex items-center flex-1">
                 <div className="flex flex-col items-center">
                   <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center font-bold${step >= s
-                      ? "bg-indigo-600 text-white"
-                      : "bg-slate-200 text-slate-500"
-                      }`}
+                    className={`w-10 h-10 rounded-full flex items-center justify-center font-bold${
+                      step >= s
+                        ? "bg-indigo-600 text-white"
+                        : "bg-slate-200 text-slate-500"
+                    }`}
                   >
                     {step > s ? <CheckCircle className="h-5 w-5" /> : s}
                   </div>
@@ -261,8 +262,9 @@ export function BecomeTutorPage() {
                 </div>
                 {s < 3 && (
                   <div
-                    className={`flex-1 h-0.5 mx-4 ${step > s ? "bg-indigo-600" : "bg-slate-200"
-                      }`}
+                    className={`flex-1 h-0.5 mx-4 ${
+                      step > s ? "bg-indigo-600" : "bg-slate-200"
+                    }`}
                   />
                 )}
               </div>
@@ -319,21 +321,25 @@ export function BecomeTutorPage() {
                   <label className="block text-sm font-bold text-slate-700 mb-2">
                     Ảnh đại diện
                   </label>
+
                   <div className="flex items-center gap-4">
                     <ImageWithFallback
-                      //src={formData.avatar}
-                      src={getAvatarUrl(formData.avatar)}
-                      alt={formData.name}
-                      className="w-12 h-12 rounded-full object-cover"
-                    />
-                    <input
-                      type="url"
-                      value={formData.avatar}
-                      onChange={(e) =>
-                        handleInputChange("avatar", e.target.value)
+                      src={
+                        formData.avatar
+                          ? URL.createObjectURL(formData.avatar)
+                          : getAvatarUrl(user?.avatar)
                       }
-                      placeholder="URL ảnh đại diện"
-                      className="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                      alt={formData.name}
+                      className="w-16 h-16 rounded-full object-cover"
+                    />
+
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) =>
+                        handleInputChange("avatar", e.target.files[0])
+                      }
+                      className="flex-1"
                     />
                   </div>
                 </div>
@@ -349,10 +355,11 @@ export function BecomeTutorPage() {
                       key={lang}
                       type="button"
                       onClick={() => handleLanguageToggle(lang)}
-                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${formData.languages.includes(lang)
-                        ? "bg-indigo-600 text-white"
-                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                        }`}
+                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                        formData.languages.includes(lang)
+                          ? "bg-indigo-600 text-white"
+                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      }`}
                     >
                       {lang}
                     </button>
@@ -419,10 +426,11 @@ export function BecomeTutorPage() {
                       key={subject}
                       type="button"
                       onClick={() => handleSubjectToggle(subject)}
-                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${formData.subjects.includes(subject)
-                        ? "bg-indigo-600 text-white"
-                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                        }`}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                        formData.subjects.includes(subject)
+                          ? "bg-indigo-600 text-white"
+                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      }`}
                     >
                       {subject}
                     </button>
@@ -547,10 +555,11 @@ export function BecomeTutorPage() {
                       key={day.id}
                       type="button"
                       onClick={() => handleDayToggle(day.id)}
-                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${formData.availableDays.includes(day.id)
-                        ? "bg-indigo-600 text-white shadow-md shadow-indigo-200"
-                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                        }`}
+                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                        formData.availableDays.includes(day.id)
+                          ? "bg-indigo-600 text-white shadow-md shadow-indigo-200"
+                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      }`}
                     >
                       {day.label}
                     </button>
@@ -566,10 +575,11 @@ export function BecomeTutorPage() {
                       key={option.id}
                       type="button"
                       onClick={() => handleAvailabilityToggle(option.id)}
-                      className={`px-4 py-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${formData.availability.includes(option.id)
-                        ? "bg-indigo-600 text-white shadow-md shadow-indigo-200"
-                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                        }`}
+                      className={`px-4 py-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                        formData.availability.includes(option.id)
+                          ? "bg-indigo-600 text-white shadow-md shadow-indigo-200"
+                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      }`}
                     >
                       <Clock className="h-4 w-4" />
                       {option.label}
