@@ -498,7 +498,7 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
                       {bookingType === "trial" ? "0đ" : formatVND(tutor.hourlyRate || tutor.hourly_fee)}
                     </div>
                     <div className="text-slate-400 text-sm font-bold">
-                      Bài học 50 phút
+                      {bookingType === 'trial' ? 'Bài học 50 phút' : 'Bài học 2 tiếng'}
                     </div>
                   </div>
 
@@ -693,7 +693,7 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
                     Buổi học thử
                   </h4>
                   <p className="text-xs text-indigo-600/70 leading-relaxed font-medium">
-                    Mới đến với TutorLink? Buổi học 30 phút đầu tiên của bạn
+                    Mới đến với TutorLink? Buổi học 50 phút đầu tiên của bạn
                     hoàn toàn miễn phí!
                   </p>
                 </div>

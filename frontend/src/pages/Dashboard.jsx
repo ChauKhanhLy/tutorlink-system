@@ -393,10 +393,11 @@ export function DashboardPage() {
                               session.status !== "cancelled" &&
                               session.status !== "done";
                             const now = new Date();
+                            const durationMin = session.type === "trial" ? 50 : 120;
                             const canReview =
                               session.status === "completed" &&
                               now >=
-                                new Date(startTime.getTime() + 2 * 60 * 60 * 1000);
+                                new Date(startTime.getTime() + durationMin * 60 * 1000);
 
                             return (
                               <div

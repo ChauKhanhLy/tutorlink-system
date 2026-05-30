@@ -169,7 +169,7 @@ export function BookingPage() {
                         </div>
                         <div className="flex items-center text-slate-600">
                           <Clock className="h-5 w-5 text-indigo-500 mr-3" />
-                          <span className="font-medium">{booking.time}</span>
+                          <span className="font-medium">{booking.time} ({booking.type === 'trial' ? '50 phút' : '2 tiếng'})</span>
                         </div>
                         <div className="flex items-center text-slate-600">
                           <Video className="h-5 w-5 text-indigo-500 mr-3" />
