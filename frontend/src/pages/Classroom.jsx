@@ -225,6 +225,12 @@ export function ClassroomPage() {
                         </div>
                         
                         <div className="flex items-center gap-3">
+                           <Link 
+                             to={`/lesson/${booking.id}`}
+                             className="px-6 py-2.5 bg-white border border-indigo-200 text-indigo-600 text-sm font-bold rounded-xl hover:bg-indigo-50 transition-all flex items-center"
+                           >
+                             Xem chi tiết <ArrowRight className="ml-2 h-4 w-4" />
+                           </Link>
                            {isUpcoming ? (
                              <Link 
                                to={`/room/${booking.room_id || booking.id}`}

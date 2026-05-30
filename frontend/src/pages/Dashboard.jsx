@@ -36,9 +36,10 @@ export function DashboardPage() {
   const [sessions, setSessions] = React.useState([]);
   const [tutors, setTutors] = React.useState([]);
   const [activeTab, setActiveTab] = React.useState("sessions");
-  //const [favorites, setFavorites] = React.useState([]);
+  const [favorites, setFavorites] = React.useState([]);
   const [messages, setMessages] = React.useState([]);
   const [wallet, setWallet] = React.useState(null);
+  const [loading, setLoading] = React.useState(true);
 
   const sidebarItems = [
     { id: "sessions", name: "Buổi học của tôi", icon: Calendar },
@@ -61,66 +62,82 @@ export function DashboardPage() {
   React.useEffect(() => {
     const fetchData = async () => {
       try {
-        const [tutorRes, bookingRes, messageRes] =
-          await Promise.all([
-            tutorApi.getAll(),
-            bookingApi.getMyBookings(),
-            messageApi.getConversations(user.id),
-          ]);
+        setLoading(true);
 
-        setTutors(tutorRes.data.tutors || []);
-        setSessions(bookingRes.data);
-        setMessages(messageRes.data);
+        // Chỉ fetch bookings (đã bao gồm tutor info trong response)
+        const bookingRes = await bookingApi.getMyBookings();
+        const bookings = bookingRes.data || [];
+        setSessions(bookings);
+
+        // Extract unique tutor info từ bookings (backend đã trả về tutorName, tutorAvatar)
+        const uniqueTutors = [...new Map(bookings
+          .filter(b => b.tutorId && b.tutorName)
+          .map(b => [b.tutorId, { id: b.tutorId, name: b.tutorName, avatar: b.tutorAvatar }])
+        ).values()];
+        setTutors(uniqueTutors);
+
+        // Fetch messages sau (deferred) - không block loading
+        messageApi.getConversations(user.id)
+          .then(messageRes => setMessages(messageRes.data))
+          .catch(() => setMessages([]));
       } catch (err) {
-        console.log(err);
+        console.error('Error fetching dashboard data:', err);
+      } finally {
+        setLoading(false);
       }
     };
 
-    if (user?.id) fetchData();
+    if (user?.id) {
+      fetchData();
+    } else {
+      setLoading(false);
+    }
   }, [user?.id]);
 
-  // Socket listener cho booking status changes
+  // Socket listener cho booking status changes - defer loading
   React.useEffect(() => {
     if (!user?.id) return;
 
-    console.log('Setting up socket listener for user:', user.id);
-
-    // Import socket
-    import('../socket.js').then(({ default: socket }) => {
-      if (socket) {
-        console.log('Socket connected, registering user:', user.id);
-        
-        // Register user với socket
-        socket.emit('register_user', user.id);
-        
-        // Lắng nghe thay đổi status của booking
-        socket.on('booking_status_changed', (data) => {
-          console.log('Booking status changed received:', data);
+    // Defer socket setup to avoid blocking initial render
+    const timer = setTimeout(() => {
+      import('../socket.js').then(({ default: socket }) => {
+        if (socket) {
+          socket.emit('register_user', user.id);
           
-          // Refresh lại data bookings
-          fetchData();
-          
-          // Show toast notification
-          import('sonner').then(({ toast }) => {
-            toast.info(data.message || 'Trạng thái lịch học đã thay đổi');
+          socket.on('booking_status_changed', (data) => {
+            // Refresh bookings only
+            bookingApi.getMyBookings().then(bookingRes => {
+              setSessions(bookingRes.data || []);
+            });
+            
+            import('sonner').then(({ toast }) => {
+              toast.info(data.message || 'Trạng thái lịch học đã thay đổi');
+            });
           });
-        });
 
-        return () => {
-          console.log('Cleaning up socket listener');
-          socket.off('booking_status_changed');
-        };
-      } else {
-        console.log('Socket not available');
-      }
-    });
+          return () => {
+            socket.off('booking_status_changed');
+          };
+        }
+      });
+    }, 2000); // Defer by 2 seconds
+
+    return () => clearTimeout(timer);
   }, [user?.id]);
 
-  const nextSession = sessions
-    ?.filter((s) => new Date(s.date) > new Date()) // buổi trong tương lai
-    .sort((a, b) => new Date(a.date) - new Date(b.date))[0];
+  const nextSession = Array.isArray(sessions) ? sessions
+    ?.filter((s) => new Date(s.datetime || s.date) > new Date() && (s.status === 'confirmed' || s.status === 'pending')) // buổi đã xác nhận hoặc chờ xác nhận trong tương lai
+    .sort((a, b) => new Date(a.datetime || a.date) - new Date(b.datetime || b.date))[0] : null;
 
   const nextTutor = tutors.find((t) => t.id === nextSession?.tutorId);
+
+  if (loading) {
+    return (
+      <div className="pt-32 flex justify-center items-center min-h-[60vh]">
+        <div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="pt-24 min-h-screen bg-slate-50">
@@ -246,8 +263,7 @@ export function DashboardPage() {
                   {activeTab === "settings" && "Cài đặt"}
                 </h1>
                 <p className="text-slate-500 font-medium">
-                  Chào mừng {user?.name || "bạn"}. Bạn có 2 buổi học trong tuần
-                  này.
+                  Chào mừng {user?.name || "bạn"}. Bạn có {sessions?.length || 0} buổi học trong danh sách.
                 </p>
               </div>
               <div className="flex items-center space-x-3">
@@ -348,71 +364,58 @@ export function DashboardPage() {
                       </button>
                     </div>
                     <div className="space-y-4">
-                      {sessions.map((session) => {
-                        const tutor = tutors.find((t) => t.id === session.tutorId);
-                        const now = new Date();
-                        const startTime = new Date(session.room_start_time || session.datetime || session.date);
-                        const endTime = new Date(session.room_end_time || (new Date(startTime).getTime() + 60 * 60 * 1000));
+                      {sessions && sessions.length > 0 ? (
+                        sessions.map((session) => {
+                          const tutor = tutors.find((t) => t.id === session.tutorId);
+                          const now = new Date();
+                          const startTime = new Date(session.room_start_time || session.datetime || session.date);
+                          const endTime = new Date(session.room_end_time || (new Date(startTime).getTime() + 60 * 60 * 1000));
 
-                        // Cho phép vào phòng bất cứ lúc nào nếu có room_id (phục vụ testing)
-                        //const canJoin = !!session.room_id && session.status !== 'cancelled' && session.status !== 'done';
-                        const canJoin = (!!session.room_id || !!session.roomId) && session.status !== 'cancelled' && session.status !== 'done';
-                        
-                        if (session.type === 'trial' || session.status === 'confirmed') {
-                          console.log('Confirmed/Trial Session details:', JSON.stringify(session, null, 2));
-                        }
+                          // Cho phép vào phòng bất cứ lúc nào nếu có room_id (phục vụ testing)
+                          const canJoin = (!!session.room_id || !!session.roomId) && session.status !== 'cancelled' && session.status !== 'done';
 
+                          // Kiểm tra xem có thể đánh giá không
+                          const canReview = session.status === 'completed' && now >= new Date(startTime.getTime() + 2 * 60 * 60 * 1000);
 
-                        // Kiểm tra xem có thể đánh giá không
-                        const canReview = session.status === 'completed' && now >= new Date(startTime.getTime() + 2 * 60 * 60 * 1000);
-
-
-                        return (
-                          <div
-                            key={session.id}
-                            className="group p-5 bg-slate-50 rounded-3xl border border-transparent hover:border-indigo-100 hover:bg-white transition-all duration-300 flex flex-col md:flex-row justify-between items-center gap-4"
-                          >
-                            <div className="flex items-center space-x-5">
-                              <div className="w-14 h-14 bg-indigo-100 rounded-2xl flex items-center justify-center">
-                                <Calendar className="h-6 w-6 text-indigo-600" />
-                              </div>
-
-                              <div>
-                                <h4 className="font-bold text-slate-900 text-lg">
-                                  <Link to={`/classroom/${session.tutor_id || session.tutorId}/${session.subject_id || session.subjectId}`} className="hover:text-indigo-600 transition-colors">
-                                    {session.subject || "Chưa có môn"}
-                                  </Link>
-                                </h4>
-
-                                <div className="flex items-center text-slate-500 text-sm mt-1">
-                                  <span className="font-bold">
-                                    {session.dateObj
-                                      ? session.dateObj.toLocaleDateString("vi-VN")
-                                      : (session.date || session.datetime ? new Date(session.date || session.datetime).toLocaleDateString("vi-VN") : "Chưa có ngày")}
-                                  </span>
-                                  <span className="mx-2">•</span>
-                                  <span>{session.time || (session.dateObj ? session.dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : "--:--")}</span>
+                          return (
+                            <div
+                              key={session.id}
+                              className="group p-5 bg-slate-50 rounded-3xl border border-transparent hover:border-indigo-100 hover:bg-white transition-all duration-300 flex flex-col md:flex-row justify-between items-center gap-4"
+                            >
+                              <div className="flex items-center space-x-5">
+                                <div className="w-14 h-14 bg-indigo-100 rounded-2xl flex items-center justify-center">
+                                  <Calendar className="h-6 w-6 text-indigo-600" />
                                 </div>
 
-                                <div className="text-xs text-slate-400 mt-1">
-                                  Gia sư: {tutor?.name || session.tutorName || "Đang cập nhật"}
+                                <div>
+                                  <h4 className="font-bold text-slate-900 text-lg">
+                                    <Link to={`/classroom/${session.tutor_id || session.tutorId}/${session.subject_id || session.subjectId}`} className="hover:text-indigo-600 transition-colors">
+                                      {session.subject || "Chưa có môn"}
+                                    </Link>
+                                  </h4>
+
+                                  <div className="flex items-center text-slate-500 text-sm mt-1">
+                                    <span className="font-bold">
+                                      {session.dateObj
+                                        ? session.dateObj.toLocaleDateString("vi-VN")
+                                        : (session.date || session.datetime ? new Date(session.date || session.datetime).toLocaleDateString("vi-VN") : "Chưa có ngày")}
+                                    </span>
+                                    <span className="mx-2">•</span>
+                                    <span>{session.time || (session.dateObj ? session.dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : "--:--")}</span>
+                                  </div>
+
+                                  <div className="text-xs text-slate-400 mt-1">
+                                    Gia sư: {tutor?.name || session.tutorName || "Đang cập nhật"}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
 
-                            <div className="flex items-center space-x-3">
-                              <ImageWithFallback
-                                src={tutor?.avatar || ""}
-                                className="w-10 h-10 rounded-full border-2 border-white shadow-sm"
-                              />
+                              <div className="flex items-center space-x-3">
+                                <ImageWithFallback
+                                  src={tutor?.avatar || ""}
+                                  className="w-10 h-10 rounded-full border-2 border-white shadow-sm"
+                                />
 
-                              {/* {canJoin ? (
-                                <Link
-                                  to={`/room/${session.room_id}`}
-                                  className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all"
-                                >
-                                  Vào phòng
-                                </Link> */}
                                 {canJoin ? (
                                   <Link
                                     to={`/room/${session.room_id || session.roomId}`}
@@ -420,22 +423,31 @@ export function DashboardPage() {
                                   >
                                     Vào phòng
                                   </Link>
-                              ) : canReview ? (
-                                <Link
-                                  to={`/review?tutorId=${session.tutorId}&bookingId=${session.id}`}
-                                  className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-all"
-                                >
-                                  Đánh giá
-                                </Link>
-                              ) : (
-                                <button className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-400 cursor-not-allowed">
-                                  {session.status === 'cancelled' ? "Gia sư đã từ chối" : (session.room_id || session.roomId ? "Chưa đến giờ" : "Chờ xác nhận")}
-                                </button>
-                              )}
+                                ) : canReview ? (
+                                  <Link
+                                    to={`/review?tutorId=${session.tutorId}&bookingId=${session.id}`}
+                                    className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-all"
+                                  >
+                                    Đánh giá
+                                  </Link>
+                                ) : (
+                                  <button className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-400 cursor-not-allowed">
+                                    {session.status === 'cancelled' ? "Gia sư đã từ chối" : (session.room_id || session.roomId ? "Chưa đến giờ" : "Chờ xác nhận")}
+                                  </button>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })
+                      ) : (
+                        <div className="text-center py-12">
+                          <Calendar className="h-16 w-16 text-slate-200 mx-auto mb-4" />
+                          <p className="text-slate-500 font-medium">Chưa có buổi học nào</p>
+                          <Link to="/search" className="text-indigo-600 font-bold text-sm mt-2 inline-block">
+                            Tìm gia sư để đặt lịch
+                          </Link>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

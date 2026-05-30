@@ -96,16 +96,20 @@ export const getMyBookings = async (learner_id) => {
     const query = `
         SELECT 
             b.*,
-            u.name as tutorName,
-            s.name as subject,
-            vs.id as room_id,
-            vs.status as room_status,
-            vs.start_time as room_start_time,
-            vs.end_time as room_end_time,
+            b.tutor_id as "tutorId",
+            b.learner_id as "learnerId",
+            b.subject_id as "subjectId",
+            u.name as "tutorName",
+            u.avatar as "tutorAvatar",
+            s.name as "subject",
+            vs.id as "room_id",
+            vs.status as "room_status",
+            vs.start_time as "room_start_time",
+            vs.end_time as "room_end_time",
             ls.tutor_confirmed,
             ls.learner_confirmed,
             ls.attended,
-            ls.id as lesson_session_id
+            ls.id as "lesson_session_id"
         FROM bookings b
         JOIN users u ON b.tutor_id = u.id
         LEFT JOIN subjects s ON b.subject_id = s.id
@@ -116,13 +120,16 @@ export const getMyBookings = async (learner_id) => {
     `;
     const result = await db.query(query, [learner_id]);
     const bookings = result.rows;
-    
-    // Đảm bảo các buổi đã confirmed đều có phòng họp và lesson session
-    await ensureVideoRoomsExist(bookings);
-    for (let booking of bookings) {
-        await ensureLessonSessionExists(booking);
-    }
-    
+
+    // Chỉ tạo phòng và lesson session cho các booking confirmed (deferred)
+    // Không block response để frontend load nhanh hơn
+    setImmediate(async () => {
+        await ensureVideoRoomsExist(bookings);
+        for (let booking of bookings) {
+            await ensureLessonSessionExists(booking);
+        }
+    });
+
     return bookings;
 };
 
@@ -130,19 +137,21 @@ export const getBookingById = async (id) => {
     const query = `
         SELECT 
             b.*,
-            u.name as tutorName,
-            u.avatar as tutorAvatar,
-            u.id as tutorId,
-            l.name as studentName,
-            s.name as subjectName,
-            vs.id as room_id,
-            vs.status as room_status,
-            vs.start_time as room_start_time,
-            vs.end_time as room_end_time,
+            b.tutor_id as "tutorId",
+            b.learner_id as "learnerId",
+            u.name as "tutorName",
+            u.avatar as "tutorAvatar",
+            l.name as "studentName",
+            l.avatar as "studentAvatar",
+            s.name as "subject",
+            vs.id as "room_id",
+            vs.status as "room_status",
+            vs.start_time as "room_start_time",
+            vs.end_time as "room_end_time",
             ls.tutor_confirmed,
             ls.learner_confirmed,
             ls.attended,
-            ls.id as lesson_session_id
+            ls.id as "lesson_session_id"
         FROM bookings b
         JOIN users u ON b.tutor_id = u.id
         JOIN users l ON b.learner_id = l.id
@@ -308,17 +317,19 @@ export const getBookingsForTutor = async (tutor_id) => {
     const query = `
         SELECT 
             b.*,
-            u.name as studentName,
-            u.avatar as studentAvatar,
-            s.name as subject,
-            vs.id as room_id,
-            vs.status as room_status,
-            vs.start_time as room_start_time,
-            vs.end_time as room_end_time,
+            b.tutor_id as "tutorId",
+            b.learner_id as "learnerId",
+            u.name as "studentName",
+            u.avatar as "studentAvatar",
+            s.name as "subject",
+            vs.id as "room_id",
+            vs.status as "room_status",
+            vs.start_time as "room_start_time",
+            vs.end_time as "room_end_time",
             ls.tutor_confirmed,
             ls.learner_confirmed,
             ls.attended,
-            ls.id as lesson_session_id
+            ls.id as "lesson_session_id"
         FROM bookings b
         JOIN users u ON b.learner_id = u.id
         LEFT JOIN subjects s ON b.subject_id = s.id
