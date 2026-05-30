@@ -1,31 +1,53 @@
 import React from "react";
-import { Calendar, Users, Wallet, Star, Clock, Trash2, DollarSign } from "lucide-react";
-import { Link } from "react-router-dom";
+import {
+  Calendar,
+  Users,
+  Wallet,
+  Star,
+  Clock,
+  Trash2,
+  DollarSign,
+  Loader2,
+} from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+
 import { useAuth } from "../context/AuthContext";
 import { tutorApi } from "../api/tutorApi";
 import { bookingApi } from "../api/bookingApi";
-import { useNavigate } from "react-router-dom";
+import { FeedbackMiniPage } from "../components/FeedbackMiniPage";
+
 import { ImageWithFallback } from "../components/Image/ImageWithFallback";
-import { toast } from "sonner";
 import { WalletPage } from "./Wallet.jsx";
+import DatePicker from "react-multi-date-picker";
+import "react-multi-date-picker/styles/colors/purple.css";
+import { getAvatarUrl } from "../utils/avatar.js";
+
+import { toast } from "sonner";
 
 export function TutorDashboard() {
   const navigate = useNavigate();
   const { user, refreshUser } = useAuth();
+
   const isPending = user?.role === "tutor" && user?.verified === false;
+
+  const [loadingUser, setLoadingUser] = React.useState(true);
+  const [loadingAvailability, setLoadingAvailability] = React.useState(false);
+
   const [stats, setStats] = React.useState({
     todaySessions: 0,
     totalStudents: 0,
     monthlyEarnings: 0,
     avgRating: 0,
   });
-  const [loadingUser, setLoadingUser] = React.useState(true);
+
   const [upcomingSessions, setUpcomingSessions] = React.useState([]);
   const [availability, setAvailability] = React.useState([]);
-  const [activeTab, setActiveTab] = React.useState("sessions");
-  const [showAvailabilityModal, setShowAvailabilityModal] = React.useState(false);
 
-  const fetchTutorData = React.useCallback(async () => {
+  const [activeTab, setActiveTab] = React.useState("sessions");
+  const [showAvailabilityModal, setShowAvailabilityModal] =
+    React.useState(false);
+
+  const fetchTutorData = async () => {
     if (!user?.id || isPending) return;
     try {
       const [statsRes, sessionsRes, availabilityRes] = await Promise.all([
@@ -33,13 +55,17 @@ export function TutorDashboard() {
         bookingApi.getTutorBookings(),
         tutorApi.getAvailability(user.id),
       ]);
+
       setStats(statsRes.data.data || statsRes.data);
       setUpcomingSessions(sessionsRes.data || []);
-      setAvailability(availabilityRes.data?.availableSlots || availabilityRes.data || []);
+      setAvailability(
+        availabilityRes.data?.availableSlots || availabilityRes.data || [],
+      );
     } catch (err) {
       console.error(err);
+      toast.error("Không thể tải dữ liệu");
     }
-  }, [user?.id, isPending]);
+  };
 
   React.useEffect(() => {
     const loadUser = async () => {
@@ -51,8 +77,10 @@ export function TutorDashboard() {
   }, [user?.id, refreshUser]);
 
   React.useEffect(() => {
-    fetchTutorData();
-  }, [fetchTutorData]);
+    if (user?.id && !isPending) {
+      fetchTutorData();
+    }
+  }, [user?.id, isPending]);
 
   const handleAccept = async (bookingId) => {
     try {
@@ -62,8 +90,10 @@ export function TutorDashboard() {
         await fetchTutorData();
       }
     } catch (err) {
-      console.error("Lỗi khi chấp nhận lịch học:", err);
-      toast.error(err.response?.data?.message || "Không thể chấp nhận lịch học");
+      console.error(err);
+      toast.error(
+        err.response?.data?.message || "Không thể chấp nhận lịch học",
+      );
     }
   };
 
@@ -75,19 +105,25 @@ export function TutorDashboard() {
         await fetchTutorData();
       }
     } catch (err) {
-      console.error("Lỗi khi từ chối lịch học:", err);
+      console.error(err);
       toast.error(err.response?.data?.message || "Không thể từ chối lịch học");
     }
   };
 
   const handleUpdateAvailability = async (data) => {
+    setLoadingAvailability(true);
     try {
       await tutorApi.updateAvailability(user.id, data);
-      await fetchTutorData();
       toast.success("Cập nhật lịch rảnh thành công!");
+      await fetchTutorData(); // refresh toàn bộ dữ liệu
+      setShowAvailabilityModal(false);
     } catch (err) {
       console.error(err);
-      toast.error("Cập nhật thất bại, vui lòng thử lại");
+      toast.error(
+        err.response?.data?.message || "Cập nhật thất bại, vui lòng thử lại",
+      );
+    } finally {
+      setLoadingAvailability(false);
     }
   };
 
@@ -122,7 +158,7 @@ export function TutorDashboard() {
 
         {!isPending && (
           <>
-            {/* Thống kê */}
+            {/* Stats */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
               <StatCard
                 icon={Calendar}
@@ -137,7 +173,7 @@ export function TutorDashboard() {
                 color="bg-green-50 text-green-600"
               />
               <StatCard
-                icon={DollarSign}
+                icon={Wallet}
                 label="Thu nhập tháng"
                 value={`${stats.monthlyEarnings.toLocaleString("vi-VN")} ₫`}
                 color="bg-emerald-50 text-emerald-600"
@@ -172,11 +208,10 @@ export function TutorDashboard() {
               ))}
             </div>
 
-            {/* Nội dung tab */}
+            {/* Sessions */}
             {activeTab === "sessions" && (
               <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-8">
-                <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-indigo-600" />
+                <h2 className="text-xl font-bold text-slate-900 mb-6">
                   Lịch dạy sắp tới
                 </h2>
                 <div className="space-y-4">
@@ -198,54 +233,56 @@ export function TutorDashboard() {
               </div>
             )}
 
+            {/* Wallet */}
             {activeTab === "wallet" && (
               <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
                 <WalletPage />
               </div>
             )}
 
+            {/* Availability */}
             {activeTab === "availability" && (
               <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-8">
-                <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-indigo-600" />
+                <h2 className="text-xl font-bold text-slate-900 mb-6">
                   Lịch rảnh của tôi
                 </h2>
-                <div className="space-y-6 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
-                  {availability.length > 0 ? (
-                    availability.map((slot, index) => {
-                      const [year, month, day] = slot.date.split("-").map(Number);
-                      const dateObj = new Date(year, month - 1, day);
-                      return (
-                        <div
-                          key={index}
-                          className="border-b border-slate-50 last:border-0 pb-4 last:pb-0"
-                        >
-                          <p className="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full bg-indigo-400" />
-                            {dateObj.toLocaleDateString("vi-VN", {
-                              weekday: "long",
-                              day: "numeric",
-                              month: "long",
-                            })}
-                          </p>
-                          <div className="flex flex-wrap gap-2">
-                            {slot.times.map((time, tIndex) => (
-                              <span
-                                key={tIndex}
-                                className="px-3 py-1 bg-slate-50 text-slate-600 text-xs font-medium rounded-lg border border-slate-100"
-                              >
-                                {time}
-                              </span>
-                            ))}
+                <div className="max-h-[420px] overflow-y-auto pr-3 custom-scrollbar">
+                  <div className="space-y-6">
+                    {availability.length > 0 ? (
+                      availability.map((slot, index) => {
+                        const [year, month, day] = slot.date
+                          .split("-")
+                          .map(Number);
+                        const dateObj = new Date(year, month - 1, day);
+                        return (
+                          <div key={index}>
+                            <p className="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
+                              <div className="w-2 h-2 rounded-full bg-indigo-400" />
+                              {dateObj.toLocaleDateString("vi-VN", {
+                                weekday: "long",
+                                day: "numeric",
+                                month: "long",
+                              })}
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              {slot.times.map((time, tIndex) => (
+                                <span
+                                  key={tIndex}
+                                  className="px-3 py-1 bg-slate-50 text-slate-600 text-xs font-medium rounded-lg border border-slate-100"
+                                >
+                                  {time}
+                                </span>
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <p className="text-slate-400 text-center py-8">
-                      Chưa cập nhật lịch rảnh
-                    </p>
-                  )}
+                        );
+                      })
+                    ) : (
+                      <p className="text-slate-400 text-center py-8">
+                        Chưa cập nhật lịch rảnh
+                      </p>
+                    )}
+                  </div>
                 </div>
                 <button
                   onClick={() => setShowAvailabilityModal(true)}
@@ -269,6 +306,7 @@ export function TutorDashboard() {
         <AvailabilityModal
           onClose={() => setShowAvailabilityModal(false)}
           onSave={handleUpdateAvailability}
+          isLoading={loadingAvailability}
         />
       )}
     </div>
@@ -292,6 +330,8 @@ function StatCard({ icon: Icon, label, value, color }) {
 
 // ========== SessionCard ==========
 function SessionCard({ session, onAccept, onReject }) {
+  const [showFeedback, setShowFeedback] = React.useState(false);
+
   const dateObj = session.dateObj;
   const isValidDate = dateObj && !isNaN(dateObj.getTime());
   const formattedDate = isValidDate
@@ -318,10 +358,12 @@ function SessionCard({ session, onAccept, onReject }) {
             <div className="w-14 h-14 rounded-2xl overflow-hidden border-2 border-white shadow-sm">
               <ImageWithFallback
                 src={
-                  session.studentAvatar ||
-                  `https://i.pravatar.cc/150?u=${session.learner_id}`
+                  session.studentAvatar
+                    ? getAvatarUrl(session.studentAvatar)
+                    : "/img/images.jpg"
                 }
                 alt={session.studentName}
+                className="w-full h-full object-cover"
               />
             </div>
             <div
@@ -398,40 +440,82 @@ function SessionCard({ session, onAccept, onReject }) {
               {session.status === "cancel"
                 ? "Đã hủy"
                 : session.room_id || session.roomId
-                ? "Chưa đến giờ"
-                : "Đã xong"}
+                  ? "Chưa đến giờ"
+                  : "Đã xong"}
             </div>
           )}
+          {/* Nút báo cáo */}
+          <button
+            onClick={() => setShowFeedback(true)}
+            className="text-red-500 text-sm px-2 py-1 rounded-lg hover:bg-red-50"
+          >
+            Phản hồi
+          </button>
         </div>
       </div>
+
+      {/* Modal ComplaintForm - đặt trong cùng return */}
+      {showFeedback && (
+        <FeedbackMiniPage
+          onClose={() => setShowFeedback(false)}
+          bookingId={session.id}
+          targetUserId={session.studentId || session.learner_id}
+          targetName={session.studentName || session.learner_name}
+          targetRole="student"
+        />
+      )}
     </div>
   );
 }
 
 // ========== AvailabilityModal ==========
-function AvailabilityModal({ onClose, onSave }) {
-  const [selectedDate, setSelectedDate] = React.useState("");
+function AvailabilityModal({ onClose, onSave, isLoading = false }) {
+  const [selectedDates, setSelectedDates] = React.useState([]);
   const [selectedTimes, setSelectedTimes] = React.useState([]);
   const [availabilityMap, setAvailabilityMap] = React.useState({});
-  const [repeatWeekly, setRepeatWeekly] = React.useState(false);
 
   const TIMES = [
-    "08:00", "09:00", "10:00", "11:00",
-    "13:00", "14:00", "15:00", "16:00",
-    "19:00", "20:00", "21:00",
+    "08:00",
+    "09:00",
+    "10:00",
+    "11:00",
+    "13:00",
+    "14:00",
+    "15:00",
+    "16:00",
+    "19:00",
+    "20:00",
+    "21:00",
   ];
+
+  const toggleDate = (date) => {
+    setSelectedDates((prev) =>
+      prev.includes(date) ? prev.filter((d) => d !== date) : [...prev, date],
+    );
+  };
 
   const toggleTime = (time) => {
     setSelectedTimes((prev) =>
-      prev.includes(time) ? prev.filter((t) => t !== time) : [...prev, time]
+      prev.includes(time) ? prev.filter((t) => t !== time) : [...prev, time],
     );
   };
 
   const addCurrentDate = () => {
-    if (!selectedDate) return alert("Vui lòng chọn ngày");
-    if (selectedTimes.length === 0) return alert("Vui lòng chọn ít nhất một khung giờ");
-    setAvailabilityMap((prev) => ({ ...prev, [selectedDate]: selectedTimes }));
-    setSelectedDate("");
+    if (selectedDates.length === 0) return alert("Vui lòng chọn ngày");
+
+    if (selectedTimes.length === 0) return alert("Vui lòng chọn giờ");
+
+    const newMap = { ...availabilityMap };
+
+    selectedDates.forEach((dateObj) => {
+      const date = dateObj.format("YYYY-MM-DD");
+
+      newMap[date] = selectedTimes;
+    });
+
+    setAvailabilityMap(newMap);
+
+    setSelectedDates([]);
     setSelectedTimes([]);
   };
 
@@ -453,8 +537,7 @@ function AvailabilityModal({ onClose, onSave }) {
       date,
       times,
     }));
-    await onSave({ dates: datesArray, repeatWeekly });
-    onClose();
+    await onSave({ dates: datesArray });
   };
 
   return (
@@ -462,12 +545,17 @@ function AvailabilityModal({ onClose, onSave }) {
       <div className="bg-white w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden">
         <div className="px-8 py-5 border-b border-slate-100 flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-extrabold text-slate-900">Cập nhật lịch rảnh</h2>
-            <p className="text-slate-500 text-sm">Chọn ngày + giờ → Thêm ngày → Lưu</p>
+            <h2 className="text-xl font-extrabold text-slate-900">
+              Cập nhật lịch rảnh
+            </h2>
+            <p className="text-slate-500 text-sm">
+              Chọn ngày + giờ → Thêm ngày → Lưu
+            </p>
           </div>
           <button
             onClick={onClose}
-            className="w-10 h-10 rounded-full hover:bg-slate-100 text-slate-500 text-xl"
+            disabled={isLoading}
+            className="w-10 h-10 rounded-full hover:bg-slate-100 text-slate-500 text-xl disabled:opacity-50"
           >
             ✕
           </button>
@@ -475,38 +563,63 @@ function AvailabilityModal({ onClose, onSave }) {
 
         <div className="grid grid-cols-1 md:grid-cols-2">
           <div className="p-6 border-r border-slate-100 bg-slate-50">
-            <label className="text-sm font-bold text-slate-700 block mb-2">Chọn ngày</label>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-4 py-3 focus:ring-2 focus:ring-indigo-500"
-            />
+            <label className="text-sm font-bold text-slate-700 block mb-2">
+              Chọn ngày
+            </label>
+            <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
+              <DatePicker
+                multiple
+                value={selectedDates}
+                onChange={setSelectedDates}
+                format="YYYY-MM-DD"
+                minDate={new Date()}
+                numberOfMonths={1}
+                className="purple"
+                calendarPosition="bottom-center"
+                inputClass="hidden"
+                containerClassName="w-full"
+                render={(value, openCalendar) => (
+                  <button
+                    onClick={openCalendar}
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 hover:border-indigo-300 hover:bg-indigo-50 transition text-left"
+                  >
+                    <p className="text-sm font-bold text-slate-700 mb-1">
+                      Chọn ngày dạy
+                    </p>
 
-            <div className="mt-6 bg-white rounded-2xl p-4 border shadow-sm">
-              <p className="font-bold text-slate-800 mb-3">Lặp lại hàng tuần</p>
-              <button
-                onClick={() => setRepeatWeekly(!repeatWeekly)}
-                className={`w-full py-3 rounded-xl font-bold transition ${
-                  repeatWeekly
-                    ? "bg-indigo-600 text-white"
-                    : "bg-slate-100 text-slate-500"
-                }`}
-              >
-                {repeatWeekly ? "✓ Bật lặp 8 tuần" : "Bật lặp mỗi tuần"}
-              </button>
+                    {selectedDates.length > 0 ? (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {selectedDates.map((date, index) => (
+                          <span
+                            key={index}
+                            className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-lg text-xs font-bold"
+                          >
+                            {date.format("DD/MM")}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-slate-400 text-sm">
+                        Chọn một hoặc nhiều ngày
+                      </p>
+                    )}
+                  </button>
+                )}
+              />
             </div>
-
             <button
               onClick={addCurrentDate}
-              className="mt-6 w-full py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition"
+              disabled={isLoading}
+              className="mt-6 w-full py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition disabled:opacity-50"
             >
               + Thêm ngày này
             </button>
           </div>
 
           <div className="p-6">
-            <label className="text-sm font-bold text-slate-700 block mb-3">Chọn khung giờ</label>
+            <label className="text-sm font-bold text-slate-700 block mb-3">
+              Chọn khung giờ
+            </label>
             <div className="grid grid-cols-3 gap-3">
               {TIMES.map((time) => {
                 const active = selectedTimes.includes(time);
@@ -514,11 +627,12 @@ function AvailabilityModal({ onClose, onSave }) {
                   <button
                     key={time}
                     onClick={() => toggleTime(time)}
+                    disabled={isLoading}
                     className={`py-3 rounded-xl font-bold text-sm transition ${
                       active
                         ? "bg-indigo-600 text-white shadow-md scale-105"
                         : "bg-slate-50 border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50"
-                    }`}
+                    } disabled:opacity-50`}
                   >
                     {time}
                   </button>
@@ -533,7 +647,9 @@ function AvailabilityModal({ onClose, onSave }) {
             📋 Preview lịch sẽ tạo
           </p>
           {Object.keys(availabilityMap).length === 0 ? (
-            <p className="text-indigo-700 text-sm italic">Chưa có ngày nào được thêm</p>
+            <p className="text-indigo-700 text-sm italic">
+              Chưa có ngày nào được thêm
+            </p>
           ) : (
             <div className="space-y-2 max-h-36 overflow-y-auto">
               {Object.entries(availabilityMap).map(([date, times]) => (
@@ -549,7 +665,8 @@ function AvailabilityModal({ onClose, onSave }) {
                   </span>
                   <button
                     onClick={() => removeDate(date)}
-                    className="text-indigo-400 hover:text-red-500"
+                    disabled={isLoading}
+                    className="text-indigo-400 hover:text-red-500 disabled:opacity-50"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -562,15 +679,18 @@ function AvailabilityModal({ onClose, onSave }) {
         <div className="flex justify-end gap-3 px-6 pb-6 pt-2 border-t border-slate-100">
           <button
             onClick={onClose}
-            className="px-5 py-2 rounded-xl border border-slate-200 font-semibold"
+            disabled={isLoading}
+            className="px-5 py-2 rounded-xl border border-slate-200 font-semibold disabled:opacity-50"
           >
             Huỷ
           </button>
           <button
             onClick={handleSubmit}
-            className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold shadow-md"
+            disabled={isLoading}
+            className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold shadow-md disabled:opacity-50 flex items-center gap-2"
           >
-            Lưu lịch
+            {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+            {isLoading ? "Đang lưu..." : "Lưu lịch"}
           </button>
         </div>
       </div>

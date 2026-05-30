@@ -1,3 +1,5 @@
+import dotenv from 'dotenv'
+dotenv.config()
 import express from 'express'
 import authRoutes from './routes/auth.routes.js'
 import tutorRoutes from './routes/tutor.routes.js'
@@ -11,6 +13,7 @@ import paymentRoutes from './routes/payment.routes.js'
 import videoRoomRoutes from './routes/videoRoom.routes.js'
 import walletRoutes from './routes/wallet.routes.js'
 import authMiddleware, {isAdmin} from './middlewares/auth.middleware.js'
+import complaintRoutes from './routes/complaint.routes.js'
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { findById } from './dal/user.dal.js'
@@ -36,7 +39,7 @@ app.use(cors({
 
 app.use(express.json())
 
-app.use("/uploads", express.static("uploads"));
+//app.use("/uploads", express.static("uploads"));
 //app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use('/api/auth', authRoutes)
 app.use('/api/tutors', tutorRoutes)
@@ -49,7 +52,7 @@ app.use('/api/reviews', reviewRoutes)
 app.use('/api/payments', paymentRoutes)
 app.use('/api/video-rooms', videoRoomRoutes)
 app.use('/api/wallet', walletRoutes)
-
+app.use('/api/complaints', complaintRoutes);
 
 /*app.get('/api/users/me', authMiddleware, (req, res) => {
   res.json({

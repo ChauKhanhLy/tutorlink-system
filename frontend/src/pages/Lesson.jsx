@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { bookingApi } from "../api/bookingApi";
 import { tutorApi } from "../api/tutorApi";
 import { ImageWithFallback } from "../components/Image/ImageWithFallback";
+import { getAvatarUrl } from "../utils/avatar.js";
 
 export function LessonPage() {
   const { id } = useParams(); // booking id
@@ -87,7 +88,12 @@ export function LessonPage() {
           <div className="flex flex-col md:flex-row justify-between items-start gap-6">
             <div className="flex items-center gap-5">
               <div className="w-20 h-20 rounded-2xl overflow-hidden bg-indigo-100">
-                <ImageWithFallback src={tutor?.avatar} alt={tutor?.name} className="w-full h-full object-cover" />
+                <ImageWithFallback
+                  //src={tutor?.avatar} 
+                  src={getAvatarUrl(tutor?.avatar)}
+                  alt={tutor?.name}
+                  className="w-full h-full object-cover"
+                />
               </div>
               <div>
                 <h1 className="text-2xl font-extrabold text-slate-900 mb-1">{tutor?.name}</h1>
