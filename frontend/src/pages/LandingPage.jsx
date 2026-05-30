@@ -4,6 +4,7 @@ import { Search, Clock, PlayCircle, Star, ShieldCheck } from "lucide-react";
 import { MotionContext } from "framer-motion";
 import { tutors } from "../mockData";
 import { ImageWithFallback } from "../components/Image/ImageWithFallback";
+import { getAvatarUrl } from "../utils/avatar.js";
 
 export default function LandingPage() {
   const categories = [
@@ -141,7 +142,12 @@ export default function LandingPage() {
               {tutors.slice(0, 3).map((tutor) => (
                 <div key={tutor.id} className="group bg-white rounded-3xl border border-slate-100 overflow-hidden hover:shadow-2xl transition-all">
                   <div className="relative h-48">
-                    <ImageWithFallback src={tutor.avatar} alt={tutor.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                    <ImageWithFallback
+                      //src={tutor.avatar} 
+                      src={getAvatarUrl(tutor?.avatar)}
+                      alt={tutor.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                    />
                     <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full flex items-center">
                       <Star className="h-4 w-4 text-amber-500 fill-amber-500 mr-1" />
                       <span className="text-sm font-bold text-slate-900">{tutor.rating}</span>

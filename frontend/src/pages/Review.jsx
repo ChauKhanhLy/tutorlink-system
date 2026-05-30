@@ -14,6 +14,7 @@ import { tutorApi } from "../api/tutorApi";
 import { bookingApi } from "../api/bookingApi";
 import { reviewApi } from "../api/reviewApi";
 import { ImageWithFallback } from "../components/Image/ImageWithFallback";
+import { getAvatarUrl } from "../utils/avatar.js";
 
 export function ReviewPage() {
   const [searchParams] = useSearchParams();
@@ -60,7 +61,7 @@ export function ReviewPage() {
         const bookingEndTime = new Date(b.startTime || b.datetime);
         bookingEndTime.setHours(bookingEndTime.getHours() + 2); // Thêm 2 tiếng học
         const now = new Date();
-        
+
         return now >= bookingEndTime; // Cho phép đánh giá sau khi kết thúc
       });
 
@@ -131,15 +132,15 @@ export function ReviewPage() {
       </div>
     );
   }
-if (!canReview) {
-  return (
-    <div className="pt-32 text-center">
-      <p className="text-red-500 font-bold">
-        Bạn chưa đủ điều kiện để đánh giá
-      </p>
-    </div>
-  );
-}
+  if (!canReview) {
+    return (
+      <div className="pt-32 text-center">
+        <p className="text-red-500 font-bold">
+          Bạn chưa đủ điều kiện để đánh giá
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="pt-24 pb-16 bg-slate-50 min-h-screen">
@@ -165,7 +166,8 @@ if (!canReview) {
             <div className="flex items-center gap-5">
               <div className="w-20 h-20 rounded-2xl overflow-hidden bg-slate-100">
                 <ImageWithFallback
-                  src={tutor.avatar}
+                  //src={tutor.avatar}
+                  src={getAvatarUrl(tutor?.avatar)}
                   alt={tutor.name}
                   className="w-full h-full object-cover"
                 />
@@ -206,11 +208,10 @@ if (!canReview) {
                   className="focus:outline-none transition-transform hover:scale-110"
                 >
                   <Star
-                    className={`h-10 w-10 ${
-                      star <= (hoverRating || rating)
-                        ? "fill-amber-400 text-amber-400"
-                        : "text-slate-200 fill-slate-200"
-                    } transition-colors`}
+                    className={`h-10 w-10 ${star <= (hoverRating || rating)
+                      ? "fill-amber-400 text-amber-400"
+                      : "text-slate-200 fill-slate-200"
+                      } transition-colors`}
                   />
                 </button>
               ))}

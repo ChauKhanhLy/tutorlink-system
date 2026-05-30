@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { useAuth } from "../context/AuthContext";
 import { ImageWithFallback } from "../components/Image/ImageWithFallback";
 import api from "../api/axiosClient";
+import { getAvatarUrl } from "../utils/avatar";
 
 export function ProfilePage() {
   const { user, updateUser } = useAuth();
@@ -123,11 +124,12 @@ export function ProfilePage() {
               <div className="relative w-32 h-32 mx-auto mb-4">
                 <div className="w-full h-full rounded-full overflow-hidden border-4 border-indigo-100 shadow-lg">
                   <ImageWithFallback
-                    src={
-                      user?.avatar
-                        ? user.avatar
-                        : `https://api.dicebear.com/7.x/initials/svg?seed=${user?.name}`
-                    }
+                    // src={
+                    //   user?.avatar
+                    //     ? `http://localhost:3000${user.avatar}`
+                    //     : "https://i.pravatar.cc/150"
+                    // }
+                    src={getAvatarUrl(user?.avatar)}
                     alt={user?.name}
                     className="w-full h-full object-cover"
                   />
