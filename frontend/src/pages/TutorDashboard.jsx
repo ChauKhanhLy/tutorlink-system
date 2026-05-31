@@ -43,7 +43,7 @@ export function TutorDashboard() {
       monthlyEarnings: 0,
       avgRating: 0,
     });
-   const [activeTab, setActiveTab] = React.useState("sessions");
+   //const [activeTab, setActiveTab] = React.useState("sessions");
   const isPending = user?.role === "tutor" && user?.verified === false;
 
   //const [loadingUser, setLoadingUser] = React.useState(true);

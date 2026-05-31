@@ -21,6 +21,7 @@ import { tutorApi } from "../api/tutorApi";
 import { videoRoomApi } from "../api/videoRoomApi";
 import { reviewApi } from "../api/reviewApi";
 import { ImageWithFallback } from "../components/Image/ImageWithFallback";
+import { FeedbackMiniPage } from "../components/FeedbackMiniPage";
 import { useAuth } from "../context/AuthContext";
 import { getAvatarUrl } from "../utils/avatar.js";
 
@@ -31,6 +32,7 @@ export function LessonPage() {
   const [tutor, setTutor] = React.useState(null);
   const [videoRoom, setVideoRoom] = React.useState(null);
   const [reviews, setReviews] = React.useState([]);
+  const [showFeedback, setShowFeedback] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
   const joinLink = booking?.meeting_link || booking?.meetingLink || "https://zoom.us/j/123456789";
 
@@ -121,6 +123,15 @@ export function LessonPage() {
 
   const isUpcoming = booking && new Date(booking.date || booking.startTime) >= new Date();
   const isPast = booking && new Date(booking.date || booking.startTime) < new Date();
+  const feedbackTargetRole = user?.role === "tutor" ? "learner" : "tutor";
+  const feedbackTargetUserId =
+    feedbackTargetRole === "tutor"
+      ? booking?.tutorId || booking?.tutor_id
+      : booking?.learnerId || booking?.learner_id || booking?.userId || booking?.user_id;
+  const feedbackTargetName =
+    feedbackTargetRole === "tutor"
+      ? tutor?.name || booking?.tutorName
+      : booking?.learnerName || booking?.userName || booking?.studentName;
 
   if (loading) {
     return (
@@ -455,11 +466,26 @@ export function LessonPage() {
             >
               Nhắn tin cho gia sư
             </Link>
-            <button className="px-5 py-2.5 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition-all">
+            <button
+              type="button"
+              onClick={() => setShowFeedback(true)}
+              className="px-5 py-2.5 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition-all"
+            >
               Báo cáo vấn đề
             </button>
           </div>
         </div>
+        {showFeedback && (
+          <FeedbackMiniPage
+            onClose={() => setShowFeedback(false)}
+            bookingId={booking.id}
+            targetUserId={feedbackTargetUserId}
+            targetName={feedbackTargetName}
+            targetRole={feedbackTargetRole}
+            canReview={false}
+            onSubmitted={fetchLessonDetails}
+          />
+        )}
       </div>
     </div>
   );

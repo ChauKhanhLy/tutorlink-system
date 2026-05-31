@@ -4,10 +4,20 @@ import {
   replaceTutorAvailability,
 } from "../dal/tutorAvailability.dal.js";
 
+/*const addOneHour = (time) => {
+  const [hour, minute] = time.split(":").map(Number);
+
+  const nextHour = hour + 1;
+
+  return `${String(nextHour).padStart(2, "0")}:${String(minute).padStart(
+    2,
+    "0",
+  )}:00`;
+};*/
 const addOneHour = (time) => {
   const [hour, minute] = time.split(':').map(Number)
   let nextHour = hour + 1
-  if (nextHour >= 24) nextHour = 23  
+  if (nextHour >= 24) nextHour = 23  // giới hạn đến 23:00
   return `${String(nextHour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`
 }
 
@@ -57,18 +67,22 @@ export const saveAvailabilityPreferences = async (tutorId, payload, availableDay
   }
 
   const { dates = [], repeatWeekly = false } = payload || {};
+
   const normalized = [];
 
   for (const item of dates) {
-    const [year, month, day] = item.date.split("-").map(Number);
-    const dateObj = new Date(year, month - 1, day);
+    const dateObj = new Date(item.date);
+
     const dayOfWeek = dateObj.getDay();
 
     for (const time of item.times || []) {
       normalized.push({
         dayOfWeek: repeatWeekly ? dayOfWeek : null,
+
         specificDate: repeatWeekly ? null : item.date,
+
         startTime: normalizeTime(time),
+
         endTime: addOneHour(time),
       });
     }
@@ -97,10 +111,13 @@ const toHourSlots = (startTime, endTime) => {
 
 export const buildAvailabilitySlots = async (tutorId, daysAhead = 60) => {
   const rules = await getTutorAvailabilityRules(tutorId);
+
   if (!rules.length) return [];
 
   const now = new Date();
+
   const today = new Date(now);
+
   today.setHours(0, 0, 0, 0);
 
   const endDate = new Date(today);
@@ -130,10 +147,13 @@ export const buildAvailabilitySlots = async (tutorId, daysAhead = 60) => {
 
   for (let i = 0; i < daysAhead; i += 1) {
     const date = new Date(today);
+
     date.setDate(today.getDate() + i);
-    const day = date.getDay();
+
+    const dayOfWeek = date.getDay();
 
     const year = date.getFullYear();
+
     const month = String(date.getMonth() + 1).padStart(2, "0");
 
     const day = String(date.getDate()).padStart(2, "0");
@@ -158,10 +178,17 @@ export const buildAvailabilitySlots = async (tutorId, daysAhead = 60) => {
       return ruleDate === dateStr;
     });
 
-    if (!dayRules.length) continue;
+    // merge cả 2
+    const mergedRules = [...weeklyRules, ...specificDateRules];
+
+    if (!mergedRules.length) continue;
 
     let times = [
-      ...new Set(dayRules.flatMap((rule) => toHourSlots(rule.startTime, rule.endTime)))
+      ...new Set(
+        mergedRules.flatMap((rule) =>
+          toHourSlots(rule.startTime, rule.endTime),
+        ),
+      ),
     ].sort();
 
     // remove passed hours today
@@ -290,44 +317,39 @@ export const buildAvailabilitySlots = async (tutorId, daysAhead = 14) => {
     if (i === 0) {
       const vnNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" }));
       const currentHour = vnNow.getHours();
-      times = times.filter(t => parseInt(t.split(':')[0]) > currentHour);
+      times = times.filter(t => parseInt(t.split(':')[0]) > currentHour)
     }
 
-    if (!times.length) continue;
+    if (!times.length) continue
 
-    // Lọc bỏ các slot đã bị chiếm bởi lịch đã confirm
-    const bookedForDay = bookings.filter(b => {
-        const d = new Date(b.datetime);
-        const options = { timeZone: "Asia/Ho_Chi_Minh", year: 'numeric', month: '2-digit', day: '2-digit' };
-        const dateStrLocal = new Intl.DateTimeFormat('en-CA', options).format(d); // YYYY-MM-DD
-        return dateStrLocal === dateStr;
-    });
+    // Fix timezone issue: use local date string (YYYY-MM-DD)
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const dayOfMonth = String(date.getDate()).padStart(2, '0')
+    const dateStr = `${year}-${month}-${dayOfMonth}`
 
+    // Lọc bỏ các slot đã bị book (tính đến khoảng cách 2 tiếng)
+    const bookedTimesForDay = bookedSlots.filter(b => b.date === dateStr).map(b => b.time);
     times = times.filter(time => {
-      const [hour, minute] = time.split(':').map(Number);
-      const slotStart = new Date(`${dateStr}T${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00+07:00`);
+      const timeHour = parseInt(time.split(':')[0]);
       
-      return !bookedForDay.some(booked => {
-        const bStart = new Date(booked.datetime);
-        const bDuration = booked.type === 'trial' ? 50 : 120;
-        const bEnd = new Date(bStart.getTime() + bDuration * 60000);
+      // Kiểm tra xem time có bị ảnh hưởng bởi booked slot nào không
+      return !bookedTimesForDay.some(bookedTime => {
+        const bookedHour = parseInt(bookedTime.split(':')[0]);
         
-        // Trùng nếu slotStart nằm trong khoảng của một booking đã có
-        // Hoặc nếu một slot Hourly (1 tiếng) đè lên booking đó
-        const slotEnd = new Date(slotStart.getTime() + 60 * 60000);
-        
-        const isOverlapping = (slotStart < bEnd && slotEnd > bStart);
-        return isOverlapping;
+        // Nếu time bắt đầu trong khoảng 2 tiếng của booked time -> bị ảnh hưởng
+        // Ví dụ: booked 8:00, các slot 6:00-9:59 đều bị ảnh hưởng
+        return timeHour >= bookedHour - 2 && timeHour <= bookedHour + 1;
       });
     });
 
-    if (!times.length) continue;
+    if (!times.length) continue
 
     result.push({
       date: dateStr,
-      times,
-    });
+      times
+    })
   }
 
-  return result;
-};
+  return result
+}*/

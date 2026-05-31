@@ -25,7 +25,6 @@ import messageApi from "../api/messageApi";
 import { ImageWithFallback } from "../components/Image/ImageWithFallback";
 import { useAuth } from "../context/AuthContext";
 import { TutorDashboard } from "./TutorDashboard";
-import { ScheduleCalendar } from "../components/ScheduleCalendar";
 import { getAvatarUrl } from "../utils/avatar";
 
 export function DashboardPage() {
@@ -79,20 +78,15 @@ export function DashboardPage() {
   React.useEffect(() => {
     const fetchData = async () => {
       try {
-        const [tutorRes, bookingRes, messageRes, favRes] =
-          await Promise.all([
-            tutorApi.getAll(),
-            bookingApi.getMyBookings(),
-            messageApi.getConversations(user.id),
-            favoriteApi.getMyFavorites(),
-          ]);
+        const [tutorRes, bookingRes, messageRes, favoriteRes] = await Promise.all([
+          tutorApi.getAll(),
+          bookingApi.getMyBookings(),
+          messageApi.getConversations(user.id),
+          favoriteApi.getMyFavorites(),
+        ]);
 
         setTutors(tutorRes.data.tutors || []);
-        const mappedSessions = (bookingRes.data || []).map(s => ({
-          ...s,
-          dateObj: new Date(s.datetime)
-        }));
-        setSessions(mappedSessions);
+        setSessions(bookingRes.data);
         setMessages(messageRes.data);
         setFavorites(favoriteRes.data.data || []);
         setLoading(true);
@@ -313,6 +307,7 @@ export function DashboardPage() {
             </div>
           </aside>
 
+          {/* Main Content Area */}
           <main className="flex-1 space-y-8 pb-20">
             {/* Top Bar for Dashboard */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -367,42 +362,21 @@ export function DashboardPage() {
                               </span>
                             </div>
 
-                          <h2 className="text-3xl font-bold mb-2">
-                            <Link
-                              to={`/classroom/${nextSession.tutor_id || nextSession.tutorId}/${nextSession.subject_id || nextSession.subjectId}`}
-                              className="hover:underline"
-                            >
-                              {nextSession.subject || "Chưa có môn"}
-                            </Link>{" "}
-                            với {nextTutor?.name || "Gia sư"}
-                          </h2>
+                            <h2 className="text-3xl font-bold mb-2">
+                              <Link to={`/classroom/${nextSession.tutor_id || nextSession.tutorId}/${nextSession.subject_id || nextSession.subjectId}`} className="hover:underline">
+                                {nextSession.subject || "Chưa có môn"}
+                              </Link> với{" "}
+                              {nextTutor?.name || "Gia sư"}
+                            </h2>
 
-                          <p className="text-indigo-100 text-sm mb-6 opacity-80">
-                            {nextSession.dateObj.toLocaleDateString("vi-VN")} lúc{" "}
-                            {nextSession.time || "??"} •{" "}
-                            {nextSession.meetingLink ? "Online" : "Offline"}
-                          </p>
+                            <p className="text-indigo-100 text-sm mb-6 opacity-80">
+                              {new Date(nextSession.date).toLocaleDateString()}{" "}
+                              lúc {nextSession.time || "??"} •{" "}
+                              {nextSession.meetingLink ? "Online" : "Offline"}
+                            </p>
 
                             <div className="flex flex-wrap gap-4">
                               {nextSession?.room_id ? (
-<<<<<<< HEAD
-  <Link
-    to={`/room/${nextSession.room_id || nextSession.id}`}
-    className="px-6 py-3 bg-white text-indigo-600 font-bold rounded-2xl flex items-center hover:bg-slate-50 transition-all shadow-xl"
-  >
-    Tham gia <ExternalLink className="ml-2 h-4 w-4" />
-  </Link>
-) : nextSession?.meetingLink ? (
-  <a
-    href={nextSession.meetingLink}
-    target="_blank"
-    rel="noopener noreferrer"
-    className="px-6 py-3 bg-white text-indigo-600 font-bold rounded-2xl flex items-center hover:bg-slate-50 transition-all shadow-xl"
-  >
-    Tham gia <ExternalLink className="ml-2 h-4 w-4" />
-  </a>
-) : null}
-=======
                                 <Link
                                   to={`/room/${nextSession.room_id || nextSession.id}`}
                                   className="px-6 py-3 bg-white text-indigo-600 font-bold rounded-2xl flex items-center hover:bg-slate-50 transition-all shadow-xl"
@@ -421,7 +395,6 @@ export function DashboardPage() {
                                   <ExternalLink className="ml-2 h-4 w-4" />
                                 </a>
                               ) : null}
->>>>>>> 45f4acbc132ac3870d1671e68ac902268080d5de
 
                               <button className="px-6 py-3 bg-white/10 backdrop-blur-md border border-white/20 text-white font-bold rounded-2xl hover:bg-white/20 transition-all">
                                 Đổi lịch
@@ -437,64 +410,20 @@ export function DashboardPage() {
                           <Calendar className="h-16 w-16 text-white opacity-80" />
                         </div>
                       </div>
-                      <div className="absolute top-0 right-0 -mt-20 -mr-20 w-80 h-80 bg-white/10 rounded-full blur-3xl"></div>
                     </div>
-                  )}
+                    <div className="absolute top-0 right-0 -mt-20 -mr-20 w-80 h-80 bg-white/10 rounded-full blur-3xl"></div>
+                  </div>
 
-                  {/* Sessions management */}
                   <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-8">
                     <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-100">
                       <h3 className="text-xl font-bold text-slate-900">
-                        Buổi học của tôi
+                        Buổi học sắp tới
                       </h3>
-                      <div className="flex bg-slate-100 p-1 rounded-xl">
-                        <button
-                          onClick={() => setViewMode("calendar")}
-                          className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                            viewMode === "calendar"
-                              ? "bg-white text-indigo-600 shadow-sm"
-                              : "text-slate-500 hover:text-slate-700"
-                          }`}
-                        >
-                          Lịch tháng
-                        </button>
-                        <button
-                          onClick={() => setViewMode("list")}
-                          className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                            viewMode === "list"
-                              ? "bg-white text-indigo-600 shadow-sm"
-                              : "text-slate-500 hover:text-slate-700"
-                          }`}
-                        >
-                          Danh sách
-                        </button>
-                      </div>
+                      <button className="text-sm font-bold text-indigo-600 hover:underline">
+                        Xem lịch
+                      </button>
                     </div>
                     <div className="space-y-4">
-<<<<<<< HEAD
-                      {sessions.map((session) => {
-  const tutor = tutors.find((t) => t.id === session.tutorId);
-  const now = new Date();
-  const startTime = new Date(session.start_time || session.date);
-  const endTime = new Date(session.end_time);
-  
-  // Kiểm tra có thể vào phòng không
-  const canJoin = session.room_id && 
-                  session.status !== 'cancelled' && 
-                  session.status !== 'completed' &&
-                  now >= new Date(startTime.getTime() - 10 * 60 * 1000) && // 10 phút trước giờ
-                  now <= endTime;
-
-  return (
-    <div
-      key={session.id}
-      className="group p-5 bg-slate-50 rounded-3xl border border-transparent hover:border-indigo-100 hover:bg-white transition-all duration-300 flex flex-col md:flex-row justify-between items-center gap-4"
-    >
-      <div className="flex items-center space-x-5">
-        <div className="w-14 h-14 bg-indigo-100 rounded-2xl flex items-center justify-center">
-          <Calendar className="h-6 w-6 text-indigo-600" />
-        </div>
-=======
                       {sessions && sessions.length > 0 ? (
                         sessions.map((session) => {
                         const tutor = tutors.find(
@@ -538,53 +467,12 @@ export function DashboardPage() {
                                 <div className="w-14 h-14 bg-indigo-100 rounded-2xl flex items-center justify-center">
                                   <Calendar className="h-6 w-6 text-indigo-600" />
                                 </div>
->>>>>>> 45f4acbc132ac3870d1671e68ac902268080d5de
 
-        <div>
-          <h4 className="font-bold text-slate-900 text-lg">
-            {session.subject || "Chưa có môn"}
-          </h4>
+                              <div>
+                                <h4 className="font-bold text-slate-900 text-lg">
+                                  {session.subject || "Chưa có môn"}
+                                </h4>
 
-<<<<<<< HEAD
-          <div className="flex items-center text-slate-500 text-sm mt-1">
-            <span className="font-bold">
-              {session.date
-                ? new Date(session.date).toLocaleDateString("vi-VN")
-                : "Chưa có ngày"}
-            </span>
-            <span className="mx-2">•</span>
-            <span>{session.time || session.start_time?.slice(11,16) || "Chưa có giờ"}</span>
-          </div>
-
-          <div className="text-xs text-slate-400 mt-1">
-            Gia sư: {tutor?.name || "Đang cập nhật"}
-          </div>
-        </div>
-      </div>
-
-      <div className="flex items-center space-x-3">
-        <ImageWithFallback
-          src={tutor?.avatar || ""}
-          className="w-10 h-10 rounded-full border-2 border-white shadow-sm"
-        />
-
-        {canJoin ? (
-          <Link
-            to={`/room/${session.room_id || session.id}`}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all"
-          >
-            Vào phòng
-          </Link>
-        ) : (
-          <button className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all">
-            Quản lý
-          </button>
-        )}
-      </div>
-    </div>
-  );
-})}
-=======
                                 <div className="flex items-center text-slate-500 text-sm mt-1">
                                   <span className="font-bold">
                                     {session.dateObj
@@ -712,7 +600,6 @@ export function DashboardPage() {
                           </Link>
                         </div>
                       )}
->>>>>>> 45f4acbc132ac3870d1671e68ac902268080d5de
                     </div>
                   </div>
                 </div>
