@@ -517,6 +517,7 @@ function AvailabilityModal({ onClose, onSave, isLoading = false }) {
   const [selectedDates, setSelectedDates] = React.useState([]);
   const [selectedTimes, setSelectedTimes] = React.useState([]);
   const [availabilityMap, setAvailabilityMap] = React.useState({});
+  const [repeatWeekly, setRepeatWeekly] = React.useState(false);
 
   const TIMES = [
     "08:00",
@@ -581,7 +582,7 @@ function AvailabilityModal({ onClose, onSave, isLoading = false }) {
       date,
       times,
     }));
-    await onSave({ dates: datesArray });
+    await onSave({ dates: datesArray, repeatWeekly });
   };
 
   return (
@@ -650,6 +651,24 @@ function AvailabilityModal({ onClose, onSave, isLoading = false }) {
                   </button>
                 )}
               />
+            </div>
+            <div className="mt-6 bg-white rounded-2xl p-4 border shadow-sm">
+              <p className="font-bold text-slate-800 mb-1">Lặp lại hàng tuần</p>
+              <p className="text-xs text-slate-500 mb-3">
+                Nếu bật, các ngày đã chọn sẽ thành lịch rảnh cố định theo thứ hàng tuần.
+              </p>
+              <button
+                type="button"
+                onClick={() => setRepeatWeekly(!repeatWeekly)}
+                disabled={isLoading}
+                className={`w-full py-3 rounded-xl font-bold transition ${
+                  repeatWeekly
+                    ? "bg-indigo-600 text-white"
+                    : "bg-slate-100 text-slate-500"
+                } disabled:opacity-50`}
+              >
+                {repeatWeekly ? "✓ Đang bật lặp hàng tuần" : "Không lặp"}
+              </button>
             </div>
             <button
               onClick={addCurrentDate}
