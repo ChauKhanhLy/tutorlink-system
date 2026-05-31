@@ -19,6 +19,8 @@ import { toast } from "sonner";
 import { tutorApi } from "../api/tutorApi";
 import { bookingApi } from "../api/bookingApi";
 import { reviewApi } from "../api/reviewApi";
+import { favoriteApi } from '../api/favoriteApi';
+import { useAuth } from "../context/AuthContext.jsx";
 import { ImageWithFallback } from "../components/Image/ImageWithFallback";
 import { getAvatarUrl } from "../utils/avatar.js";
 
@@ -31,10 +33,14 @@ export function TutorProfilePage() {
   const [bookingType, setBookingType] = React.useState("trial"); // "trial" hoặc "regular"
   const [loading, setLoading] = React.useState(true);
   const [reviews, setReviews] = React.useState([]);
+  const calendarDayCount = Math.max(60, availableSlots.length);
   const formatVND = (price) => {
     return new Intl.NumberFormat("vi-VN").format(price || 0) + "đ";
   };
   const navigate = useNavigate();
+  const { user } = useAuth();
+const [isFavorite, setIsFavorite] = React.useState(false);
+const [favoriteLoading, setFavoriteLoading] = React.useState(false);
   const selectedDay = availableSlots.find((s) => s.date === selectedDate);
 
   React.useEffect(() => {
@@ -63,6 +69,22 @@ export function TutorProfilePage() {
     };
     fetchTutor();
   }, [id]);
+
+  // Kiểm tra trạng thái yêu thích
+React.useEffect(() => {
+    const checkFavorite = async () => {
+        if (!user || user.role !== 'learner' || !tutor) return;
+        try {
+            const res = await favoriteApi.getMyFavorites();
+            const favorites = res.data.data || [];
+            const found = favorites.some(fav => fav.id === tutor.id);
+            setIsFavorite(found);
+        } catch (error) {
+            console.error('Lỗi kiểm tra yêu thích:', error);
+        }
+    };
+    checkFavorite();
+}, [tutor, user]);
 
   /*const handleBooking = async () => {
     if (!selectedTime) {
@@ -124,49 +146,6 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
       return;
     }
 
-    /*try {
-      /*const startTime = new Date(`${selectedDate}T${selectedTime}`);
-      const endTime = new Date(startTime.getTime() + 50 * 60000);
-
-      // Lấy subject_id đầu tiên của gia sư nếu có
-      const subjectId = tutor.subject_ids?.[0] || null;
-
-      await bookingApi.create({
-        tutorId: tutor.id,
-        subjectId: subjectId,
-        startTime: startTime.toISOString(),
-        endTime: endTime.toISOString(),
-        type: bookingType,
-        fee: bookingType === "trial" ? 0 : (tutor.hourly_fee || 0)
-      });
-
-      toast.success(bookingType === "trial" ? "Đặt lịch học thử thành công!" : "Đặt lịch học thành công!");
-      navigate("/dashboard");
-      const datetimeString = `${selectedDate}T${selectedTime}:00Z`;
-
-      // 2. GỬI DỮ LIỆU LÊN BACKEND
-      const response = await bookingApi.create({
-        tutor_id: tutor.id,          // Phải dùng đúng tên tutor_id (có gạch dưới)
-        subject_id: tutor.subject_ids?.[0] || "900b2ea5-16ea-4c80-93b1-0f1cc50b4adf", // Mã thật đã test
-        datetime: datetimeString,    // Gửi datetime duy nhất
-        fee: bookingType === "trial" ? 0 : (tutor.hourly_fee || 150000),
-      });
-
-      if (response.data.success) {
-        toast.success("Đặt lịch thành công! Đang chuyển đến danh sách...");
-
-        // 3. ĐIỀU HƯỚNG
-        // Sau khi đặt xong, status sẽ là 'pending'. 
-        // Ta chuyển về Dashboard để người dùng nhấn nút "Thanh toán"
-        setTimeout(() => {
-          navigate("/dashboard");
-        }, 1500);
-      }
-    } catch (err) {
-      console.error("Lỗi đặt lịch:", err);
-      toast.error(err.response?.data?.message || "Lỗi không xác định");
-    }
-  };*/
     try {
       // --- BẮT ĐẦU ĐOẠN SỬA ---
       // 1. Xử lý selectedTime để chuyển từ "24.00" thành "00:00" (ngày hôm sau)
@@ -208,6 +187,33 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
       toast.error(err.response?.data?.message || "Gia sư đã có lịch dạy khác!");
     }
   };
+
+  const handleToggleFavorite = async () => {
+    if (!user) {
+        toast.error('Vui lòng đăng nhập để lưu gia sư');
+        return;
+    }
+    if (user.role !== 'learner') {
+        toast.error('Chức năng chỉ dành cho học viên');
+        return;
+    }
+    setFavoriteLoading(true);
+    try {
+        if (isFavorite) {
+            await favoriteApi.removeFavorite(tutor.id);
+            setIsFavorite(false);
+            toast.success('Đã xóa khỏi danh sách yêu thích');
+        } else {
+            await favoriteApi.addFavorite(tutor.id);
+            setIsFavorite(true);
+            toast.success('Đã lưu gia sư vào danh sách');
+        }
+    } catch (error) {
+        toast.error(error.response?.data?.message || 'Có lỗi xảy ra');
+    } finally {
+        setFavoriteLoading(false);
+    }
+};
 
   if (loading) {
     return (
@@ -285,13 +291,17 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
                       </div>
                     </div>
                     <div className="flex space-x-2">
-                      <button className="p-3 bg-slate-50 hover:bg-slate-100 rounded-2xl transition-colors border border-slate-100">
-                        <Heart className="h-5 w-5 text-slate-400" />
-                      </button>
-                      <button className="p-3 bg-slate-50 hover:bg-slate-100 rounded-2xl transition-colors border border-slate-100">
-                        <Share2 className="h-5 w-5 text-slate-400" />
-                      </button>
-                    </div>
+  <button
+    onClick={handleToggleFavorite}
+    disabled={favoriteLoading}
+    className="p-3 bg-slate-50 hover:bg-slate-100 rounded-2xl transition-colors border border-slate-100"
+  >
+    <Heart className={`h-5 w-5 ${isFavorite ? 'fill-rose-500 text-rose-500' : 'text-slate-400'}`} />
+  </button>
+  <button className="p-3 bg-slate-50 hover:bg-slate-100 rounded-2xl transition-colors border border-slate-100">
+    <Share2 className="h-5 w-5 text-slate-400" />
+  </button>
+</div>
                   </div>
 
                   <div className="flex flex-wrap gap-2 mb-6">
@@ -517,7 +527,7 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
                         </button>
                       </div>
                     </div>
-                    <div className="grid grid-cols-7 gap-2 text-center mb-4">
+                    <div className="grid grid-cols-7 gap-2 text-center mb-4 max-h-64 overflow-y-auto pr-2">
                       {["T2", "T3", "T4", "T5", "T6", "T7", "CN"].map((d) => (
                         <span
                           key={d}
@@ -527,8 +537,8 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
                         </span>
                       ))}
 
-                      {/* Render 14 calendar days continuously */}
-                      {Array.from({ length: 14 }).map((_, idx) => {
+                      {/* Render upcoming calendar days continuously */}
+                      {Array.from({ length: calendarDayCount }).map((_, idx) => {
                         const d = new Date();
                         d.setDate(d.getDate() + idx);
                         const year = d.getFullYear();

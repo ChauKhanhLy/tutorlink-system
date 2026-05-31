@@ -38,7 +38,7 @@ export function DashboardPage() {
   const [sessions, setSessions] = React.useState([]);
   const [tutors, setTutors] = React.useState([]);
   const [activeTab, setActiveTab] = React.useState("sessions");
-  //const [favorites, setFavorites] = React.useState([]);
+  const [favorites, setFavorites] = React.useState([]);
   const [messages, setMessages] = React.useState([]);
   const [wallet, setWallet] = React.useState(null);
   const [feedbackData, setFeedbackData] = React.useState(null);
@@ -63,14 +63,16 @@ export function DashboardPage() {
 
   const fetchData = React.useCallback(async () => {
     try {
-      const [tutorRes, bookingRes, messageRes] = await Promise.all([
+      const [tutorRes, bookingRes, messageRes, favoriteRes] = await Promise.all([
         tutorApi.getAll(),
         bookingApi.getMyBookings(),
         messageApi.getConversations(user.id),
+        favoriteApi.getMyFavorites(),
       ]);
       setTutors(tutorRes.data.tutors || []);
       setSessions(bookingRes.data);
       setMessages(messageRes.data);
+      setFavorites(favoriteRes.data.data || []);
     } catch (err) {
       console.log(err);
     }
@@ -79,15 +81,17 @@ export function DashboardPage() {
   React.useEffect(() => {
     const fetchData = async () => {
       try {
-        const [tutorRes, bookingRes, messageRes] = await Promise.all([
+        const [tutorRes, bookingRes, messageRes, favoriteRes] = await Promise.all([
           tutorApi.getAll(),
           bookingApi.getMyBookings(),
           messageApi.getConversations(user.id),
+          favoriteApi.getMyFavorites(),
         ]);
 
         setTutors(tutorRes.data.tutors || []);
         setSessions(bookingRes.data);
         setMessages(messageRes.data);
+        setFavorites(favoriteRes.data.data || []);
       } catch (err) {
         console.log(err);
       }
@@ -639,17 +643,16 @@ export function DashboardPage() {
               {activeTab === "favorites" && (
                 <div className="grid md:grid-cols-2 gap-6">
                   {favorites.map((fav) => {
-                    const tutor = tutors.find((t) => t.id === fav.tutorId);
+                    const tutor = fav;
 
                     if (!tutor) return null; // tránh crash
 
                     return (
                       <div
-                        key={fav.id}
+                        key={tutor.id}
                         className="bg-white rounded-3xl border border-slate-200 p-6 flex items-start space-x-4 shadow-sm"
                       >
                         <ImageWithFallback
-                          //src={tutor?.avatar}
                           src={getAvatarUrl(tutor?.avatar)}
                           className="w-16 h-16 rounded-2xl object-cover"
                         />
@@ -658,7 +661,17 @@ export function DashboardPage() {
                             <h4 className="font-bold text-slate-900">
                               {tutor.name}
                             </h4>
-                            <button className="text-rose-500">
+                            <button 
+                              className="text-rose-500"
+                              onClick={async () => {
+                                try {
+                                  await favoriteApi.removeFavorite(tutor.id);
+                                  setFavorites(prev => prev.filter(f => f.id !== tutor.id));
+                                } catch (e) {
+                                  console.log(e);
+                                }
+                              }}
+                            >
                               <Heart className="h-5 w-5 fill-current" />
                             </button>
                           </div>
