@@ -131,6 +131,11 @@ export function DashboardPage() {
 
   const nextTutor = tutors.find((t) => t.id === nextSession?.tutorId);
 
+  // Tính số buổi đã xác nhận/hoàn thành
+  const confirmedSessions = Array.isArray(sessions) ? sessions.filter(s => s.status === 'confirmed' || s.status === 'completed').length : 0;
+  const attendedSessions = Array.isArray(sessions) ? sessions.filter(s => s.attended === true).length : 0;
+  const attendanceRate = confirmedSessions > 0 ? Math.round((attendedSessions / confirmedSessions) * 100) : 0;
+
   if (loading) {
     return (
       <div className="pt-32 flex justify-center items-center min-h-[60vh]">
@@ -263,7 +268,7 @@ export function DashboardPage() {
                   {activeTab === "settings" && "Cài đặt"}
                 </h1>
                 <p className="text-slate-500 font-medium">
-                  Chào mừng {user?.name || "bạn"}. Bạn có {sessions?.length || 0} buổi học trong danh sách.
+                  Chào mừng {user?.name || "bạn"}. Bạn có {confirmedSessions} buổi học đã xác nhận, đã học {attendedSessions} buổi ({attendanceRate}%).
                 </p>
               </div>
               <div className="flex items-center space-x-3">
@@ -367,20 +372,12 @@ export function DashboardPage() {
                       {sessions && sessions.length > 0 ? (
                         sessions.map((session) => {
                           const tutor = tutors.find((t) => t.id === session.tutorId);
-                          const now = new Date();
-                          const startTime = new Date(session.room_start_time || session.datetime || session.date);
-                          const endTime = new Date(session.room_end_time || (new Date(startTime).getTime() + 60 * 60 * 1000));
-
-                          // Cho phép vào phòng bất cứ lúc nào nếu có room_id (phục vụ testing)
-                          const canJoin = (!!session.room_id || !!session.roomId) && session.status !== 'cancelled' && session.status !== 'done';
-
-                          // Kiểm tra xem có thể đánh giá không
-                          const canReview = session.status === 'completed' && now >= new Date(startTime.getTime() + 2 * 60 * 60 * 1000);
 
                           return (
-                            <div
+                            <Link
                               key={session.id}
-                              className="group p-5 bg-slate-50 rounded-3xl border border-transparent hover:border-indigo-100 hover:bg-white transition-all duration-300 flex flex-col md:flex-row justify-between items-center gap-4"
+                              to={`/classroom/${session.tutor_id || session.tutorId}/${session.subject_id || session.subjectId}`}
+                              className="group p-5 bg-slate-50 rounded-3xl border border-transparent hover:border-indigo-100 hover:bg-white transition-all duration-300 flex items-center justify-between gap-4"
                             >
                               <div className="flex items-center space-x-5">
                                 <div className="w-14 h-14 bg-indigo-100 rounded-2xl flex items-center justify-center">
@@ -389,20 +386,8 @@ export function DashboardPage() {
 
                                 <div>
                                   <h4 className="font-bold text-slate-900 text-lg">
-                                    <Link to={`/classroom/${session.tutor_id || session.tutorId}/${session.subject_id || session.subjectId}`} className="hover:text-indigo-600 transition-colors">
-                                      {session.subject || "Chưa có môn"}
-                                    </Link>
+                                    {session.subject || "Chưa có môn"}
                                   </h4>
-
-                                  <div className="flex items-center text-slate-500 text-sm mt-1">
-                                    <span className="font-bold">
-                                      {session.dateObj
-                                        ? session.dateObj.toLocaleDateString("vi-VN")
-                                        : (session.date || session.datetime ? new Date(session.date || session.datetime).toLocaleDateString("vi-VN") : "Chưa có ngày")}
-                                    </span>
-                                    <span className="mx-2">•</span>
-                                    <span>{session.time || (session.dateObj ? session.dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : "--:--")}</span>
-                                  </div>
 
                                   <div className="text-xs text-slate-400 mt-1">
                                     Gia sư: {tutor?.name || session.tutorName || "Đang cập nhật"}
@@ -415,28 +400,9 @@ export function DashboardPage() {
                                   src={tutor?.avatar || ""}
                                   className="w-10 h-10 rounded-full border-2 border-white shadow-sm"
                                 />
-
-                                {canJoin ? (
-                                  <Link
-                                    to={`/room/${session.room_id || session.roomId}`}
-                                    className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all"
-                                  >
-                                    Vào phòng
-                                  </Link>
-                                ) : canReview ? (
-                                  <Link
-                                    to={`/review?tutorId=${session.tutorId}&bookingId=${session.id}`}
-                                    className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-all"
-                                  >
-                                    Đánh giá
-                                  </Link>
-                                ) : (
-                                  <button className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-400 cursor-not-allowed">
-                                    {session.status === 'cancelled' ? "Gia sư đã từ chối" : (session.room_id || session.roomId ? "Chưa đến giờ" : "Chờ xác nhận")}
-                                  </button>
-                                )}
+                                <ChevronRight className="h-5 w-5 text-slate-300 group-hover:text-indigo-600 transition-colors" />
                               </div>
-                            </div>
+                            </Link>
                           );
                         })
                       ) : (

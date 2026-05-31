@@ -13,11 +13,13 @@ import {
   CheckCircle,
   AlertCircle,
   Copy,
+  Star,
 } from "lucide-react";
 import { toast } from "sonner";
 import { bookingApi } from "../api/bookingApi";
 import { tutorApi } from "../api/tutorApi";
 import { videoRoomApi } from "../api/videoRoomApi";
+import { reviewApi } from "../api/reviewApi";
 import { ImageWithFallback } from "../components/Image/ImageWithFallback";
 import { useAuth } from "../context/AuthContext";
 
@@ -27,6 +29,7 @@ export function LessonPage() {
   const [booking, setBooking] = React.useState(null);
   const [tutor, setTutor] = React.useState(null);
   const [videoRoom, setVideoRoom] = React.useState(null);
+  const [reviews, setReviews] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
   const joinLink = booking?.meeting_link || booking?.meetingLink || "https://zoom.us/j/123456789";
 
@@ -72,7 +75,7 @@ export function LessonPage() {
       const foundBooking = bookingRes?.data;
       if (foundBooking) {
         setBooking(foundBooking);
-        
+
         // Load thông tin gia sư
         const tutorRes = await tutorApi.getById(foundBooking.tutorId);
         setTutor(tutorRes.data);
@@ -85,6 +88,15 @@ export function LessonPage() {
           }
         } catch (roomErr) {
           console.warn("Không tìm thấy video room cho booking này:", roomErr);
+        }
+
+        // Fetch reviews cho booking này
+        try {
+          const reviewsRes = await reviewApi.getByBooking(foundBooking.id);
+          setReviews(reviewsRes.data || []);
+        } catch (reviewErr) {
+          console.warn("Không tìm thấy review cho booking này:", reviewErr);
+          setReviews([]);
         }
       } else {
         toast.error("Không tìm thấy thông tin buổi học");
@@ -131,11 +143,8 @@ export function LessonPage() {
     <div className="pt-24 pb-16 bg-slate-50 min-h-screen">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-4 mb-6">
-          <Link to="/dashboard" className="inline-flex items-center text-slate-500 hover:text-indigo-600 font-bold">
-            <ChevronLeft className="h-5 w-5 mr-1" /> Quay lại Dashboard
-          </Link>
           {booking?.tutorId && booking?.subjectId && (
-            <Link 
+            <Link
               to={`/classroom/${booking.tutorId}/${booking.subjectId}`}
               className="inline-flex items-center text-slate-500 hover:text-indigo-600 font-bold"
             >
@@ -179,6 +188,56 @@ export function LessonPage() {
             </div>
           </div>
         </div>
+
+        {/* Review Section (Hiển thị nếu buổi học đã hoàn thành) */}
+        {booking.tutor_confirmed && booking.learner_confirmed && isPast && (
+          <div className="bg-gradient-to-r from-amber-500 to-orange-500 rounded-3xl p-8 text-white mb-8 shadow-xl">
+            {reviews.length > 0 ? (
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <Star className="h-6 w-6" />
+                  <span className="font-bold uppercase tracking-wider text-sm">Đánh giá của bạn</span>
+                </div>
+                {reviews.map((review) => (
+                  <div key={review.id} className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 mb-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      {[...Array(5)].map((_, i) => (
+                        <Star
+                          key={i}
+                          className={`h-5 w-5 ${
+                            i < review.rating ? 'fill-white text-white' : 'text-white/30'
+                          }`}
+                        />
+                      ))}
+                      <span className="ml-2 font-bold">{review.rating}/5</span>
+                    </div>
+                    <p className="text-white/90">{review.comment}</p>
+                    <p className="text-white/60 text-sm mt-2">
+                      Đánh giá vào {new Date(review.createdAt).toLocaleDateString('vi-VN')}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Star className="h-6 w-6" />
+                    <span className="font-bold uppercase tracking-wider text-sm">Đánh giá buổi học</span>
+                  </div>
+                  <h2 className="text-2xl font-bold mb-2">Bạn đã học buổi học này chưa?</h2>
+                  <p className="text-amber-100 mb-4">Chia sẻ trải nghiệm của bạn với buổi học này để giúp cải thiện chất lượng giảng dạy</p>
+                </div>
+                <Link
+                  to={`/review?tutorId=${booking.tutorId}&bookingId=${booking.id}&type=session`}
+                  className="inline-flex items-center px-6 py-3 bg-white text-amber-600 font-bold rounded-2xl hover:bg-slate-100 transition-all"
+                >
+                  <Star className="h-4 w-4 mr-2" /> Đánh giá buổi học
+                </Link>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Confirmation Section (Hiển thị nếu chưa hoàn tất xác nhận cả 2 bên) */}
         {(!booking.tutor_confirmed || !booking.learner_confirmed) && (
