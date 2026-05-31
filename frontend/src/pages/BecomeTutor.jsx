@@ -5,7 +5,7 @@ import {
   Briefcase,
   Award,
   BookOpen,
-  DollarSign,
+  //DollarSign,
   FileText,
   Upload,
   ChevronLeft,
@@ -17,20 +17,21 @@ import { toast } from "sonner";
 import { useAuth } from "../context/AuthContext";
 import { tutorApi } from "../api/tutorApi";
 import { ImageWithFallback } from "../components/Image/ImageWithFallback";
+import { getAvatarUrl } from "../utils/avatar";
 
 export function BecomeTutorPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [loading, setLoading] = React.useState(false);
   const [step, setStep] = React.useState(1);
-  
+
   const [formData, setFormData] = React.useState({
     // Thông tin cá nhân (lấy từ user)
     name: user?.name || "",
     email: user?.email || "",
     phone: "",
     avatar: user?.avatar || "",
-    
+
     // Thông tin chuyên môn
     subjects: [],
     hourlyRate: "",
@@ -41,11 +42,22 @@ export function BecomeTutorPage() {
     languages: ["Tiếng Việt"],
     teachingStyle: "",
     availability: [],
-    
+    availableDays: [],
+
     // Upload files
     cvFile: null,
     degreeFiles: [],
   });
+
+  const formatVND = (value) => {
+    if (!value) return "0 ₫";
+    return Number(value).toLocaleString("vi-VN") + " ₫";
+  };
+
+  const handlePriceChange = (e) => {
+    let value = e.target.value.replace(/\D/g, "");
+    setFormData((prev) => ({ ...prev, hourlyRate: value }));
+  };
 
   const subjectsList = [
     "Toán học",
@@ -79,54 +91,72 @@ export function BecomeTutorPage() {
     { id: "morning", label: "Sáng (8:00 - 12:00)" },
     { id: "afternoon", label: "Chiều (13:00 - 17:00)" },
     { id: "evening", label: "Tối (18:00 - 22:00)" },
-    { id: "weekend", label: "Cuối tuần" },
+  ];
+
+  const daysOfWeek = [
+    { id: 1, label: "Thứ 2" },
+    { id: 2, label: "Thứ 3" },
+    { id: 3, label: "Thứ 4" },
+    { id: 4, label: "Thứ 5" },
+    { id: 5, label: "Thứ 6" },
+    { id: 6, label: "Thứ 7" },
+    { id: 0, label: "Chủ nhật" },
   ];
 
   const handleInputChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleSubjectToggle = (subject) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       subjects: prev.subjects.includes(subject)
-        ? prev.subjects.filter(s => s !== subject)
-        : [...prev.subjects, subject]
+        ? prev.subjects.filter((s) => s !== subject)
+        : [...prev.subjects, subject],
     }));
   };
 
   const handleLanguageToggle = (language) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       languages: prev.languages.includes(language)
-        ? prev.languages.filter(l => l !== language)
-        : [...prev.languages, language]
+        ? prev.languages.filter((l) => l !== language)
+        : [...prev.languages, language],
     }));
   };
 
   const handleAvailabilityToggle = (option) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       availability: prev.availability.includes(option)
-        ? prev.availability.filter(a => a !== option)
-        : [...prev.availability, option]
+        ? prev.availability.filter((a) => a !== option)
+        : [...prev.availability, option],
+    }));
+  };
+
+  const handleDayToggle = (dayId) => {
+    setFormData((prev) => ({
+      ...prev,
+      availableDays: prev.availableDays.includes(dayId)
+        ? prev.availableDays.filter((d) => d !== dayId)
+        : [...prev.availableDays, dayId],
     }));
   };
 
   const handleFileChange = (field, files) => {
-    setFormData(prev => ({ ...prev, [field]: files[0] }));
+    setFormData((prev) => ({ ...prev, [field]: files[0] }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Validate
     if (formData.subjects.length === 0) {
       toast.error("Vui lòng chọn ít nhất một môn học");
       return;
     }
-    if (!formData.hourlyRate || formData.hourlyRate < 5) {
-      toast.error("Giá mỗi giờ tối thiểu là $5");
+    if (!formData.hourlyRate || formData.hourlyRate < 50000) {
+      toast.error("Giá mỗi giờ tối thiểu là 50.000 VNĐ");
       return;
     }
     if (!formData.education) {
@@ -137,29 +167,35 @@ export function BecomeTutorPage() {
       toast.error("Giới thiệu bản thân tối thiểu 50 ký tự");
       return;
     }
+    if (formData.availableDays.length === 0) {
+      toast.error("Vui lòng chọn ít nhất một ngày rảnh");
+      return;
+    }
+    if (formData.availability.length === 0) {
+      toast.error("Vui lòng chọn ít nhất một khung thời gian rảnh");
+      return;
+    }
 
     setLoading(true);
     try {
-      const submitData = new FormData();
-      Object.keys(formData).forEach(key => {
-        if (key === "cvFile" || key === "degreeFiles") {
-          if (formData[key]) {
-            if (Array.isArray(formData[key])) {
-              formData[key].forEach(file => submitData.append(key, file));
-            } else {
-              submitData.append(key, formData[key]);
-            }
-          }
-        } else if (Array.isArray(formData[key])) {
-          submitData.append(key, JSON.stringify(formData[key]));
-        } else {
-          submitData.append(key, formData[key]);
-        }
-      });
+      const submitData = {
+        phone: formData.phone,
+        avatar: formData.avatar,
+        subjects: formData.subjects,
+        hourlyRate: Number(formData.hourlyRate || 0),
+        education: formData.education,
+        experience: formData.experience,
+        certifications: formData.certifications,
+        bio: formData.bio,
+        languages: formData.languages,
+        teachingStyle: formData.teachingStyle,
+        availability: formData.availability,
+        availableDays: formData.availableDays,
+      };
 
       await tutorApi.registerTutor(submitData);
       toast.success("Đăng ký thành công! Đơn của bạn đang chờ admin duyệt.");
-      navigate("/dashboard");
+      navigate("/tutor/dashboard");
     } catch (err) {
       toast.error(err.response?.data?.message || "Đăng ký thất bại");
     } finally {
@@ -196,7 +232,8 @@ export function BecomeTutorPage() {
             Đăng ký trở thành gia sư
           </h1>
           <p className="text-slate-500">
-            Điền đầy đủ thông tin bên dưới để gửi đơn đăng ký. Admin sẽ xem xét và phê duyệt trong vòng 24-48 giờ.
+            Điền đầy đủ thông tin bên dưới để gửi đơn đăng ký. Admin sẽ xem xét
+            và phê duyệt trong vòng 24-48 giờ.
           </p>
         </div>
 
@@ -207,7 +244,7 @@ export function BecomeTutorPage() {
               <div key={s} className="flex items-center flex-1">
                 <div className="flex flex-col items-center">
                   <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
+                    className={`w-10 h-10 rounded-full flex items-center justify-center font-bold${
                       step >= s
                         ? "bg-indigo-600 text-white"
                         : "bg-slate-200 text-slate-500"
@@ -216,7 +253,11 @@ export function BecomeTutorPage() {
                     {step > s ? <CheckCircle className="h-5 w-5" /> : s}
                   </div>
                   <span className="text-xs font-medium mt-2 text-slate-600">
-                    {s === 1 ? "Thông tin cơ bản" : s === 2 ? "Chuyên môn" : "Xác nhận"}
+                    {s === 1
+                      ? "Thông tin cơ bản"
+                      : s === 2
+                        ? "Chuyên môn"
+                        : "Xác nhận"}
                   </span>
                 </div>
                 {s < 3 && (
@@ -280,18 +321,32 @@ export function BecomeTutorPage() {
                   <label className="block text-sm font-bold text-slate-700 mb-2">
                     Ảnh đại diện
                   </label>
+
                   <div className="flex items-center gap-4">
                     <ImageWithFallback
-                      src={formData.avatar}
+                      src={ getAvatarUrl(formData.avatar)
+                        // formData.avatar
+                        //   ? URL.createObjectURL(formData.avatar)
+                        //   : getAvatarUrl(user?.avatar)
+                      }
                       alt={formData.name}
-                      className="w-12 h-12 rounded-full object-cover"
+                      className="w-16 h-16 rounded-full object-cover"
                     />
+
                     <input
                       type="url"
                       value={formData.avatar}
-                      onChange={(e) => handleInputChange("avatar", e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("avatar", e.target.value)
+                      }
                       placeholder="URL ảnh đại diện"
                       className="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                      // type="file"
+                      // accept="image/*"
+                      // onChange={(e) =>
+                      //   handleInputChange("avatar", e.target.files[0])
+                      // }
+                      // className="flex-1"
                     />
                   </div>
                 </div>
@@ -397,23 +452,28 @@ export function BecomeTutorPage() {
 
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-2">
-                  Giá mỗi giờ (USD) <span className="text-red-500">*</span>
+                  Giá mỗi giờ (VNĐ) <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
-                  <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                  {/*<DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />*/}
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                    ₫
+                  </span>
                   <input
-                    type="number"
-                    min="5"
-                    step="1"
-                    value={formData.hourlyRate}
-                    onChange={(e) => handleInputChange("hourlyRate", e.target.value)}
-                    placeholder="25"
-                    className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                    type="text"
+                    value={
+                      formData.hourlyRate
+                        ? Number(formData.hourlyRate).toLocaleString("vi-VN")
+                        : ""
+                    }
+                    onChange={handlePriceChange}
+                    placeholder="200.000"
+                    className="w-full pl-8 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                     required
                   />
                 </div>
                 <p className="mt-1 text-xs text-slate-400">
-                  Giá tham khảo: $15 - $50/giờ tùy kinh nghiệm
+                  Giá tham khảo: 50.000 - 500.000 VNĐ/giờ tùy kinh nghiệm
                 </p>
               </div>
 
@@ -425,7 +485,9 @@ export function BecomeTutorPage() {
                   <GraduationCap className="absolute left-4 top-4 h-5 w-5 text-slate-400" />
                   <textarea
                     value={formData.education}
-                    onChange={(e) => handleInputChange("education", e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("education", e.target.value)
+                    }
                     placeholder="VD: Cử nhân Sư phạm Toán - ĐH Sư phạm Hà Nội (2020)"
                     className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                     rows={2}
@@ -442,7 +504,9 @@ export function BecomeTutorPage() {
                   <Briefcase className="absolute left-4 top-4 h-5 w-5 text-slate-400" />
                   <textarea
                     value={formData.experience}
-                    onChange={(e) => handleInputChange("experience", e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("experience", e.target.value)
+                    }
                     placeholder="VD: 5 năm dạy Toán THPT, 2 năm dạy online..."
                     className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                     rows={3}
@@ -458,7 +522,9 @@ export function BecomeTutorPage() {
                   <Award className="absolute left-4 top-4 h-5 w-5 text-slate-400" />
                   <textarea
                     value={formData.certifications}
-                    onChange={(e) => handleInputChange("certifications", e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("certifications", e.target.value)
+                    }
                     placeholder="VD: TOEIC 900, IELTS 7.5, Chứng chỉ nghiệp vụ sư phạm..."
                     className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                     rows={2}
@@ -488,9 +554,29 @@ export function BecomeTutorPage() {
 
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-3">
-                  Thời gian có thể dạy
+                  Chọn ngày có thể dạy <span className="text-red-500">*</span>
                 </label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {daysOfWeek.map((day) => (
+                    <button
+                      key={day.id}
+                      type="button"
+                      onClick={() => handleDayToggle(day.id)}
+                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                        formData.availableDays.includes(day.id)
+                          ? "bg-indigo-600 text-white shadow-md shadow-indigo-200"
+                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      }`}
+                    >
+                      {day.label}
+                    </button>
+                  ))}
+                </div>
+
+                <label className="block text-sm font-bold text-slate-700 mb-3">
+                  Khung giờ có thể dạy <span className="text-red-500">*</span>
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   {availabilityOptions.map((option) => (
                     <button
                       key={option.id}
@@ -498,7 +584,7 @@ export function BecomeTutorPage() {
                       onClick={() => handleAvailabilityToggle(option.id)}
                       className={`px-4 py-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${
                         formData.availability.includes(option.id)
-                          ? "bg-indigo-600 text-white"
+                          ? "bg-indigo-600 text-white shadow-md shadow-indigo-200"
                           : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                       }`}
                     >
@@ -537,27 +623,71 @@ export function BecomeTutorPage() {
 
               <div className="space-y-4 mb-8">
                 <div className="p-4 bg-slate-50 rounded-xl">
-                  <h3 className="font-bold text-slate-900 mb-2">Thông tin cá nhân</h3>
-                  <p><span className="text-slate-500">Họ tên:</span> {formData.name}</p>
-                  <p><span className="text-slate-500">Email:</span> {formData.email}</p>
-                  <p><span className="text-slate-500">SĐT:</span> {formData.phone}</p>
-                  <p><span className="text-slate-500">Ngôn ngữ:</span> {formData.languages.join(", ")}</p>
+                  <h3 className="font-bold text-slate-900 mb-2">
+                    Thông tin cá nhân
+                  </h3>
+                  <p>
+                    <span className="text-slate-500">Họ tên:</span>{" "}
+                    {formData.name}
+                  </p>
+                  <p>
+                    <span className="text-slate-500">Email:</span>{" "}
+                    {formData.email}
+                  </p>
+                  <p>
+                    <span className="text-slate-500">SĐT:</span>{" "}
+                    {formData.phone}
+                  </p>
+                  <p>
+                    <span className="text-slate-500">Ngôn ngữ:</span>{" "}
+                    {formData.languages.join(", ")}
+                  </p>
                 </div>
 
                 <div className="p-4 bg-slate-50 rounded-xl">
                   <h3 className="font-bold text-slate-900 mb-2">Chuyên môn</h3>
-                  <p><span className="text-slate-500">Môn dạy:</span> {formData.subjects.join(", ")}</p>
-                  <p><span className="text-slate-500">Giá/giờ:</span> ${formData.hourlyRate}</p>
-                  <p><span className="text-slate-500">Học vấn:</span> {formData.education}</p>
-                  <p><span className="text-slate-500">Kinh nghiệm:</span> {formData.experience || "Chưa có"}</p>
-                  <p><span className="text-slate-500">Giới thiệu:</span> {formData.bio.substring(0, 100)}...</p>
+                  <p>
+                    <span className="text-slate-500">Môn dạy:</span>{" "}
+                    {formData.subjects.join(", ")}
+                  </p>
+                  <p>
+                    <span className="text-slate-500">Giá/giờ:</span>{" "}
+                    {formatVND(formData.hourlyRate)}
+                  </p>
+                  <p>
+                    <span className="text-slate-500">Học vấn:</span>{" "}
+                    {formData.education}
+                  </p>
+                  <p>
+                    <span className="text-slate-500">Kinh nghiệm:</span>{" "}
+                    {formData.experience || "Chưa có"}
+                  </p>
+                  <p>
+                    <span className="text-slate-500">Giới thiệu:</span>{" "}
+                    {formData.bio.substring(0, 100)}...
+                  </p>
+                  <p>
+                    <span className="text-slate-500">Thời gian dạy:</span>{" "}
+                    {formData.availableDays
+                      .map((d) => daysOfWeek.find((day) => day.id === d)?.label)
+                      .join(", ")}{" "}
+                    (
+                    {formData.availability
+                      .map(
+                        (a) =>
+                          availabilityOptions.find((o) => o.id === a)?.label,
+                      )
+                      .join(", ")}
+                    )
+                  </p>
                 </div>
               </div>
 
               <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl mb-8">
                 <p className="text-sm text-amber-700">
-                  <strong>Lưu ý:</strong> Đơn đăng ký của bạn sẽ được admin xem xét trong vòng 24-48 giờ. 
-                  Bạn sẽ nhận được thông báo qua email khi đơn được duyệt.
+                  <strong>Lưu ý:</strong> Đơn đăng ký của bạn sẽ được admin xem
+                  xét trong vòng 24-48 giờ. Bạn sẽ nhận được thông báo qua email
+                  khi đơn được duyệt.
                 </p>
               </div>
 

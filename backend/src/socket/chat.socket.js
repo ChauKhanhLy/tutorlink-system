@@ -3,6 +3,10 @@ import Message from '../models/message.model.js';
 
 const onlineUsers = new Map();
 
+export const getOnlineUserSocket = (userId) => {
+  return onlineUsers.get(userId);
+};
+
 export const initChatSocket = (io) => {
   io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
@@ -10,7 +14,8 @@ export const initChatSocket = (io) => {
     // Đăng ký user online
     socket.on('register_user', (userId) => {
       onlineUsers.set(userId, socket.id);
-      console.log(`User ${userId} connected with socket ${socket.id}`);
+      socket.join(userId.toString()); // Đưa vào phòng riêng của user để gửi tới nhiều tab
+      console.log(`User ${userId} connected with socket ${socket.id} and joined room`);
     });
 
     // Gửi tin nhắn
@@ -30,17 +35,19 @@ export const initChatSocket = (io) => {
           sender_id,
           receiver_id,
           content,
-          sent_at: new Date(),
+          sent_at: new Date().toISOString(),
           is_read: false,
         });
 
         // gửi lại cho người gửi
         socket.emit('receive_message', savedMessage);
+        console.log('Message sent back to sender:', sender_id);
 
-        // gửi realtime cho người nhận nếu đang online
+        // gửi realtime cho người nhận nếu đang online và không phải là chính mình
         const receiverSocketId = onlineUsers.get(receiver_id);
-        if (receiverSocketId) {
+        if (receiverSocketId && receiverSocketId !== socket.id) {
           io.to(receiverSocketId).emit('receive_message', savedMessage);
+          console.log('Message sent to receiver:', receiver_id);
         }
       } catch (error) {
         console.error('Lỗi gửi tin nhắn:', error);

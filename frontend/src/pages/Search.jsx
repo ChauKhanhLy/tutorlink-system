@@ -13,6 +13,7 @@ import { Link } from "react-router-dom";
 import { tutorApi } from "../api/tutorApi";
 import { ImageWithFallback } from "../components/Image/ImageWithFallback";
 import { motion } from "framer-motion";
+import { getAvatarUrl } from "../utils/avatar.js";
 
 export function SearchPage() {
   const [tutors, setTutors] = React.useState([]);
@@ -20,7 +21,7 @@ export function SearchPage() {
   const [selectedSubject, setSelectedSubject] =
     React.useState("Tất cả môn học");
   const [loading, setLoading] = React.useState(false);
-  const [priceRange, setPriceRange] = React.useState(500); // giá tối đa
+  const [priceRange, setPriceRange] = React.useState(100); // giá tối đa (100 = Tất cả)
   const [selectedRating, setSelectedRating] = React.useState(0);
   const [selectedAvailability, setSelectedAvailability] = React.useState([]);
   const [sortBy, setSortBy] = React.useState("recommended");
@@ -38,8 +39,8 @@ export function SearchPage() {
   ];
 
   const formatPrice = (price) => {
-  return Number(price).toLocaleString("vi-VN") + "đ";
-};
+    return Number(price).toLocaleString("vi-VN") + "đ";
+  };
 
   React.useEffect(() => {
     const delayDebounce = setTimeout(async () => {
@@ -62,7 +63,7 @@ export function SearchPage() {
           q: searchQuery || undefined,
           subject:
             selectedSubject === "Tất cả môn học" ? undefined : selectedSubject,
-          maxPrice: parseInt(priceRange * 1000), // Chuyển từ triệu sang nghìn
+          maxPrice: priceRange < 100 ? priceRange * 10000 : undefined, // Nếu range là 100 thì coi như không lọc giá
           rating: selectedRating || undefined,
         };
 
@@ -193,7 +194,11 @@ export function SearchPage() {
                   </label>
                   <div className="flex justify-between text-xs mt-2">
                     <span>0đ</span>
-                    <span>{priceRange}.0000đ</span>
+                    <span>
+                      {priceRange === 100
+                        ? "Tất cả mức giá"
+                        : `${(priceRange * 10000).toLocaleString("vi-VN")}đ`}
+                    </span>
                   </div>
                   <input
                     type="range"
@@ -222,11 +227,10 @@ export function SearchPage() {
                               : [...prev, time],
                           );
                         }}
-                        className={`px-3 py-2 text-xs font-bold border rounded-xl transition-all ${
-                          selectedAvailability.includes(time)
-                            ? "bg-indigo-600 text-white border-indigo-600"
-                            : "border-slate-200 text-slate-600 hover:border-indigo-500"
-                        }`}
+                        className={`px-3 py-2 text-xs font-bold border rounded-xl transition-all ${selectedAvailability.includes(time)
+                          ? "bg-indigo-600 text-white border-indigo-600"
+                          : "border-slate-200 text-slate-600 hover:border-indigo-500"
+                          }`}
                       >
                         {time}
                       </button>
@@ -310,14 +314,18 @@ export function SearchPage() {
                       <div className="flex-shrink-0">
                         <div className="relative w-full md:w-48 h-48 rounded-2xl overflow-hidden mb-4">
                           <ImageWithFallback
-                            src={tutor.avatar}
-                            alt={tutor.name}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            src={
+                              tutor?.avatar
+                                ? getAvatarUrl(tutor.avatar)
+                                : "/img/images.jpg"
+                            }
+                            alt={tutor?.name || "Gia sư"}
+                            className="w-full h-full object-cover"
                           />
                           <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-sm px-2.5 py-1 rounded-lg flex items-center shadow-sm">
                             <Star className="h-3 w-3 text-amber-500 fill-amber-500 mr-1" />
                             <span className="text-xs font-bold text-slate-900">
-                              {tutor.rating}
+                              {Number(tutor.rating || 0).toFixed(1)}
                             </span>
                             <span className="text-slate-400 text-[10px] ml-1">
                               ({tutor.reviewCount || 0})
@@ -333,8 +341,13 @@ export function SearchPage() {
                             <Globe className="h-3.5 w-3.5 mr-2 text-indigo-500" />
                             Ngôn ngữ:{" "}
                             {tutor.languages
-                              ? tutor.languages.join(", ")
-                              : "Anh, Việt"}
+                              ? Array.isArray(tutor.languages)
+                                ? tutor.languages.join(", ")
+                                : typeof tutor.languages === "string" &&
+                                  tutor.languages.startsWith("[")
+                                  ? JSON.parse(tutor.languages).join(", ")
+                                  : tutor.languages
+                              : "Tiếng Việt"}
                           </div>
                         </div>
                       </div>
@@ -352,7 +365,7 @@ export function SearchPage() {
                               )}
                             </div>
                             <div className="flex flex-wrap gap-2 mt-2">
-                              {tutor.subjects?.map((sub) => (
+                              {(tutor.subjects || []).map((sub) => (
                                 <span
                                   key={sub}
                                   className="px-3 py-1 bg-indigo-50 text-indigo-600 text-[11px] font-bold rounded-full border border-indigo-100/50"
@@ -378,7 +391,6 @@ export function SearchPage() {
                           {tutor.bio ||
                             "Gia sư giàu kinh nghiệm, sẵn sàng hỗ trợ bạn đạt được mục tiêu học tập."}
                         </p>
-
                         <div className="mt-auto flex flex-col sm:flex-row items-center gap-3">
                           <Link
                             to={`/tutor/${tutor.id}`}
@@ -407,11 +419,10 @@ export function SearchPage() {
                   {[1, 2, 3].map((n) => (
                     <button
                       key={n}
-                      className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm transition-all ${
-                        n === 1
-                          ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
-                          : "bg-white text-slate-500 hover:bg-slate-100"
-                      }`}
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm transition-all ${n === 1
+                        ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
+                        : "bg-white text-slate-500 hover:bg-slate-100"
+                        }`}
                     >
                       {n}
                     </button>

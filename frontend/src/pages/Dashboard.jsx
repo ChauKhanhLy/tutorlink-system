@@ -13,25 +13,33 @@ import {
   ExternalLink,
   Search,
   Bell,
+  Wallet,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { tutorApi } from "../api/tutorApi";
 import { bookingApi } from "../api/bookingApi";
 import { favoriteApi } from "../api/favoriteApi";
-import messageApi  from "../api/messageApi";
+import { FeedbackMiniPage } from "../components/FeedbackMiniPage";
+import messageApi from "../api/messageApi";
 //import { billingApi } from "../api/billingApi";
 import { ImageWithFallback } from "../components/Image/ImageWithFallback";
-import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
+import { TutorDashboard } from "./TutorDashboard";
+import { ScheduleCalendar } from "../components/ScheduleCalendar";
+import { getAvatarUrl } from "../utils/avatar";
 
 export function DashboardPage() {
   const { user, logout } = useAuth();
+
   const [sessions, setSessions] = React.useState([]);
   const [tutors, setTutors] = React.useState([]);
   const [activeTab, setActiveTab] = React.useState("sessions");
+  const [favorites, setFavorites] = React.useState([]);
   //const [favorites, setFavorites] = React.useState([]);
   const [messages, setMessages] = React.useState([]);
-  const [wallet, setWallet] = React.useState(null);
+  const [wallet] = React.useState(null);
+  const [feedbackData, setFeedbackData] = React.useState(null);
+  const [loading, setLoading] = React.useState(true);
 
   const sidebarItems = [
     { id: "sessions", name: "Buổi học của tôi", icon: Calendar },
@@ -42,7 +50,7 @@ export function DashboardPage() {
       badge: messages?.length || 0,
     },
     { id: "favorites", name: "Gia sư đã lưu", icon: Heart },
-    { id: "billing", name: "Thanh toán", icon: CreditCard },
+    { id: "wallet", name: "Ví của tôi", icon: Wallet, href: "/wallet" },
     { id: "settings", name: "Cài đặt", icon: Settings },
   ];
 
@@ -51,36 +59,129 @@ export function DashboardPage() {
     window.location.href = "/login";
   };
 
+  const fetchData = React.useCallback(async () => {
+    try {
+      const [tutorRes, bookingRes, messageRes, favoriteRes] = await Promise.all([
+        tutorApi.getAll(),
+        bookingApi.getMyBookings(),
+        messageApi.getConversations(user.id),
+        favoriteApi.getMyFavorites(),
+      ]);
+      setTutors(tutorRes.data.tutors || []);
+      setSessions(bookingRes.data);
+      setMessages(messageRes.data);
+      setFavorites(favoriteRes.data.data || []);
+    } catch (err) {
+      console.log(err);
+    }
+  }, [user?.id]);
+
   React.useEffect(() => {
     const fetchData = async () => {
       try {
-        const [tutorRes, bookingRes,  walletRes, messageRes] =
+        const [tutorRes, bookingRes, messageRes, favRes] =
           await Promise.all([
             tutorApi.getAll(),
             bookingApi.getMyBookings(),
-            //favoriteApi.getMyFavorites(),
-            messageApi.getMyMessages(),
-            //billingApi.getWallet(),
+            messageApi.getConversations(user.id),
+            favoriteApi.getMyFavorites(),
           ]);
 
-        setTutors(tutorRes.data);
-        setSessions(bookingRes.data);
+        setTutors(tutorRes.data.tutors || []);
+        const mappedSessions = (bookingRes.data || []).map(s => ({
+          ...s,
+          dateObj: new Date(s.datetime)
+        }));
+        setSessions(mappedSessions);
         setMessages(messageRes.data);
-        setWallet(walletRes.data);
-        //setFavorites(favoriteRes.data);
+        setFavorites(favoriteRes.data.data || []);
+        setLoading(true);
+
+        // Chỉ fetch bookings (đã bao gồm tutor info trong response)
+        //const bookingRes = await bookingApi.getMyBookings();
+        const bookings = bookingRes.data || [];
+        setSessions(bookings);
+
+        // Extract unique tutor info từ bookings (backend đã trả về tutorName, tutorAvatar)
+        const uniqueTutors = [...new Map(bookings
+          .filter(b => b.tutorId && b.tutorName)
+          .map(b => [b.tutorId, { id: b.tutorId, name: b.tutorName, avatar: b.tutorAvatar }])
+        ).values()];
+        setTutors(uniqueTutors);
+
+        // Fetch messages sau (deferred) - không block loading
+        messageApi.getConversations(user.id)
+          .then(messageRes => setMessages(messageRes.data))
+          .catch(() => setMessages([]));
       } catch (err) {
-        console.log(err);
+        console.error('Error fetching dashboard data:', err);
+      } finally {
+        setLoading(false);
       }
     };
 
-    fetchData();
-  }, []);
+    if (user?.id && user?.role !== "tutor") {
+      fetchData();
+    } else {
+      setLoading(false);
+    }
+  }, [user?.id, user?.role]);
 
-  const nextSession = sessions
-    ?.filter((s) => new Date(s.date) > new Date()) // buổi trong tương lai
-    .sort((a, b) => new Date(a.date) - new Date(b.date))[0];
+  // Socket listener cho booking status changes - defer loading
+
+    // Defer socket setup to avoid blocking initial render
+ React.useEffect(() => {
+    if (!user?.id || user?.role === "tutor") return;
+
+    // Defer socket setup to avoid blocking initial render
+    const timer = setTimeout(() => {
+      import('../socket.js').then(({ default: socket }) => {
+        if (socket) {
+          socket.emit('register_user', user.id);
+          
+          socket.on('booking_status_changed', (data) => {
+            // Refresh bookings only
+            bookingApi.getMyBookings().then(bookingRes => {
+              setSessions(bookingRes.data || []);
+            });
+            
+            import('sonner').then(({ toast }) => {
+              toast.info(data.message || 'Trạng thái lịch học đã thay đổi');
+            });
+          });
+
+          return () => {
+            socket.off('booking_status_changed');
+          };
+        }
+      });
+    }, 2000); // Defer by 2 seconds
+
+    return () => clearTimeout(timer);
+  }, [user?.id, user?.role]);
+
+  if (user?.role === "tutor") {
+    return <TutorDashboard />;
+  }
+
+  const nextSession = Array.isArray(sessions) ? sessions
+    ?.filter((s) => new Date(s.datetime || s.date) > new Date() && (s.status === 'confirmed' || s.status === 'pending')) // buổi đã xác nhận hoặc chờ xác nhận trong tương lai
+    .sort((a, b) => new Date(a.datetime || a.date) - new Date(b.datetime || b.date))[0] : null;
 
   const nextTutor = tutors.find((t) => t.id === nextSession?.tutorId);
+
+  // Tính số buổi đã xác nhận/hoàn thành
+  const confirmedSessions = Array.isArray(sessions) ? sessions.filter(s => s.status === 'confirmed' || s.status === 'completed').length : 0;
+  const attendedSessions = Array.isArray(sessions) ? sessions.filter(s => s.attended === true).length : 0;
+  const attendanceRate = confirmedSessions > 0 ? Math.round((attendedSessions / confirmedSessions) * 100) : 0;
+
+  if (loading) {
+    return (
+      <div className="pt-32 flex justify-center items-center min-h-[60vh]">
+        <div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="pt-24 min-h-screen bg-slate-50">
@@ -91,48 +192,116 @@ export function DashboardPage() {
             <div className="sticky top-28 bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden p-6 mb-8 lg:mb-0">
               <div className="flex flex-col items-center mb-10 p-4 bg-indigo-50 rounded-2xl relative overflow-hidden">
                 <div className="relative w-20 h-20 rounded-full border-4 border-white shadow-xl overflow-hidden mb-4 z-10">
-                  <ImageWithFallback
+                  {/* <ImageWithFallback
                     src={user?.avatar || "https://i.pravatar.cc/150"}
                     alt={user?.name}
+                  /> */}
+                  {/* <ImageWithFallback
+                    src={
+                      user?.avatar
+                        ? user.avatar.startsWith("http")
+                          ? user.avatar
+                          : `http://localhost:3000${user.avatar}`
+                        : "https://i.pravatar.cc/150"
+                    }
+                    alt={user?.name}
+                    className="w-full h-full object-cover"
+                  /> */}
+                  <ImageWithFallback
+                    src={getAvatarUrl(user?.avatar)}
+                    alt={user?.name}
+                    className="w-full h-full object-cover"
                   />
                 </div>
                 <h3 className="font-bold text-slate-900 z-10">
                   {user?.name || "User"}
                 </h3>
                 <p className="text-xs font-bold text-indigo-600 z-10 uppercase tracking-widest">
-                  Gói học viên
+                  {user?.role === "admin"
+                    ? "Gói Admin"
+                    : user?.role === "tutor"
+                      ? "Gói Gia sư"
+                      : "Gói Học viên"}
                 </p>
                 <div className="absolute top-0 right-0 -mt-8 -mr-8 w-24 h-24 bg-indigo-600/10 rounded-full blur-xl"></div>
               </div>
 
               <nav className="space-y-2">
-                {sidebarItems.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => setActiveTab(item.id)}
-                    className={`w-full flex items-center justify-between px-4 py-3.5 rounded-2xl font-bold text-sm transition-all ${
-                      activeTab === item.id
-                        ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
-                        : "text-slate-500 hover:bg-slate-50 hover:text-indigo-600"
-                    }`}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <item.icon className="h-5 w-5" />
-                      <span>{item.name}</span>
-                    </div>
-                    {item.badge && (
-                      <span
-                        className={`px-2 py-0.5 rounded-lg text-[10px] font-bold ${
-                          activeTab === item.id
-                            ? "bg-white text-indigo-600"
-                            : "bg-indigo-600 text-white"
-                        }`}
+                {sidebarItems.map((item) => {
+                  const isActive = activeTab === item.id;
+                  const commonClasses = `w-full flex items-center justify-between px-4 py-3.5 rounded-2xl font-bold text-sm transition-all ${
+                    isActive
+                      ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
+                      : "text-slate-500 hover:bg-slate-50 hover:text-indigo-600"
+                  }`;
+
+                  if (item.id === "messages") {
+                    return (
+                      <Link
+                        key={item.id}
+                        to="/messages"
+                        className={commonClasses}
+                        onClick={() => setActiveTab(item.id)}
                       >
-                        {item.badge}
-                      </span>
-                    )}
-                  </button>
-                ))}
+                        <div className="flex items-center space-x-3">
+                          <item.icon className="h-5 w-5" />
+                          <span>{item.name}</span>
+                        </div>
+                        {item.badge && (
+                          <span
+                            className={`px-2 py-0.5 rounded-lg text-[10px] font-bold ${
+                              isActive
+                                ? "bg-white text-indigo-600"
+                                : "bg-indigo-600 text-white"
+                            }`}
+                          >
+                            {item.badge}
+                          </span>
+                        )}
+                      </Link>
+                    );
+                  }
+
+                  // Nếu có href, chuyển thẳng đến trang đó
+                  if (item.href) {
+                    return (
+                      <Link
+                        key={item.id}
+                        to={item.href}
+                        className={commonClasses}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <item.icon className="h-5 w-5" />
+                          <span>{item.name}</span>
+                        </div>
+                      </Link>
+                    );
+                  }
+
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => setActiveTab(item.id)}
+                      className={commonClasses}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <item.icon className="h-5 w-5" />
+                        <span>{item.name}</span>
+                      </div>
+                      {item.badge && (
+                        <span
+                          className={`px-2 py-0.5 rounded-lg text-[10px] font-bold ${
+                            isActive
+                              ? "bg-white text-indigo-600"
+                              : "bg-indigo-600 text-white"
+                          }`}
+                        >
+                          {item.badge}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
                 <button
                   onClick={handleLogout}
                   className="w-full flex items-center space-x-3 px-4 py-3.5 rounded-2xl font-bold text-sm text-rose-500 hover:bg-rose-50 transition-all mt-6 border-t border-slate-100 pt-10"
@@ -144,7 +313,6 @@ export function DashboardPage() {
             </div>
           </aside>
 
-          {/* Main Content Area */}
           <main className="flex-1 space-y-8 pb-20">
             {/* Top Bar for Dashboard */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -154,11 +322,11 @@ export function DashboardPage() {
                   {activeTab === "messages" && "Tin nhắn"}
                   {activeTab === "favorites" && "Gia sư đã lưu"}
                   {activeTab === "billing" && "Thanh toán"}
+                  {activeTab === "wallet" && "Ví của tôi"}
                   {activeTab === "settings" && "Cài đặt"}
                 </h1>
                 <p className="text-slate-500 font-medium">
-                  Chào mừng {user?.name || "bạn"}. Bạn có 2 buổi học trong tuần
-                  này.
+                  Chào mừng {user?.name || "bạn"}. Bạn có {confirmedSessions} buổi học đã xác nhận, đã học {attendedSessions} buổi ({attendanceRate}%).
                 </p>
               </div>
               <div className="flex items-center space-x-3">
@@ -199,19 +367,25 @@ export function DashboardPage() {
                               </span>
                             </div>
 
-                            <h2 className="text-3xl font-bold mb-2">
-                              {nextSession.subject || "Chưa có môn"} với{" "}
-                              {nextTutor?.name || "Gia sư"}
-                            </h2>
+                          <h2 className="text-3xl font-bold mb-2">
+                            <Link
+                              to={`/classroom/${nextSession.tutor_id || nextSession.tutorId}/${nextSession.subject_id || nextSession.subjectId}`}
+                              className="hover:underline"
+                            >
+                              {nextSession.subject || "Chưa có môn"}
+                            </Link>{" "}
+                            với {nextTutor?.name || "Gia sư"}
+                          </h2>
 
-                            <p className="text-indigo-100 text-sm mb-6 opacity-80">
-                              {new Date(nextSession.date).toLocaleDateString()}{" "}
-                              lúc {nextSession.time || "??"} •{" "}
-                              {nextSession.meetingLink ? "Online" : "Offline"}
-                            </p>
+                          <p className="text-indigo-100 text-sm mb-6 opacity-80">
+                            {nextSession.dateObj.toLocaleDateString("vi-VN")} lúc{" "}
+                            {nextSession.time || "??"} •{" "}
+                            {nextSession.meetingLink ? "Online" : "Offline"}
+                          </p>
 
                             <div className="flex flex-wrap gap-4">
                               {nextSession?.room_id ? (
+<<<<<<< HEAD
   <Link
     to={`/room/${nextSession.room_id || nextSession.id}`}
     className="px-6 py-3 bg-white text-indigo-600 font-bold rounded-2xl flex items-center hover:bg-slate-50 transition-all shadow-xl"
@@ -228,6 +402,26 @@ export function DashboardPage() {
     Tham gia <ExternalLink className="ml-2 h-4 w-4" />
   </a>
 ) : null}
+=======
+                                <Link
+                                  to={`/room/${nextSession.room_id || nextSession.id}`}
+                                  className="px-6 py-3 bg-white text-indigo-600 font-bold rounded-2xl flex items-center hover:bg-slate-50 transition-all shadow-xl"
+                                >
+                                  Tham gia{" "}
+                                  <ExternalLink className="ml-2 h-4 w-4" />
+                                </Link>
+                              ) : nextSession?.meetingLink ? (
+                                <a
+                                  href={nextSession.meetingLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="px-6 py-3 bg-white text-indigo-600 font-bold rounded-2xl flex items-center hover:bg-slate-50 transition-all shadow-xl"
+                                >
+                                  Tham gia{" "}
+                                  <ExternalLink className="ml-2 h-4 w-4" />
+                                </a>
+                              ) : null}
+>>>>>>> 45f4acbc132ac3870d1671e68ac902268080d5de
 
                               <button className="px-6 py-3 bg-white/10 backdrop-blur-md border border-white/20 text-white font-bold rounded-2xl hover:bg-white/20 transition-all">
                                 Đổi lịch
@@ -243,20 +437,41 @@ export function DashboardPage() {
                           <Calendar className="h-16 w-16 text-white opacity-80" />
                         </div>
                       </div>
+                      <div className="absolute top-0 right-0 -mt-20 -mr-20 w-80 h-80 bg-white/10 rounded-full blur-3xl"></div>
                     </div>
-                    <div className="absolute top-0 right-0 -mt-20 -mr-20 w-80 h-80 bg-white/10 rounded-full blur-3xl"></div>
-                  </div>
+                  )}
 
+                  {/* Sessions management */}
                   <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-8">
                     <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-100">
                       <h3 className="text-xl font-bold text-slate-900">
-                        Buổi học sắp tới
+                        Buổi học của tôi
                       </h3>
-                      <button className="text-sm font-bold text-indigo-600 hover:underline">
-                        Xem lịch
-                      </button>
+                      <div className="flex bg-slate-100 p-1 rounded-xl">
+                        <button
+                          onClick={() => setViewMode("calendar")}
+                          className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                            viewMode === "calendar"
+                              ? "bg-white text-indigo-600 shadow-sm"
+                              : "text-slate-500 hover:text-slate-700"
+                          }`}
+                        >
+                          Lịch tháng
+                        </button>
+                        <button
+                          onClick={() => setViewMode("list")}
+                          className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                            viewMode === "list"
+                              ? "bg-white text-indigo-600 shadow-sm"
+                              : "text-slate-500 hover:text-slate-700"
+                          }`}
+                        >
+                          Danh sách
+                        </button>
+                      </div>
                     </div>
                     <div className="space-y-4">
+<<<<<<< HEAD
                       {sessions.map((session) => {
   const tutor = tutors.find((t) => t.id === session.tutorId);
   const now = new Date();
@@ -279,12 +494,58 @@ export function DashboardPage() {
         <div className="w-14 h-14 bg-indigo-100 rounded-2xl flex items-center justify-center">
           <Calendar className="h-6 w-6 text-indigo-600" />
         </div>
+=======
+                      {sessions && sessions.length > 0 ? (
+                        sessions.map((session) => {
+                        const tutor = tutors.find(
+                          (t) => t.id === session.tutorId,
+                        );
+                        const now = new Date();
+                        const startTime = new Date(
+                          session.room_start_time ||
+                            session.datetime ||
+                            session.date,
+                        );
+                        // Cho phép vào phòng bất cứ lúc nào nếu có room_id (phục vụ testing)
+                        //const canJoin = !!session.room_id && session.status !== 'cancelled' && session.status !== 'done';
+                        const canJoin =
+                          (!!session.room_id || !!session.roomId) &&
+                          session.status !== "cancelled" &&
+                          session.status !== "done";
+
+                        if (
+                          session.type === "trial" ||
+                          session.status === "confirmed"
+                        ) {
+                          console.log(
+                            "Confirmed/Trial Session details:",
+                            JSON.stringify(session, null, 2),
+                          );
+                        }
+
+                        // Kiểm tra xem có thể đánh giá không
+                        const canReview =
+                          session.status === "completed" &&
+                          now >=
+                            new Date(startTime.getTime() + 2 * 60 * 60 * 1000);
+                          return (
+                            <Link
+                              key={session.id}
+                              to={`/classroom/${session.tutor_id || session.tutorId}/${session.subject_id || session.subjectId}`}
+                              className="group p-5 bg-slate-50 rounded-3xl border border-transparent hover:border-indigo-100 hover:bg-white transition-all duration-300 flex items-center justify-between gap-4"
+                            >
+                              <div className="flex items-center space-x-5">
+                                <div className="w-14 h-14 bg-indigo-100 rounded-2xl flex items-center justify-center">
+                                  <Calendar className="h-6 w-6 text-indigo-600" />
+                                </div>
+>>>>>>> 45f4acbc132ac3870d1671e68ac902268080d5de
 
         <div>
           <h4 className="font-bold text-slate-900 text-lg">
             {session.subject || "Chưa có môn"}
           </h4>
 
+<<<<<<< HEAD
           <div className="flex items-center text-slate-500 text-sm mt-1">
             <span className="font-bold">
               {session.date
@@ -323,7 +584,207 @@ export function DashboardPage() {
     </div>
   );
 })}
+=======
+                                <div className="flex items-center text-slate-500 text-sm mt-1">
+                                  <span className="font-bold">
+                                    {session.dateObj
+                                      ? session.dateObj.toLocaleDateString(
+                                          "vi-VN",
+                                        )
+                                      : session.date || session.datetime
+                                        ? new Date(
+                                            session.date || session.datetime,
+                                          ).toLocaleDateString("vi-VN")
+                                        : "Chưa có ngày"}
+                                  </span>
+                                  <span className="mx-2">•</span>
+                                  <span>
+                                    {session.time ||
+                                      (session.dateObj
+                                        ? session.dateObj.toLocaleTimeString(
+                                            [],
+                                            {
+                                              hour: "2-digit",
+                                              minute: "2-digit",
+                                              hour12: false,
+                                            },
+                                          )
+                                        : "--:--")}
+                                  </span>
+                                </div>
+                                  <div className="text-xs text-slate-400 mt-1">
+                                    Gia sư: {tutor?.name || session.tutorName || "Đang cập nhật"}
+                                  </div>
+                                </div>
+                              </div>
+
+                            <div className="flex items-center space-x-3">
+                              {/* <ImageWithFallback
+                                src={tutor?.avatar || ""}
+                                className="w-10 h-10 rounded-full border-2 border-white shadow-sm"
+                              /> */}
+
+                              {/* <ImageWithFallback
+                                src={
+                                  tutor?.avatar
+                                    ? tutor.avatar.startsWith("http")
+                                      ? tutor.avatar
+                                      : `http://localhost:3000${tutor.avatar}`
+                                    : "https://i.pravatar.cc/150"
+                                }
+                                className="w-10 h-10 rounded-full border-2 border-white shadow-sm object-cover"
+                              /> */}
+
+                              <ImageWithFallback
+                                src={
+                                  tutor?.avatar
+                                    ? getAvatarUrl(tutor.avatar)
+                                    : "/img/images.jpg"
+                                }
+                                className="w-10 h-10 rounded-full border-2 border-white shadow-sm object-cover"
+                              />
+
+                              {/* {canJoin ? (
+                                <Link
+                                  to={`/room/${session.room_id}`}
+                                  className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all"
+                                >
+                                  Vào phòng
+                                </Link> */}
+                              {canJoin ? (
+                                <Link
+                                  to={`/room/${session.room_id || session.roomId}`}
+                                  className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all"
+                                >
+                                  Vào phòng
+                                </Link>
+                              ) : canReview ? (
+                                <button
+                                  onClick={() =>
+                                    setFeedbackData({
+                                      bookingId: session.id,
+                                      targetUserId: session.tutorId,
+                                      targetName:
+                                        tutor?.name || session.tutorName,
+                                      targetRole: "tutor",
+                                      canReview: true,
+                                    })
+                                  }
+                                  className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-all"
+                                >
+                                  Đánh giá
+                                </button>
+                              ) : (
+                                <button className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-400 cursor-not-allowed">
+                                  {session.status === "cancelled"
+                                    ? "Gia sư đã từ chối"
+                                    : session.room_id || session.roomId
+                                      ? "Chưa đến giờ"
+                                      : "Chờ xác nhận"}
+                                </button>
+                              )}
+                              {/* Thêm nút báo cáo */}
+                              <button
+                                onClick={() =>
+                                  setFeedbackData({
+                                    bookingId: session.id,
+                                    targetUserId: session.tutorId,
+                                    targetName:
+                                      tutor?.name || session.tutorName,
+                                    targetRole: "tutor",
+                                    canReview,
+                                  })
+                                }
+                                className="px-3 py-1 text-xs bg-red-50 text-red-600 rounded-lg"
+                              >
+                                Phản hồi
+                              </button>
+                            </div>
+                            </Link>
+                        );
+                        })
+                      ) : (
+                        <div className="text-center py-12">
+                          <Calendar className="h-16 w-16 text-slate-200 mx-auto mb-4" />
+                          <p className="text-slate-500 font-medium">Chưa có buổi học nào</p>
+                          <Link to="/search" className="text-indigo-600 font-bold text-sm mt-2 inline-block">
+                            Tìm gia sư để đặt lịch
+                          </Link>
+                        </div>
+                      )}
+>>>>>>> 45f4acbc132ac3870d1671e68ac902268080d5de
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === "messages" && (
+                <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+                  <div className="p-8 border-b border-slate-100 flex justify-between items-center">
+                    <h3 className="text-xl font-bold text-slate-900">
+                      Tin nhắn gần đây
+                    </h3>
+                    <Link
+                      to="/messages"
+                      className="text-sm font-bold text-indigo-600 hover:underline"
+                    >
+                      Mở toàn màn hình
+                    </Link>
+                  </div>
+                  <div className="divide-y divide-slate-50">
+                    {messages.length > 0 ? (
+                      messages.map((conv) => (
+                        <Link
+                          key={conv.id}
+                          to={`/messages?userId=${conv.id}`}
+                          className="flex items-center p-6 hover:bg-slate-50 transition-all gap-4"
+                        >
+                          <div className="relative">
+                            <ImageWithFallback
+                              src={conv.avatar}
+                              className="w-12 h-12 rounded-full object-cover"
+                            />
+                            {conv.unread > 0 && (
+                              <span className="absolute -top-1 -right-1 w-5 h-5 bg-indigo-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">
+                                {conv.unread}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex justify-between items-start mb-1">
+                              <h4 className="font-bold text-slate-900">
+                                {conv.name}
+                              </h4>
+                              <span className="text-[10px] text-slate-400 font-medium">
+                                {conv.time
+                                  ? new Date(conv.time).toLocaleTimeString([], {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    })
+                                  : ""}
+                              </span>
+                            </div>
+                            <p className="text-sm text-slate-500 line-clamp-1 truncate max-w-md">
+                              {conv.lastMsg}
+                            </p>
+                          </div>
+                          <ChevronRight className="h-5 w-5 text-slate-300" />
+                        </Link>
+                      ))
+                    ) : (
+                      <div className="p-12 text-center">
+                        <MessageSquare className="h-12 w-12 text-slate-200 mx-auto mb-4" />
+                        <p className="text-slate-500 font-medium">
+                          Chưa có tin nhắn nào
+                        </p>
+                        <Link
+                          to="/search"
+                          className="text-indigo-600 font-bold text-sm mt-2 inline-block"
+                        >
+                          Tìm gia sư để trò chuyện
+                        </Link>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -331,17 +792,17 @@ export function DashboardPage() {
               {activeTab === "favorites" && (
                 <div className="grid md:grid-cols-2 gap-6">
                   {favorites.map((fav) => {
-                    const tutor = tutors.find((t) => t.id === fav.tutorId);
+                    const tutor = fav;
 
                     if (!tutor) return null; // tránh crash
 
                     return (
                       <div
-                        key={fav.id}
+                        key={tutor.id}
                         className="bg-white rounded-3xl border border-slate-200 p-6 flex items-start space-x-4 shadow-sm"
                       >
                         <ImageWithFallback
-                          src={tutor?.avatar}
+                          src={getAvatarUrl(tutor?.avatar)}
                           className="w-16 h-16 rounded-2xl object-cover"
                         />
                         <div className="flex-1">
@@ -349,7 +810,17 @@ export function DashboardPage() {
                             <h4 className="font-bold text-slate-900">
                               {tutor.name}
                             </h4>
-                            <button className="text-rose-500">
+                            <button 
+                              className="text-rose-500"
+                              onClick={async () => {
+                                try {
+                                  await favoriteApi.removeFavorite(tutor.id);
+                                  setFavorites(prev => prev.filter(f => f.id !== tutor.id));
+                                } catch (e) {
+                                  console.log(e);
+                                }
+                              }}
+                            >
                               <Heart className="h-5 w-5 fill-current" />
                             </button>
                           </div>
@@ -401,7 +872,7 @@ export function DashboardPage() {
                         <div className="w-12 h-8 bg-slate-200 rounded-md"></div>
                         <div>
                           <p className="text-sm font-bold text-slate-900">
-                            •••• •••• •••• 4242
+                            ••• •••• •••• 4242
                           </p>
                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                             Hết hạn 12/28
@@ -415,8 +886,44 @@ export function DashboardPage() {
                   </div>
                 </div>
               )}
+
+              {activeTab === "wallet" && (
+                <div className="space-y-6">
+                  <div className="bg-blue-50 rounded-3xl p-6 border border-blue-100">
+                    <div className="flex items-center gap-4">
+                      <Wallet className="h-8 w-8 text-blue-600" />
+                      <div>
+                        <h3 className="text-lg font-bold text-blue-900">
+                          Quản lý ví
+                        </h3>
+                        <p className="text-sm text-blue-700">
+                          Nạp tiền, xem lịch sử giao dịch và settlements hàng
+                          tuần
+                        </p>
+                      </div>
+                    </div>
+                    <Link
+                      to="/wallet"
+                      className="mt-4 w-full px-6 py-3 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-all pointer-events-auto relative z-10 inline-block text-center"
+                    >
+                      Đi đến trang quản lý ví
+                    </Link>
+                  </div>
+                </div>
+              )}
             </div>
           </main>
+          {feedbackData && (
+            <FeedbackMiniPage
+              onClose={() => setFeedbackData(null)}
+              bookingId={feedbackData.bookingId}
+              targetUserId={feedbackData.targetUserId}
+              targetName={feedbackData.targetName}
+              targetRole={feedbackData.targetRole}
+              canReview={feedbackData.canReview}
+              onSubmitted={fetchData}
+            />
+          )}
         </div>
       </div>
     </div>

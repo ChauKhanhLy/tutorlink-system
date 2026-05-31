@@ -1,5 +1,5 @@
 import React from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   Star,
   ShieldCheck,
@@ -13,35 +13,56 @@ import {
   ChevronLeft,
   Calendar as CalendarIcon,
   ChevronRight,
-  Play,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { tutorApi } from "../api/tutorApi";
 import { bookingApi } from "../api/bookingApi";
+import { reviewApi } from "../api/reviewApi";
+import { favoriteApi } from "../api/favoriteApi";
+import { useAuth } from "../context/AuthContext.jsx";
 import { ImageWithFallback } from "../components/Image/ImageWithFallback";
+import { getAvatarUrl } from "../utils/avatar.js";
 
 export function TutorProfilePage() {
   const { id } = useParams();
   const [tutor, setTutor] = React.useState(null);
-  const [selectedDate, setSelectedDate] = React.useState("15 thg 3, 2026");
+  const [availableSlots, setAvailableSlots] = React.useState([]);
+  const [selectedDate, setSelectedDate] = React.useState(null);
   const [selectedTime, setSelectedTime] = React.useState(null);
+  const [currentMonth, setCurrentMonth] = React.useState(new Date());
+  const [bookingType, setBookingType] = React.useState("trial"); // "trial" hoặc "regular"
   const [loading, setLoading] = React.useState(true);
-
-  const timeSlots = [
-    "9:00 SA",
-    "10:30 SA",
-    "1:00 CH",
-    "2:30 CH",
-    "4:00 CH",
-    "5:30 CH",
-  ];
+  const [reviews, setReviews] = React.useState([]);
+  const calendarDayCount = Math.max(60, availableSlots.length);
+  const formatVND = (price) => {
+    return new Intl.NumberFormat("vi-VN").format(price || 0) + "đ";
+  };
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [isFavorite, setIsFavorite] = React.useState(false);
+  const [favoriteLoading, setFavoriteLoading] = React.useState(false);
+  const selectedDay = availableSlots.find((s) => s.date === selectedDate);
 
   React.useEffect(() => {
     const fetchTutor = async () => {
       try {
         const res = await tutorApi.getById(id);
-        setTutor(res.data);
+        const tutorData = res.data;
+        setTutor(tutorData);
+
+        // gọi thêm API availability - lấy 60 ngày để bao phủ tháng này và tháng sau
+        const slotRes = await tutorApi.getAvailability(id, { days: 60 });
+        const slots = slotRes.data?.availableSlots || slotRes.data || [];
+        setAvailableSlots(slots);
+        
+        // Mặc định chọn ngày đầu tiên có slot
+        if (slots.length > 0) {
+          setSelectedDate(slots[0].date);
+        }
+
+        const reviewRes = await reviewApi.getByTutor(id);
+        setReviews(reviewRes.data || []);
       } catch (err) {
         console.error("Lỗi tải gia sư:", err);
         toast.error("Không thể tải thông tin gia sư");
@@ -52,7 +73,23 @@ export function TutorProfilePage() {
     fetchTutor();
   }, [id]);
 
-  const handleBooking = async () => {
+  // Kiểm tra trạng thái yêu thích
+  React.useEffect(() => {
+    const checkFavorite = async () => {
+      if (!user || user.role !== "learner" || !tutor) return;
+      try {
+        const res = await favoriteApi.getMyFavorites();
+        const favorites = res.data.data || [];
+        const found = favorites.some((fav) => fav.id === tutor.id);
+        setIsFavorite(found);
+      } catch (error) {
+        console.error("Lỗi kiểm tra yêu thích:", error);
+      }
+    };
+    checkFavorite();
+  }, [tutor, user]);
+
+  /*const handleBooking = async () => {
     if (!selectedTime) {
       toast.error("Vui lòng chọn giờ");
       return;
@@ -80,8 +117,7 @@ export function TutorProfilePage() {
       }
       dateStr = dateStr.replace(",", "");
       const baseDate = new Date(dateStr);
-
-      const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
+const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
       if (!timeParts) throw new Error("Định dạng giờ không hợp lệ");
       let hours = parseInt(timeParts[1]);
       const minutes = parseInt(timeParts[2]);
@@ -105,6 +141,83 @@ export function TutorProfilePage() {
     } catch (err) {
       console.error("Lỗi đặt lịch:", err);
       toast.error(err.response?.data?.message || "Lỗi đặt lịch");
+    }
+  };*/
+  const handleBooking = async () => {
+    if (!selectedDate || !selectedTime) {
+      toast.error("Vui lòng chọn ngày và giờ");
+      return;
+    }
+
+    try {
+      // --- BẮT ĐẦU ĐOẠN SỬA ---
+      // 1. Xử lý selectedTime để chuyển từ "24.00" thành "00:00" (ngày hôm sau)
+      let [hours, minutes] = selectedTime.split(":");
+      hours = parseInt(hours);
+      minutes = parseInt(minutes);
+
+      // Nếu giờ >= 24, chuyển thành 0 và tăng ngày lên 1
+      let dateToUse = selectedDate;
+      if (hours >= 24) {
+        hours = hours - 24;
+        const nextDay = new Date(selectedDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        dateToUse = nextDay.toISOString().split("T")[0];
+      }
+
+      // 2. Tạo datetime đúng cách - giữ nguyên giờ Việt Nam
+      const datetimeString = `${dateToUse}T${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:00`;
+
+      // 3. Gửi datetime lên backend với timezone Việt Nam
+      const subjectId =
+        tutor.subject_ids?.[0] || "900b2ea5-16ea-4c80-93b1-0f1cc50b4adf";
+      const bookingData = {
+        tutor_id: tutor.id,
+        subject_id: subjectId,
+        datetime: isoDatetime, 
+        type: bookingType,
+        fee: bookingType === "trial" ? 0 : tutor.hourly_fee || 0,
+      };
+
+      console.log("Sending booking data:", bookingData);
+      await bookingApi.create(bookingData);
+      toast.success(
+        bookingType === "trial"
+          ? "Đặt lịch học thử thành công!"
+          : "Đặt lịch học thành công!",
+      );
+      navigate("/dashboard");
+    } catch (err) {
+      console.error("Lỗi đặt lịch:", err);
+      // Hiển thị thông báo lỗi cụ thể từ Backend ném về
+      toast.error(err.response?.data?.message || "Gia sư đã có lịch dạy khác!");
+    }
+  };
+
+  const handleToggleFavorite = async () => {
+    if (!user) {
+      toast.error("Vui lòng đăng nhập để lưu gia sư");
+      return;
+    }
+    if (user.role !== "learner") {
+      toast.error("Chức năng chỉ dành cho học viên");
+      return;
+    }
+    setFavoriteLoading(true);
+    try {
+      if (isFavorite) {
+        await favoriteApi.removeFavorite(tutor.id);
+        setIsFavorite(false);
+        toast.success("Đã xóa khỏi danh sách yêu thích");
+      } else {
+        await favoriteApi.addFavorite(tutor.id);
+        setIsFavorite(true);
+        toast.success("Đã lưu gia sư vào danh sách");
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Có lỗi xảy ra");
+    } finally {
+      setFavoriteLoading(false);
     }
   };
 
@@ -149,7 +262,8 @@ export function TutorProfilePage() {
                 <div className="flex-shrink-0">
                   <div className="relative w-40 h-40 rounded-[2rem] overflow-hidden shadow-2xl shadow-indigo-500/10">
                     <ImageWithFallback
-                      src={tutor.avatar}
+                      //src={tutor.avatar}
+                      src={getAvatarUrl(tutor?.avatar)}
                       alt={tutor.name}
                       className="w-full h-full object-cover"
                     />
@@ -170,7 +284,7 @@ export function TutorProfilePage() {
                         <div className="flex items-center">
                           <Star className="h-4 w-4 text-amber-500 fill-amber-500 mr-1.5" />
                           <span className="text-sm font-bold text-slate-900">
-                            {tutor.rating || 0}
+                            {Number(tutor.rating || 0).toFixed(1)}
                           </span>
                           <span className="text-slate-400 text-sm ml-1">
                             ({tutor.reviewCount || 0} đánh giá)
@@ -183,8 +297,14 @@ export function TutorProfilePage() {
                       </div>
                     </div>
                     <div className="flex space-x-2">
-                      <button className="p-3 bg-slate-50 hover:bg-slate-100 rounded-2xl transition-colors border border-slate-100">
-                        <Heart className="h-5 w-5 text-slate-400" />
+                      <button
+                        onClick={handleToggleFavorite}
+                        disabled={favoriteLoading}
+                        className="p-3 bg-slate-50 hover:bg-slate-100 rounded-2xl transition-colors border border-slate-100"
+                      >
+                        <Heart
+                          className={`h-5 w-5 ${isFavorite ? "fill-rose-500 text-rose-500" : "text-slate-400"}`}
+                        />
                       </button>
                       <button className="p-3 bg-slate-50 hover:bg-slate-100 rounded-2xl transition-colors border border-slate-100">
                         <Share2 className="h-5 w-5 text-slate-400" />
@@ -209,7 +329,7 @@ export function TutorProfilePage() {
                         Giá
                       </div>
                       <div className="text-xl font-bold text-slate-900">
-                        ${tutor.hourlyRate || tutor.hourly_fee}
+                        {formatVND(tutor.hourlyRate || tutor.hourly_fee)}
                         <span className="text-sm text-slate-400">/giờ</span>
                       </div>
                     </div>
@@ -218,7 +338,14 @@ export function TutorProfilePage() {
                         Ngôn ngữ
                       </div>
                       <div className="text-sm font-bold text-slate-900">
-                        {tutor.languages ? tutor.languages.join(", ") : "Anh"}
+                        {tutor.languages
+                          ? Array.isArray(tutor.languages)
+                            ? tutor.languages.join(", ")
+                            : typeof tutor.languages === "string" &&
+                                tutor.languages.startsWith("[")
+                              ? JSON.parse(tutor.languages).join(", ")
+                              : tutor.languages
+                          : "Tiếng Việt"}
                       </div>
                     </div>
                     <div>
@@ -226,7 +353,8 @@ export function TutorProfilePage() {
                         Kinh nghiệm
                       </div>
                       <div className="text-sm font-bold text-slate-900">
-                        {tutor.lessonsTaught || 120}+ bài học
+                        {tutor.experience ||
+                          `${tutor.lessonsTaught || 120}+ bài học`}
                       </div>
                     </div>
                   </div>
@@ -245,6 +373,16 @@ export function TutorProfilePage() {
                   {tutor.bio ||
                     "Tôi là gia sư giàu kinh nghiệm, đam mê giảng dạy và giúp học sinh đạt được mục tiêu học tập."}
                 </p>
+                {tutor.teaching_style && (
+                  <div className="mb-8 p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100">
+                    <h4 className="text-sm font-bold text-indigo-900 mb-2">
+                      Phong cách giảng dạy
+                    </h4>
+                    <p className="text-sm text-indigo-700 italic">
+                      "{tutor.teaching_style}"
+                    </p>
+                  </div>
+                )}
                 <div className="grid md:grid-cols-2 gap-8">
                   <div className="flex items-start space-x-4">
                     <div className="p-3 bg-amber-50 rounded-2xl">
@@ -273,31 +411,7 @@ export function TutorProfilePage() {
                 </div>
               </section>
 
-              {/* Video Introduction Placeholder */}
-              <section className="bg-slate-900 rounded-[2.5rem] p-8 relative overflow-hidden aspect-video flex items-center justify-center">
-                <div className="relative z-10 text-center">
-                  <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    className="w-20 h-20 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border-4 border-white/50 mb-6 mx-auto group"
-                  >
-                    <Play className="h-8 w-8 text-white fill-white group-hover:scale-110 transition-transform" />
-                  </motion.button>
-                  <h3 className="text-white text-xl font-bold">
-                    Xem video giới thiệu
-                  </h3>
-                  <p className="text-slate-400 text-sm mt-2">
-                    Nghe trực tiếp từ {tutor.name?.split(" ")[0]}
-                  </p>
-                </div>
-                <ImageWithFallback
-                  src={tutor.avatar}
-                  alt="Video giới thiệu"
-                  className="absolute inset-0 w-full h-full object-cover opacity-40 blur-sm scale-110"
-                />
-              </section>
-
-              {/* Reviews (tạm thời hiển thị mock) */}
+              {/* Reviews */}
               <section className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
                 <div className="flex items-center justify-between mb-8">
                   <h2 className="text-xl font-bold text-slate-900">
@@ -306,32 +420,41 @@ export function TutorProfilePage() {
                   <div className="flex items-center">
                     <Star className="h-5 w-5 text-amber-500 fill-amber-500 mr-2" />
                     <span className="text-2xl font-bold text-slate-900">
-                      {tutor.rating || 0}
+                      {Number(tutor.rating || 0).toFixed(1)}
                     </span>
                     <span className="text-slate-400 font-bold ml-2">/ 5.0</span>
                   </div>
                 </div>
-
                 <div className="space-y-8">
-                  {[1, 2].map((review) => (
+                  {reviews.length === 0 && (
+                    <p className="text-sm text-slate-500">
+                      Gia sư chưa có đánh giá nào.
+                    </p>
+                  )}
+                  {reviews.map((review) => (
                     <div
-                      key={review}
+                      key={review.id}
                       className="pb-8 border-b border-slate-100 last:border-none last:pb-0"
                     >
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center space-x-3">
                           <div className="w-10 h-10 rounded-full bg-slate-100 overflow-hidden">
                             <ImageWithFallback
-                              src={`https://i.pravatar.cc/100?u=${review + 10}`}
+                              src={
+                                review.reviewerAvatar
+                                  ? getAvatarUrl(review.reviewerAvatar)
+                                  : "/img/images.jpg"
+                              }
                               alt="Học viên"
+                              className="w-full h-full object-cover"
                             />
                           </div>
                           <div>
                             <h4 className="text-sm font-bold text-slate-900">
-                              Alex Thompson
+                              Học viên
                             </h4>
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                              Học viên Giải tích II
+                              Đánh giá đã xác minh
                             </p>
                           </div>
                         </div>
@@ -339,17 +462,20 @@ export function TutorProfilePage() {
                           {[1, 2, 3, 4, 5].map((s) => (
                             <Star
                               key={s}
-                              className="h-3 w-3 text-amber-500 fill-amber-500"
+                              className={`h-3 w-3 ${s <= Number(review.rating) ? "text-amber-500 fill-amber-500" : "text-slate-200 fill-slate-200"}`}
                             />
                           ))}
                         </div>
                       </div>
                       <p className="text-slate-600 text-sm leading-relaxed italic">
-                        "Gia sư tuyệt vời! Cô ấy giúp tôi hiểu các khái niệm
-                        giải tích nâng cao một cách đơn giản."
+                        "{review.comment || "Buổi học hữu ích và chất lượng."}"
                       </p>
                       <div className="mt-4 text-xs font-bold text-slate-400">
-                        5 tháng 3, 2026
+                        {review.createdAt
+                          ? new Date(review.createdAt).toLocaleDateString(
+                              "vi-VN",
+                            )
+                          : ""}
                       </div>
                     </div>
                   ))}
@@ -365,29 +491,77 @@ export function TutorProfilePage() {
                 <div className="p-8">
                   <div className="flex items-baseline justify-between mb-8">
                     <div className="text-3xl font-extrabold text-slate-900">
-                      ${tutor.hourlyRate || tutor.hourly_fee}
+                      {bookingType === "trial"
+                        ? "0đ"
+                        : formatVND(tutor.hourlyRate || tutor.hourly_fee)}
                     </div>
                     <div className="text-slate-400 text-sm font-bold">
-                      Bài học 50 phút
+                      {bookingType === 'trial' ? 'Bài học 50 phút' : 'Bài học 2 tiếng'}
                     </div>
                   </div>
 
-                  {/* Calendar Widget Simplified */}
+                  {/* Loại hình học */}
                   <div className="mb-8">
-                    <div className="flex items-center justify-between mb-4">
-                      <h4 className="text-sm font-bold text-slate-900">
-                        Chọn ngày
+                    <label className="block text-sm font-bold text-slate-900 mb-4">
+                      Chọn hình thức học
+                    </label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        onClick={() => setBookingType("trial")}
+                        className={`py-3 px-4 rounded-2xl text-sm font-bold transition-all border-2 ${
+                          bookingType === "trial"
+                            ? "border-indigo-600 bg-indigo-50 text-indigo-600 shadow-md"
+                            : "border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-200"
+                        }`}
+                      >
+                        Học thử (0đ)
+                      </button>
+                      <button
+                        onClick={() => setBookingType("regular")}
+                        className={`py-3 px-4 rounded-2xl text-sm font-bold transition-all border-2 ${
+                          bookingType === "regular"
+                            ? "border-indigo-600 bg-indigo-50 text-indigo-600 shadow-md"
+                            : "border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-200"
+                        }`}
+                      >
+                        Học thật
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Calendar Widget - Full Monthly View */}
+                  <div className="mb-8">
+                    <div className="flex items-center justify-between mb-6">
+                      <h4 className="text-sm font-bold text-slate-900 capitalize">
+                        {currentMonth.toLocaleDateString("vi-VN", {
+                          month: "long",
+                          year: "numeric",
+                        })}
                       </h4>
-                      <div className="flex space-x-2">
-                        <button className="p-1.5 rounded-lg hover:bg-slate-100">
+                      <div className="flex space-x-1">
+                        <button
+                          onClick={() => {
+                            const prev = new Date(currentMonth);
+                            prev.setMonth(prev.getMonth() - 1);
+                            setCurrentMonth(prev);
+                          }}
+                          className="p-2 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors"
+                        >
                           <ChevronLeft className="h-4 w-4" />
                         </button>
-                        <button className="p-1.5 rounded-lg hover:bg-slate-100">
+                        <button
+                          onClick={() => {
+                            const next = new Date(currentMonth);
+                            next.setMonth(next.getMonth() + 1);
+                            setCurrentMonth(next);
+                          }}
+                          className="p-2 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors"
+                        >
                           <ChevronRight className="h-4 w-4" />
                         </button>
                       </div>
                     </div>
-                    <div className="grid grid-cols-7 gap-2 text-center mb-4">
+                    <div className="grid grid-cols-7 gap-2 text-center mb-4 max-h-64 overflow-y-auto pr-2">
                       {["T2", "T3", "T4", "T5", "T6", "T7", "CN"].map((d) => (
                         <span
                           key={d}
@@ -396,19 +570,59 @@ export function TutorProfilePage() {
                           {d}
                         </span>
                       ))}
-                      {[10, 11, 12, 13, 14, 15, 16].map((d) => (
-                        <button
-                          key={d}
-                          onClick={() => setSelectedDate(`${d} thg 3, 2026`)}
-                          className={`py-2 text-xs font-bold rounded-xl transition-all ${
-                            d === 15
-                              ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
-                              : "hover:bg-slate-50 text-slate-700"
-                          }`}
-                        >
-                          {d}
-                        </button>
-                      ))}
+                    </div>
+
+                      {/* Render upcoming calendar days continuously */}
+                      {Array.from({ length: calendarDayCount }).map(
+                        (_, idx) => {
+                          const d = new Date();
+                          d.setDate(d.getDate() + idx);
+                          const year = d.getFullYear();
+                          const month = String(d.getMonth() + 1).padStart(
+                            2,
+                            "0",
+                          );
+                          const dayOfMonth = String(d.getDate()).padStart(
+                            2,
+                            "0",
+                          );
+                          const dateStr = `${year}-${month}-${dayOfMonth}`;
+
+                          const jsDay = d.getDay(); // 0 (Sun) to 6 (Sat)
+                          const colStart = jsDay === 0 ? 7 : jsDay;
+
+                          // Check if this date has available slots from backend
+                          const availableSlot = availableSlots.find(
+                            (s) => s.date === dateStr,
+                          );
+                          const isAvailable = !!availableSlot;
+
+                          // Only the very first box needs gridColumnStart to align properly
+                          const styleDesc =
+                            idx === 0 ? { gridColumnStart: colStart } : {};
+
+                          return (
+                            <button
+                              key={dateStr}
+                              disabled={!isAvailable}
+                              style={styleDesc}
+                              onClick={() => {
+                                setSelectedDate(dateStr);
+                                setSelectedTime(null);
+                              }}
+                              className={`py-2 text-xs font-bold rounded-xl transition-all ${
+                                selectedDate === dateStr
+                                  ? "bg-indigo-600 text-white shadow-lg"
+                                  : isAvailable
+                                    ? "hover:bg-indigo-50 text-slate-700 cursor-pointer"
+                                    : "text-slate-300 cursor-not-allowed opacity-50"
+                              }`}
+                            >
+                              {d.getDate()}
+                            </button>
+                          );
+                        },
+                      )}
                     </div>
                   </div>
 
@@ -418,19 +632,25 @@ export function TutorProfilePage() {
                       Chọn khung giờ
                     </h4>
                     <div className="grid grid-cols-2 gap-3">
-                      {timeSlots.map((time) => (
-                        <button
-                          key={time}
-                          onClick={() => setSelectedTime(time)}
-                          className={`py-3 text-xs font-bold border rounded-2xl transition-all ${
-                            selectedTime === time
-                              ? "bg-indigo-50 border-indigo-600 text-indigo-600"
-                              : "border-slate-100 text-slate-600 hover:border-slate-200 hover:bg-slate-50"
-                          }`}
-                        >
-                          {time}
-                        </button>
-                      ))}
+                      {selectedDay?.times?.length > 0 ? (
+                        selectedDay.times.map((time) => (
+                          <button
+                            key={time}
+                            onClick={() => setSelectedTime(time)}
+                            className={`py-3 text-xs font-bold border rounded-2xl transition-all ${
+                              selectedTime === time
+                                ? "bg-indigo-50 border-indigo-600 text-indigo-600"
+                                : "border-slate-100 text-slate-600 hover:border-slate-200 hover:bg-slate-50"
+                            }`}
+                          >
+                            {time}
+                          </button>
+                        ))
+                      ) : (
+                        <p className="text-sm text-slate-400">
+                          Không có giờ trống
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -442,7 +662,7 @@ export function TutorProfilePage() {
                   </button>
 
                   <Link
-                    to="/messages"
+                    to={`/messages?tutorId=${tutor.id}`}
                     className="flex items-center justify-center space-x-2 w-full py-4 text-slate-600 font-bold hover:text-indigo-600 transition-colors"
                   >
                     <MessageSquare className="h-5 w-5" />
@@ -467,7 +687,7 @@ export function TutorProfilePage() {
                     Buổi học thử
                   </h4>
                   <p className="text-xs text-indigo-600/70 leading-relaxed font-medium">
-                    Mới đến với TutorLink? Buổi học 30 phút đầu tiên của bạn
+                    Mới đến với TutorLink? Buổi học 50 phút đầu tiên của bạn
                     hoàn toàn miễn phí!
                   </p>
                 </div>

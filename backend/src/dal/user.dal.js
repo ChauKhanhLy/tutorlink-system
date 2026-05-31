@@ -10,15 +10,48 @@ export const findByEmail = async (email) => {
 }
 
 // tạo user
-export const createUser = async ({ email, password, name, role }) => {
+export const createUser = async ({
+  email,
+  password,
+  name,
+  role,
+  verified,
+  email_verified,
+  otp_code,
+  otp_expires
+}) => {
+
   const result = await db.query(
-    'INSERT INTO users (email, password, name, role) VALUES ($1, $2, $3, $4) RETURNING *',
-    [email, password, name, role]
-  )
+    `
+    INSERT INTO users (
+      email,
+      password,
+      name,
+      role,
+      verified,
+      email_verified,
+      otp_code,
+      otp_expires
+    )
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+    RETURNING *
+    `,
+    [
+      email,
+      password,
+      name,
+      role,
+      verified,
+      email_verified,
+      otp_code,
+      otp_expires
+    ]
+  );
+
   console.log("USER CREATED:", result.rows[0])
+
   return result.rows[0]
 }
-
 // lấy tất cả user
 export const getAllUsers = async () => {
   const result = await db.query(
@@ -70,7 +103,53 @@ export const verifyTutor = async (id) => {
 }
 
 // pending tutors
+// dal/user.dal.js
 export const getPendingTutors = async () => {
+  const result = await db.query(`
+    SELECT 
+      u.id, 
+      u.name, 
+      u.email, 
+      u.phone, 
+      u.avatar,
+      u.verified,
+      u.created_at,
+      tp.bio,
+      tp.hourly_fee,
+      tp.education,
+      tp.experience,
+      tp.certifications,
+      tp.languages,
+      tp.teaching_style,
+      COALESCE(
+        (SELECT json_agg(DISTINCT s.name) 
+         FROM tutor_subjects ts 
+         JOIN subjects s ON ts.subject_id = s.id 
+         WHERE ts.tutor_id = u.id),
+        '[]'::json
+      ) as subjects
+    FROM users u
+    LEFT JOIN tutor_profiles tp ON u.id = tp.user_id
+    WHERE u.role = 'tutor' 
+      AND u.verified = false
+    ORDER BY u.created_at DESC
+  `)
+  return result.rows
+}
+
+export const updateAvatar = async (userId, avatar) => {
+  const result = await db.query(
+    `UPDATE users 
+     SET avatar = $1 
+     WHERE id = $2 
+     RETURNING *`,
+    [avatar, userId]
+  )
+
+  return result.rows[0]
+}
+
+/*export const getPendingTutors = async () => {
   const result = await db.query(`
     SELECT id, email, name, role, verified
     FROM users
@@ -78,8 +157,25 @@ export const getPendingTutors = async () => {
   `)
   return result.rows
 }
+// export const updateAvatar = async (userId, avatar) => {
+//   const result = await db.query(
+//     `UPDATE users SET avatar = $1 WHERE id = $2 RETURNING *`,
+//     [avatar, userId]
+//   )
+//   return result.rows[0]
+// }
 
+export const updateAvatar = async (userId, avatar) => {
+  const result = await db.query(
+    `UPDATE users 
+     SET avatar = $1 
+     WHERE id = $2 
+     RETURNING *`,
+    [avatar, userId]
+  )
 
+  return result.rows[0]
+}
 
 /*const pool = require('../config/db')
 

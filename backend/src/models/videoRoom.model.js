@@ -54,7 +54,8 @@ export const updateVideoRoomStatusModel = async (id, status) => {
 */
 
 import { DataTypes } from 'sequelize';
-import sequelize from '../../config/database.js';
+import sequelize from '../config/database.js';
+
 
 const VideoRoom = sequelize.define(
   'VideoRoom',
@@ -77,17 +78,30 @@ const VideoRoom = sequelize.define(
       allowNull: false,
     },
     start_time: {
-      type: DataTypes.STRING(20),
+      type: DataTypes.STRING(255),
       allowNull: false,
     },
     end_time: {
-      type: DataTypes.STRING(20),
+      type: DataTypes.STRING(255),
       allowNull: false,
     },
     status: {
       type: DataTypes.STRING(20),
       allowNull: false,
       defaultValue: 'scheduled',
+    },
+    lesson_session_id: {
+      type: DataTypes.UUID,
+      allowNull: true,
+    },
+    record_url: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    duration_minutes: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: 0,
     },
   },
   {

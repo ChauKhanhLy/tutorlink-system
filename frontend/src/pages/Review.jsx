@@ -12,17 +12,22 @@ import {
 import { toast } from "sonner";
 import { tutorApi } from "../api/tutorApi";
 import { bookingApi } from "../api/bookingApi";
+import { subjectApi } from "../api/subjectApi";
 import { reviewApi } from "../api/reviewApi";
 import { ImageWithFallback } from "../components/Image/ImageWithFallback";
+import { getAvatarUrl } from "../utils/avatar.js";
 
 export function ReviewPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const tutorId = searchParams.get("tutorId");
   const bookingId = searchParams.get("bookingId");
+  const subjectId = searchParams.get("subjectId");
+  const reviewType = searchParams.get("type") || 'session'; // 'session' or 'tutor'
 
   const [tutor, setTutor] = React.useState(null);
   const [booking, setBooking] = React.useState(null);
+  const [subject, setSubject] = React.useState(null);
   const [rating, setRating] = React.useState(0);
   const [hoverRating, setHoverRating] = React.useState(0);
   const [reviewText, setReviewText] = React.useState("");
@@ -43,37 +48,58 @@ export function ReviewPage() {
     }
 
     try {
-      const [tutorRes, bookingsRes] = await Promise.all([
-        tutorApi.getById(tutorId),
-        bookingApi.getMyBookings(),
-      ]);
+      if (reviewType === 'session') {
+        // Session review: cần booking
+        const [tutorRes, bookingsRes] = await Promise.all([
+          tutorApi.getById(tutorId),
+          bookingApi.getMyBookings(),
+        ]);
 
-      setTutor(tutorRes.data);
+        setTutor(tutorRes.data);
 
-      // ✅ tìm booking hợp lệ (>= 30 ngày)
-      const validBooking = bookingsRes.data.find((b) => {
-        if (b.tutorId !== tutorId) return false;
+        // ✅ tìm booking hợp lệ (đã kết thúc buổi học)
+        const validBooking = bookingsRes.data.find((b) => {
+          if (bookingId && b.id !== bookingId) return false;
+          if (b.tutorId !== tutorId) return false;
+          // Cho phép đánh giá khi: confirmed (đã xác nhận) hoặc completed (đã hoàn thành)
+          // Không cho đánh giá nếu: pending (chờ xác nhận) hoặc cancelled (đã hủy)
+          if (b.status === 'pending' || b.status === 'cancelled') return false;
 
-        const diffDays =
-          (new Date() - new Date(b.startTime)) / (1000 * 60 * 60 * 24);
+          // Kiểm tra buổi học đã kết thúc chưa
+          const bookingStartTime = new Date(b.datetime || b.date || b.startTime);
+          const bookingType = b.type || 'regular';
+          const durationHours = bookingType === 'trial' ? 1 : 2; // trial=1h, regular=2h
+          const bookingEndTime = new Date(bookingStartTime.getTime() + durationHours * 60 * 60 * 1000);
+          const now = new Date();
 
-        return diffDays >= 30;
-      });
+          return now >= bookingEndTime; // Cho phép đánh giá sau khi kết thúc
+        });
 
-      if (!validBooking) {
-        toast.error("Bạn cần học ít nhất 1 tháng để đánh giá");
-        navigate("/dashboard");
-        return;
+        if (!validBooking) {
+          toast.error("Bạn chỉ có thể đánh giá sau khi buổi học đã kết thúc và hoàn thành");
+          navigate(`/classroom/${tutorId}/${validBooking?.subjectId || ''}`);
+          return;
+        }
+
+        setBooking(validBooking);
+        setCanReview(true);
+      } else {
+        // Tutor review: chỉ cần tutor và subject
+        const [tutorRes, subjectRes] = await Promise.all([
+          tutorApi.getById(tutorId),
+          subjectId ? subjectApi.getById(subjectId) : Promise.resolve({ data: null }),
+        ]);
+
+        setTutor(tutorRes.data);
+        setSubject(subjectRes?.data || null);
+        setCanReview(true);
       }
-
-      setBooking(validBooking);
-      setCanReview(true);
     } catch {
       toast.error("Không thể tải thông tin");
     } finally {
       setLoading(false);
     }
-  }, [tutorId, navigate]);
+  }, [tutorId, subjectId, bookingId, reviewType, navigate]);
 
   const handleSubmitReview = async () => {
     if (rating === 0) {
@@ -89,14 +115,16 @@ export function ReviewPage() {
     setSubmitting(true);
     try {
       await reviewApi.create({
+        bookingId: reviewType === 'session' ? (booking?.id || bookingId) : undefined,
         tutorId,
-        bookingId,
+        subjectId: reviewType === 'tutor' ? subjectId : booking?.subjectId,
+        reviewType,
         rating,
-        comment: reviewText, // giữ 1 field thôi
+        comment: reviewText,
       });
 
       toast.success("Đánh giá thành công!");
-      navigate("/dashboard");
+      navigate(`/classroom/${tutorId}/${booking?.subjectId || subjectId || ''}`);
     } catch (err) {
       toast.error(err.response?.data?.message || "Lỗi gửi đánh giá");
     } finally {
@@ -128,32 +156,36 @@ export function ReviewPage() {
       </div>
     );
   }
-if (!canReview) {
-  return (
-    <div className="pt-32 text-center">
-      <p className="text-red-500 font-bold">
-        Bạn chưa đủ điều kiện để đánh giá
-      </p>
-    </div>
-  );
-}
+  if (!canReview) {
+    return (
+      <div className="pt-32 text-center">
+        <p className="text-red-500 font-bold">
+          Bạn chưa đủ điều kiện để đánh giá
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="pt-24 pb-16 bg-slate-50 min-h-screen">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         <Link
-          to="/dashboard"
+          to={`/classroom/${tutorId}/${booking?.subjectId || subjectId || ''}`}
           className="inline-flex items-center text-slate-500 hover:text-indigo-600 font-bold mb-6"
         >
-          <ChevronLeft className="h-5 w-5 mr-1" /> Quay lại
+          <ChevronLeft className="h-5 w-5 mr-1" /> Quay lại Lớp học
         </Link>
 
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
           {/* Header */}
           <div className="bg-gradient-to-r from-indigo-600 to-indigo-500 p-8 text-white">
-            <h1 className="text-2xl font-bold mb-2">Đánh giá buổi học</h1>
+            <h1 className="text-2xl font-bold mb-2">
+              {reviewType === 'session' ? 'Đánh giá buổi học' : 'Đánh giá gia sư'}
+            </h1>
             <p className="text-indigo-100">
-              Chia sẻ trải nghiệm của bạn với gia sư để giúp cộng đồng
+              {reviewType === 'session'
+                ? 'Chia sẻ trải nghiệm của bạn với buổi học này'
+                : 'Chia sẻ đánh giá tổng thể về gia sư cho môn học này'}
             </p>
           </div>
 
@@ -162,7 +194,8 @@ if (!canReview) {
             <div className="flex items-center gap-5">
               <div className="w-20 h-20 rounded-2xl overflow-hidden bg-slate-100">
                 <ImageWithFallback
-                  src={tutor.avatar}
+                  //src={tutor.avatar}
+                  src={getAvatarUrl(tutor?.avatar)}
                   alt={tutor.name}
                   className="w-full h-full object-cover"
                 />
@@ -172,16 +205,18 @@ if (!canReview) {
                   {tutor.name}
                 </h2>
                 <p className="text-slate-500 text-sm">
-                  {tutor.subjects?.join(", ")}
+                  {reviewType === 'session'
+                    ? (tutor.subjects?.join(", ") || subject?.name || "Môn học")
+                    : (subject?.name || "Môn học")}
                 </p>
-                {booking && (
+                {reviewType === 'session' && booking && (
                   <div className="flex items-center text-xs text-slate-400 mt-1">
                     <Calendar className="h-3 w-3 mr-1" />
                     <span>
-                      {new Date(booking.date).toLocaleDateString("vi-VN")}
+                      {new Date(booking.startTime || booking.date).toLocaleDateString("vi-VN")}
                     </span>
                     <span className="mx-2">•</span>
-                    <span>{booking.time}</span>
+                    <span>{booking.time || new Date(booking.startTime).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}</span>
                   </div>
                 )}
               </div>
@@ -203,11 +238,10 @@ if (!canReview) {
                   className="focus:outline-none transition-transform hover:scale-110"
                 >
                   <Star
-                    className={`h-10 w-10 ${
-                      star <= (hoverRating || rating)
-                        ? "fill-amber-400 text-amber-400"
-                        : "text-slate-200 fill-slate-200"
-                    } transition-colors`}
+                    className={`h-10 w-10 ${star <= (hoverRating || rating)
+                      ? "fill-amber-400 text-amber-400"
+                      : "text-slate-200 fill-slate-200"
+                      } transition-colors`}
                   />
                 </button>
               ))}

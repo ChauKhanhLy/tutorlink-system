@@ -1,14 +1,33 @@
 import * as authService from '../services/auth.service.js'
-
-const register = async (req, res) => {
+import * as userDAL from '../dal/user.dal.js'
+import {
+  verifyOTP,
+  resendOTP,
+  forgotPassword,
+  resetPassword
+} from '../services/auth.service.js'
+const registerLearner = async (req, res) => {
   try {
     const { email, password, name } = req.body
-    const user = await authService.register({ email, password, name })
+    const user = await authService.registerLearner({ email, password, name })
     res.json(user)
   } catch (err) {
     res.status(400).json({ message: err.message })
   }
 }
+export const registerTutor = async (req, res) => {
+  try {
+    const { email, password, name } = req.body
+    const user = await authService.registerTutor({ email, password, name })
+    res.json(user)
+  } catch (err) {
+    res.status(400).json({ message: err.message })
+  }
+}
+export const getMe = async (req, res) => {
+  const user = await userDAL.findById(req.user.id);
+  res.json(user);
+};
 
 const login = async (req, res) => {
   try {
@@ -20,4 +39,129 @@ const login = async (req, res) => {
   }
 }
 
-export default { register, login }
+export const verifyOTPController = async (
+  req,
+  res
+) => {
+
+  try {
+
+    const user =
+      await verifyOTP(req.body)
+
+    res.json({
+      message: 'Register successful',
+      user
+    })
+
+  } catch (error) {
+
+  return res.status(400).json({
+    message: error.message
+  })
+  }
+}
+export const resendOTPController =
+async (req, res) => {
+
+  try {
+
+    const result =
+      await resendOTP(
+        req.body.email
+      );
+
+    return res.json(result);
+
+  } catch (error) {
+
+    return res.status(400).json({
+      message: error.message
+    });
+
+  }
+}
+export const forgotPasswordController =
+async (req, res) => {
+
+  try {
+
+    const result =
+      await forgotPassword(
+        req.body.email
+      );
+
+    return res.json(result);
+
+  } catch (error) {
+
+    return res.status(400).json({
+      message: error.message
+    });
+
+  }
+}
+export const resetPasswordController =
+async (req, res) => {
+
+  try {
+
+    const result =
+      await resetPassword(
+        req.body
+      );
+
+    return res.json(result);
+
+  } catch (error) {
+
+    return res.status(400).json({
+      message: error.message
+    });
+
+  }
+}
+export const changePassword = async (
+  req,
+  res
+) => {
+  try {
+
+    const userId = req.user.id;
+
+    const {
+      currentPassword,
+      newPassword
+    } = req.body;
+
+    await authService.changePassword(
+      userId,
+      currentPassword,
+      newPassword
+    );
+
+    res.json({
+      message:
+        "Đổi mật khẩu thành công"
+    });
+
+  } catch (err) {
+
+    console.error(err);
+
+    res.status(400).json({
+      message: err.message
+    });
+
+  }
+};
+export default {
+  registerLearner,
+  registerTutor,
+  login,
+  verifyOTPController,
+  resendOTPController,
+  forgotPasswordController,
+  resetPasswordController,
+  changePassword,
+}

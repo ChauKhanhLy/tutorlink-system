@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { bookingApi } from "../api/bookingApi";
 import { tutorApi } from "../api/tutorApi";
 import { ImageWithFallback } from "../components/Image/ImageWithFallback";
+import { getAvatarUrl } from "../utils/avatar.js";
 
 export function BookingPage() {
   const [bookings, setBookings] = React.useState([]);
@@ -21,7 +22,7 @@ export function BookingPage() {
     try {
       setLoading(true);
       const res = await bookingApi.getMyBookings();
-      const bookingsData = res.data;
+      const bookingsData = res.data || [];
 
       // Fetch tutor info for each booking
       const tutorIds = [...new Set(bookingsData.map(b => b.tutorId))];
@@ -41,26 +42,32 @@ export function BookingPage() {
     }
   };
 
-  const cancelBooking = async (/* bookingId */) => {
+  const cancelBooking = async (bookingId) => {
     try {
-      // Giả sử API có endpoint cancel
-      // await bookingApi.cancel(bookingId);
+      await bookingApi.cancel(bookingId);
       toast.success("Đã hủy đặt lịch thành công");
       fetchBookings(); // Refresh
     } catch (err) {
-        console.error("Failed to cancel booking:", err);
+      console.error("Failed to cancel booking:", err);
       toast.error("Hủy thất bại, vui lòng thử lại");
     }
   };
 
   const filteredBookings = bookings.filter(booking => {
-    const bookingDate = new Date(booking.date);
+    const bookingDate = new Date(booking.date || booking.startTime);
     const today = new Date();
-    if (activeTab === "upcoming") return bookingDate >= today && booking.status !== "cancelled";
-    if (activeTab === "past") return bookingDate < today && booking.status !== "cancelled";
-    if (activeTab === "cancelled") return booking.status === "cancelled";
+    if (activeTab === "upcoming") return bookingDate >= today && booking.status !== "cancelled" && booking.status !== "cancel";
+    if (activeTab === "past") return bookingDate < today && booking.status !== "cancelled" && booking.status !== "cancel";
+    if (activeTab === "cancelled") return booking.status === "cancelled" || booking.status === "cancel";
     return true;
   });
+
+  const formatVND = (amount) => {
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+    }).format(amount);
+  };
 
   const getStatusBadge = (status, date) => {
     const isPast = new Date(date) < new Date();
@@ -91,11 +98,10 @@ export function BookingPage() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${
-                activeTab === tab.id
-                  ? "bg-indigo-600 text-white shadow-md"
-                  : "text-slate-500 hover:bg-slate-50"
-              }`}
+              className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${activeTab === tab.id
+                ? "bg-indigo-600 text-white shadow-md"
+                : "text-slate-500 hover:bg-slate-50"
+                }`}
             >
               {tab.label}
             </button>
@@ -114,8 +120,8 @@ export function BookingPage() {
               {activeTab === "upcoming"
                 ? "Bạn chưa đặt lịch học nào. Hãy tìm gia sư phù hợp ngay!"
                 : activeTab === "past"
-                ? "Bạn chưa có buổi học nào đã qua."
-                : "Không có buổi học nào bị hủy."}
+                  ? "Bạn chưa có buổi học nào đã qua."
+                  : "Không có buổi học nào bị hủy."}
             </p>
             <Link
               to="/search"
@@ -139,8 +145,12 @@ export function BookingPage() {
                     <div className="flex-shrink-0">
                       <div className="w-24 h-24 rounded-2xl overflow-hidden">
                         <ImageWithFallback
-                          src={tutor?.avatar || "https://i.pravatar.cc/150"}
-                          alt={tutor?.name}
+                          src={
+                            tutor?.avatar
+                              ? getAvatarUrl(tutor.avatar)
+                              : "/img/images.jpg"
+                          }
+                          alt={tutor?.name || "Gia sư"}
                           className="w-full h-full object-cover"
                         />
                       </div>
@@ -153,42 +163,47 @@ export function BookingPage() {
                           <h2 className="text-xl font-bold text-slate-900">{tutor?.name}</h2>
                           <p className="text-slate-500 text-sm">{tutor?.subjects?.join(", ")}</p>
                         </div>
-                        {getStatusBadge(booking.status, booking.date)}
+                        {getStatusBadge(booking.status, booking.date || booking.startTime)}
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                         <div className="flex items-center text-slate-600">
                           <Calendar className="h-5 w-5 text-indigo-500 mr-3" />
-                          <span className="font-medium">{new Date(booking.date).toLocaleDateString("vi-VN")}</span>
+                          <span className="font-medium">{new Date(booking.date || booking.startTime).toLocaleDateString("vi-VN")}</span>
                         </div>
                         <div className="flex items-center text-slate-600">
                           <Clock className="h-5 w-5 text-indigo-500 mr-3" />
-                          <span className="font-medium">{booking.time}</span>
+                          <span className="font-medium">{booking.time} ({booking.type === 'trial' ? '50 phút' : '2 tiếng'})</span>
                         </div>
                         <div className="flex items-center text-slate-600">
                           <Video className="h-5 w-5 text-indigo-500 mr-3" />
                           <span className="font-medium">Zoom / Google Meet</span>
                         </div>
                         <div className="flex items-center text-slate-600">
-                          <span className="font-bold text-indigo-600">${tutor?.hourlyRate}/giờ</span>
+                          <span className="font-bold text-indigo-600">
+                            {booking.type === "trial" ? "Học thử (0đ)" : formatVND(booking.fee || tutor?.hourlyRate)}
+                          </span>
                         </div>
                       </div>
 
                       <div className="flex flex-wrap gap-3">
-                        {new Date(booking.date) >= new Date() && booking.status !== "cancelled" && (
+                        {new Date(booking.date || booking.startTime) >= new Date() && booking.status !== "cancelled" && booking.status !== "cancel" && (
                           <>
-                            <button className="px-5 py-2.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-all">
+                            <Link
+                              to={`/lesson/${booking.id}`}
+                              className="px-5 py-2.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-all"
+                            >
                               Tham gia buổi học
-                            </button>
+                            </Link>
                             <button
-                              onClick={() => cancelBooking()}
+                              onClick={() => cancelBooking(booking.id)}
                               className="px-5 py-2.5 border border-red-200 text-red-600 font-bold rounded-xl hover:bg-red-50 transition-all"
                             >
                               Hủy lịch
                             </button>
                           </>
                         )}
-                        {new Date(booking.date) < new Date() && booking.status !== "cancelled" && (
+                        {new Date(booking.date || booking.startTime) < new Date() && booking.status !== "cancelled" && booking.status !== "cancel" && (
                           <Link
                             to={`/review?tutorId=${booking.tutorId}&bookingId=${booking.id}`}
                             className="px-5 py-2.5 bg-amber-100 text-amber-700 font-bold rounded-xl hover:bg-amber-200 transition-all"

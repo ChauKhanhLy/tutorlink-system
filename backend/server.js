@@ -4,17 +4,25 @@ import http from 'http'
 import { Server } from 'socket.io'
 import sequelize from './src/config/database.js'
 import { initChatSocket } from './src/socket/chat.socket.js'
+import './src/jobs/settlement.job.js'
 
 const server = http.createServer(app)
 
+const corsOrigins = (process.env.CORS_ORIGINS || 'http://localhost:5173,http://127.0.0.1:5173')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean)
+
 const io = new Server(server, {
   cors: {
-    origin: '*',
+    origin: corsOrigins,
     methods: ['GET', 'POST'],
+    credentials: true,
   },
 })
 
 initChatSocket(io)
+app.set('io', io)
 
 const PORT = process.env.PORT || 3000
 

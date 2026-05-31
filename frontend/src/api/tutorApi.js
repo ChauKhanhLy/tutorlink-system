@@ -1,4 +1,4 @@
-import axiosClient from "./axiosClient";
+/*import axiosClient from "./axiosClient";
 
 export const tutorApi = {
   getAll: () => axiosClient.get("/tutors"),
@@ -7,7 +7,7 @@ export const tutorApi = {
 
   search: (params) => axiosClient.get("/matching", { params }), // ✅ FIX
 };
-/*import axiosClient from "./axiosClient";
+import axiosClient from "./axiosClient";
 
 export const tutorApi = {
   getAll: () => axiosClient.get("/tutors"),
@@ -17,3 +17,20 @@ export const tutorApi = {
   search: (params) => axiosClient.get("/tutors", { params }), 
   // ví dụ: ?q=toan&subject=Toán
 };*/
+import axiosClient from "./axiosClient";
+
+export const tutorApi = {
+  getAll: () => axiosClient.get("/matching"),
+  search: (params) => axiosClient.get("/matching", { params }),
+
+  getById: (id) => axiosClient.get(`/tutors/${id}`),
+
+  getAvailability: (id, params) => axiosClient.get(`/tutors/${id}/availability`, { params }),
+
+  updateAvailability: (id, data) =>
+    axiosClient.post(`/tutors/${id}/availability`, data),
+
+  getTutorStats: () => axiosClient.get("/tutors/stats"),
+
+  registerTutor: (data) => axiosClient.post("/users/become-tutor", data),
+};

@@ -1,6 +1,6 @@
 import React from "react";
 import socket from "../socket";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   Search,
   MoreVertical,
@@ -17,21 +17,28 @@ import {
 } from "lucide-react";
 import { ImageWithFallback } from "../components/Image/ImageWithFallback";
 import messageApi from "../api/messageApi";
+import userApi from "../api/userApi";
+import { useAuth } from "../context/AuthContext";
+import { getAvatarUrl } from "../utils/avatar";
 
-export function MessagesPage() {
+export function MessagesPage({ adminMode = false }) {
+  const { user } = useAuth();
+  const userId = user?.id;
+  const [searchParams] = useSearchParams();
+  const tutorIdFromQuery = searchParams.get("tutorId");
+
   const [chats, setChats] = React.useState([]);
   const [loadingChats, setLoadingChats] = React.useState(true);
   const [activeChat, setActiveChat] = React.useState(null);
   const [message, setMessage] = React.useState("");
   const [messages, setMessages] = React.useState([]);
-  const userId = "abc123"; // tạm thời, sau này lấy từ AuthContext
 
   const currentTutor = React.useMemo(() => {
     return chats.find((c) => c.id === activeChat) || null;
   }, [chats, activeChat]);
 
   const handleSend = () => {
-    if (!message.trim() || !activeChat) return;
+    if (!message.trim() || !activeChat || !userId) return;
 
     const data = {
       sender_id: userId,
@@ -48,27 +55,89 @@ export function MessagesPage() {
     const fetchChats = async () => {
       try {
         setLoadingChats(true);
-        const res = await messageApi.getConversations();
-        setChats(res.data);
+
+        let conversationList = [];
+
+        // 1. Gọi API theo role
+        if (adminMode) {
+          const res = await messageApi.getAllConversations();
+          conversationList = res.data;
+        } else {
+          if (!userId) return;
+
+          const res = await messageApi.getConversations(userId);
+          conversationList = res.data;
+
+          // 2. Nếu có tutorId từ query mà chưa tồn tại
+          if (
+            tutorIdFromQuery &&
+            !conversationList.some((c) => c.id === tutorIdFromQuery)
+          ) {
+            try {
+              const tutorRes = await userApi.getById(tutorIdFromQuery);
+              const tutorData = tutorRes.data;
+
+              if (tutorData) {
+                const newChatEntry = {
+                  id: tutorData.id,
+                  name: tutorData.name,
+                  avatar: tutorData.avatar,
+                  lastMsg: "Bắt đầu cuộc trò chuyện mới",
+                  time: new Date().toISOString(),
+                  unread: 0,
+                  role: tutorData.role,
+                };
+
+                conversationList = [newChatEntry, ...conversationList];
+              }
+            } catch (err) {
+              console.error("Lỗi lấy thông tin người dùng mới:", err);
+            }
+          }
+
+          // 3. Set active chat (chỉ user mới cần)
+          if (tutorIdFromQuery) {
+            setActiveChat(tutorIdFromQuery);
+          } else if (conversationList.length > 0 && !activeChat) {
+            setActiveChat(conversationList[0].id);
+          }
+        }
+
+        // 4. Set chats chung
+        setChats(conversationList);
       } catch (err) {
         console.error("Lỗi tải danh sách chat:", err);
       } finally {
         setLoadingChats(false);
       }
     };
+
     fetchChats();
-  }, []);
+  }, [adminMode, userId, tutorIdFromQuery]);
 
   // Lấy tin nhắn khi activeChat thay đổi
   React.useEffect(() => {
-    if (!activeChat) return;
+    if (!activeChat || !userId) return;
 
     const fetchMessages = async () => {
       try {
         const res = await messageApi.getMessages(userId, activeChat);
         setMessages(res.data);
+
+        // Đánh dấu đã đọc khi mở chat
+        socket.emit("mark_as_read", {
+          sender_id: activeChat,
+          receiver_id: userId,
+        });
+
+        // Cập nhật state local cho unread count
+        setChats((prev) =>
+          prev.map((c) => (c.id === activeChat ? { ...c, unread: 0 } : c)),
+        );
       } catch (err) {
         console.error(err);
+        // Nếu là chat mới chưa có tin nhắn, set messages rỗng
+        setMessages([]);
       }
     };
 
@@ -77,23 +146,90 @@ export function MessagesPage() {
 
   // Socket setup
   React.useEffect(() => {
+    if (!userId) return;
+
     socket.emit("register_user", userId);
 
-    socket.on("receive_message", (msg) => {
-      setMessages((prev) => [...prev, msg]);
-    });
+    const handleReceiveMessage = (msg) => {
+      // Nếu tin nhắn thuộc về chat đang mở
+      if (
+        (msg.sender_id === activeChat && msg.receiver_id === userId) ||
+        (msg.sender_id === userId && msg.receiver_id === activeChat)
+      ) {
+        setMessages((prev) => {
+          const exists = prev.some((m) => m.id === msg.id);
+          if (exists) return prev;
+          return [...prev, msg];
+        });
+
+        // Nếu là tin nhắn từ người khác gửi đến chat đang mở, mark as read
+        if (msg.sender_id === activeChat) {
+          socket.emit("mark_as_read", {
+            sender_id: activeChat,
+            receiver_id: userId,
+          });
+        }
+      }
+
+      // Luôn cập nhật danh sách chat (last message, unread count)
+      setChats((prev) => {
+        const otherUserId =
+          msg.sender_id === userId ? msg.receiver_id : msg.sender_id;
+        const chatExists = prev.some((c) => c.id === otherUserId);
+
+        if (chatExists) {
+          return prev
+            .map((c) => {
+              if (c.id === otherUserId) {
+                return {
+                  ...c,
+                  lastMsg: msg.content,
+                  time: msg.sent_at,
+                  unread:
+                    msg.sender_id !== userId && activeChat !== otherUserId
+                      ? (parseInt(c.unread) || 0) + 1
+                      : c.unread,
+                };
+              }
+              return c;
+            })
+            .sort((a, b) => new Date(b.time) - new Date(a.time));
+        } else {
+          // Nếu là chat mới vừa gửi tin nhắn đầu tiên, có thể cần fetch lại list
+          // hoặc thêm vào list nếu có thông tin (thường là trường hợp nhận tin nhắn từ người lạ)
+          return prev;
+        }
+      });
+    };
+
+    socket.on("receive_message", handleReceiveMessage);
 
     return () => {
-      socket.off("receive_message");
+      socket.off("receive_message", handleReceiveMessage);
     };
-  }, [userId]);
+  }, [userId, activeChat]);
 
-  // Tự động chọn chat đầu tiên
-  React.useEffect(() => {
+  // Tự động chọn chat đầu tiên (đã gộp vào useEffect fetchChats)
+  /* React.useEffect(() => {
     if (chats.length > 0 && !activeChat) {
       setActiveChat(chats[0].id);
     }
-  }, [chats, activeChat]);
+  }, [chats, activeChat]); */
+
+  // Helper format time
+  const formatTime = (timeStr) => {
+    if (!timeStr) return "";
+    const date = new Date(timeStr);
+    const now = new Date();
+
+    if (date.toDateString() === now.toDateString()) {
+      return date.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    }
+    return date.toLocaleDateString([], { month: "short", day: "numeric" });
+  };
 
   return (
     <div className="pt-20 h-screen bg-white flex overflow-hidden">
@@ -123,30 +259,38 @@ export function MessagesPage() {
             <div className="flex flex-col items-center justify-center h-full text-slate-400 p-8">
               <MessageSquare className="h-12 w-12 mb-4 opacity-50" />
               <p className="text-sm font-medium text-center">
-                Bạn chưa có cuộc trò chuyện nào.
+                {adminMode
+                  ? "Chưa có tin nhắn hỗ trợ nào."
+                  : "Bạn chưa có cuộc trò chuyện nào."}
               </p>
-              <Link
-                to="/search"
-                className="mt-4 text-indigo-600 font-bold text-sm hover:underline"
-              >
-                Tìm gia sư để nhắn tin
-              </Link>
+              {!adminMode && (
+                <Link
+                  to="/search"
+                  className="mt-4 text-indigo-600 font-bold text-sm hover:underline"
+                >
+                  Tìm gia sư để nhắn tin
+                </Link>
+              )}
             </div>
           ) : (
             chats.map((chat) => (
               <button
                 key={chat.id}
                 onClick={() => setActiveChat(chat.id)}
-                className={`w-full flex items-center p-4 transition-all border-b border-slate-50/50 ${
-                  activeChat === chat.id
-                    ? "bg-white shadow-sm ring-1 ring-slate-100 border-l-4 border-l-indigo-600"
-                    : "hover:bg-slate-100/50"
-                }`}
+                className={`w-full flex items-center p-4 transition-all border-b border-slate-50/50 ${activeChat === chat.id
+                  ? "bg-white shadow-sm ring-1 ring-slate-100 border-l-4 border-l-indigo-600"
+                  : "hover:bg-slate-100/50"
+                  }`}
               >
                 <div className="relative flex-shrink-0">
                   <div className="w-14 h-14 rounded-2xl overflow-hidden border-2 border-white shadow-sm">
                     <ImageWithFallback
-                      src={chat.avatar}
+                      //src={chat.avatar}
+                      src={
+                        chat?.avatar
+                          ? getAvatarUrl(chat.avatar)
+                          : "/img/images.jpg"
+                      }
                       alt={chat.name}
                       className="w-full h-full object-cover"
                     />
@@ -161,16 +305,18 @@ export function MessagesPage() {
                       {chat.name}
                     </h3>
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex-shrink-0">
-                      {chat.time}
+                      {/* {chat.time} */}
+                      {formatTime(chat.time)}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <p
                       className={`text-xs truncate ${
-                        chat.unread
+                        // chat.unread
+                        chat.unread > 0
                           ? "font-bold text-slate-900"
                           : "text-slate-500 font-medium"
-                      }`}
+                        }`}
                     >
                       {chat.lastMsg}
                     </p>
@@ -195,10 +341,18 @@ export function MessagesPage() {
             <header className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 <div className="w-10 h-10 rounded-xl overflow-hidden shadow-sm">
-                  <ImageWithFallback
-                    src={currentTutor?.avatar}
+                  {/* <ImageWithFallback
+                    //src={currentTutor?.avatar}
+                    src={getAvatarUrl(currentTutor?.avatar)}
                     alt={currentTutor?.name}
                     className="w-full h-full object-cover"
+                  /> */}
+                  <ImageWithFallback
+                    src={
+                      currentTutor?.avatar
+                        ? getAvatarUrl(currentTutor.avatar)
+                        : "/img/images.jpg"
+                    }
                   />
                 </div>
                 <div>
@@ -229,26 +383,36 @@ export function MessagesPage() {
             <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/30 custom-scrollbar">
               <div className="flex justify-center mb-8">
                 <span className="px-3 py-1 bg-white border border-slate-200 rounded-full text-[10px] font-bold text-slate-400 uppercase tracking-widest shadow-sm">
-                  11 tháng 3, 2026
+                  {new Date().toLocaleDateString("vi-VN", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}
                 </span>
               </div>
 
               {messages.map((msg) => (
                 <div
                   key={msg.id}
-                  className={`flex ${
-                    msg.sender_id === userId ? "justify-end" : "justify-start"
-                  }`}
+                  className={`flex ${msg.sender_id === userId ? "justify-end" : "justify-start"
+                    }`}
                 >
                   <div className="max-w-[75%]">
                     <div
-                      className={`px-5 py-3.5 rounded-3xl text-sm ${
-                        msg.sender_id === userId
-                          ? "bg-indigo-600 text-white"
-                          : "bg-white text-slate-700"
-                      }`}
+                      className={`px-5 py-3.5 rounded-3xl text-sm ${msg.sender_id === userId
+                        ? "bg-indigo-600 text-white"
+                        : "bg-white text-slate-700"
+                        }`}
                     >
                       {msg.content}
+                    </div>
+                    <div
+                      className={`text-[10px] mt-1 text-slate-400 font-medium ${msg.sender_id === userId ? "text-right mr-2" : "text-left ml-2"}`}
+                    >
+                      {new Date(msg.sent_at).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
                     </div>
                   </div>
                 </div>
@@ -286,14 +450,24 @@ export function MessagesPage() {
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-slate-400">
             <MessageSquare className="h-16 w-16 mb-4 opacity-30" />
-            <p className="text-lg font-medium">Chọn một cuộc trò chuyện</p>
-            <p className="text-sm">hoặc bắt đầu nhắn tin với gia sư mới</p>
-            <Link
-              to="/search"
-              className="mt-6 px-6 py-3 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 transition-all"
-            >
-              Tìm gia sư
-            </Link>
+            <p className="text-lg font-medium">
+              {adminMode
+                ? "Chọn một cuộc trò chuyện"
+                : "Chọn một cuộc trò chuyện"}
+            </p>
+            <p className="text-sm">
+              {adminMode
+                ? "Xem và trả lời tin nhắn hỗ trợ từ người dùng"
+                : "hoặc bắt đầu nhắn tin với gia sư mới"}
+            </p>
+            {!adminMode && (
+              <Link
+                to="/search"
+                className="mt-6 px-6 py-3 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 transition-all"
+              >
+                Tìm gia sư
+              </Link>
+            )}
           </div>
         )}
       </main>
@@ -304,7 +478,12 @@ export function MessagesPage() {
           <div className="p-8 text-center flex-1">
             <div className="w-32 h-32 rounded-[2.5rem] overflow-hidden mx-auto mb-6 shadow-2xl shadow-indigo-500/10 border-4 border-slate-50">
               <ImageWithFallback
-                src={currentTutor.avatar}
+                //src={currentTutor.avatar}
+                src={
+                  currentTutor?.avatar
+                    ? getAvatarUrl(currentTutor.avatar)
+                    : "/img/images.jpg"
+                }
                 alt={currentTutor.name}
                 className="w-full h-full object-cover"
               />
@@ -313,7 +492,8 @@ export function MessagesPage() {
               {currentTutor.name}
             </h3>
             <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-6">
-              Gia sư {currentTutor.subjects?.[0]}
+              {/* Gia sư {currentTutor.subjects?.[0]} */}
+              Gia sư {currentTutor.subject || "Chưa cập nhật"}
             </p>
 
             <div className="grid grid-cols-2 gap-4 mb-8">
@@ -323,7 +503,7 @@ export function MessagesPage() {
                 </div>
                 <div className="text-lg font-extrabold text-slate-900 flex items-center justify-center">
                   <Star className="h-4 w-4 text-amber-500 fill-amber-500 mr-1.5" />{" "}
-                  {currentTutor.rating}
+                  {currentTutor.rating || "5.0"}
                 </div>
               </div>
               <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
@@ -331,27 +511,29 @@ export function MessagesPage() {
                   Giờ
                 </div>
                 <div className="text-lg font-extrabold text-slate-900">
-                  ${currentTutor.hourlyRate}
+                  ${currentTutor.hourlyRate || "20"}
                 </div>
               </div>
             </div>
 
-            <div className="space-y-4 text-left">
-              <h4 className="text-sm font-bold text-slate-900 px-1">
-                Buổi học sắp tới
-              </h4>
-              <div className="p-4 bg-indigo-50 rounded-2xl border border-indigo-100 flex items-start space-x-3">
-                <Clock className="h-5 w-5 text-indigo-600 mt-0.5" />
-                <div>
-                  <p className="text-xs font-bold text-indigo-900">
-                    Ngày mai, 10:00 SA
-                  </p>
-                  <p className="text-[10px] font-medium text-indigo-600">
-                    Buổi học 50 phút • Trực tuyến
-                  </p>
+            {!adminMode && (
+              <div className="space-y-4 text-left">
+                <h4 className="text-sm font-bold text-slate-900 px-1">
+                  Buổi học sắp tới
+                </h4>
+                <div className="p-4 bg-indigo-50 rounded-2xl border border-indigo-100 flex items-start space-x-3">
+                  <Clock className="h-5 w-5 text-indigo-600 mt-0.5" />
+                  <div>
+                    <p className="text-xs font-bold text-indigo-900">
+                      Chưa có lịch
+                    </p>
+                    <p className="text-[10px] font-medium text-indigo-600">
+                      Buổi học 50 phút • Trực tuyến
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
           <div className="p-6 border-t border-slate-50">
             <Link
