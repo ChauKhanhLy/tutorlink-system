@@ -26,7 +26,22 @@ exports.getPendingTutors = async (req, res) => {
 //import userService from '../services/user.service.js'
 import { verifyTutor as verifyTutorService, getPendingTutors as getPendingTutorsService } from '../services/user.service.js'
 import db from '../config/db.js';
+import * as bookingService from "../services/booking.service.js";
 
+export const getAllBookingsAdmin = async (req, res) => {
+  try {
+    const bookings =
+      await bookingService.getAllBookings();
+
+    res.json(bookings);
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      message: "Lỗi server",
+    });
+  }
+};
 export const verifyTutor = async (req, res) => {
   try {
     const userId = req.params.id

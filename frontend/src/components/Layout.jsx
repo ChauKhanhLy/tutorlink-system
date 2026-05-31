@@ -64,6 +64,7 @@ export function Layout() {
     },
     { name: "Tin nhắn hỗ trợ", path: "/admin/messages", icon: MessageSquare },
     { name: "Quản lý người dùng", path: "/admin/users", icon: Users },
+    {name: "Quản lý lịch học",path: "/admin/bookings",icon: Calendar,},
   ];
 
   const navLinks =
@@ -184,6 +185,13 @@ export function Layout() {
                             >
                               Dashboard
                             </Link>
+                            <Link
+                            to="/admin/bookings"
+                            className="block px-4 py-2 text-sm hover:bg-slate-100"
+                            onClick={() => setOpen(false)}
+                          >
+                            Quản lý lịch học
+                          </Link>
                             <Link
                               to="/admin/messages"
                               className="block px-4 py-2 text-sm hover:bg-slate-100"

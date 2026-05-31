@@ -244,3 +244,38 @@ export const getBookingsForTutor = async (tutor_id) => {
     
     return bookings;
 };
+
+//hàm lấy toàn bộ booking cho admin 
+export const getAllBookings = async () => {
+  const query = `
+    SELECT
+      b.*,
+
+      tutor.name AS tutor_name,
+      learner.name AS learner_name,
+
+      s.name AS subject,
+
+      vs.id AS room_id
+
+    FROM bookings b
+
+    LEFT JOIN users tutor
+      ON tutor.id = b.tutor_id
+
+    LEFT JOIN users learner
+      ON learner.id = b.learner_id
+
+    LEFT JOIN subjects s
+      ON s.id = b.subject_id
+
+    LEFT JOIN video_sessions vs
+      ON vs.booking_id = b.id
+
+    ORDER BY b.datetime DESC
+  `;
+
+  const result = await db.query(query);
+
+  return result.rows;
+};

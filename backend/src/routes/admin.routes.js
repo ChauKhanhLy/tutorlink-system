@@ -50,7 +50,7 @@ import express from 'express'
 import authMiddleware, { isAdmin } from '../middlewares/auth.middleware.js'
 import roleMiddleware from '../middlewares/role.middleware.js'
 import * as userDAL from '../dal/user.dal.js'
-import { verifyTutor, getPendingTutors, getStats, getAllConversations, getAdminId } from '../controllers/admin.controller.js'
+import { verifyTutor, getPendingTutors, getStats, getAllConversations, getAdminId ,getAllBookingsAdmin} from '../controllers/admin.controller.js'
 //import adminController from '../controllers/admin.controller.js'
 
 const router = express.Router()
@@ -110,6 +110,12 @@ router.get(
   authMiddleware,
   roleMiddleware('admin'),
   getAllConversations
+);
+
+router.get(
+  "/bookings",
+  authMiddleware,
+  getAllBookingsAdmin
 );
 
 router.get('/id', getAdminId); // có thể không cần auth nếu public

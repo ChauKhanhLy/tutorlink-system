@@ -21,6 +21,7 @@ import { AdminMessagesPage } from "./pages/admin/AdminMessagesPage";
 import { AdminUsersPage } from "./pages/admin/AdminUsersPage";
 import { WalletPage } from "./pages/Wallet";
 import { QRConfirmPage } from "./pages/QRConfirm";
+import { AdminBookingsPage } from "./pages/admin/AdminBookingsPage";
 
 export const router = createBrowserRouter([
   {
@@ -169,6 +170,14 @@ export const router = createBrowserRouter([
 
       { path: "login", element: <AuthPage /> },
       { path: "signup", element: <AuthPage /> },
+      {
+      path: "admin/bookings",
+      element: (
+        <ProtectedRoute requiredRole="admin">
+          <AdminBookingsPage />
+        </ProtectedRoute>
+      ),
+    },
     ],
   },
 ]);
