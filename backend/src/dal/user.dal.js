@@ -1,6 +1,4 @@
-import db from '../config/db.js';
-import pool from "../config/db.js"
-
+import db from '../config/db.js'
 
 // tìm user theo email
 export const findByEmail = async (email) => {
@@ -105,7 +103,40 @@ export const verifyTutor = async (id) => {
 }
 
 // pending tutors
+// dal/user.dal.js
 export const getPendingTutors = async () => {
+  const result = await db.query(`
+    SELECT 
+      u.id, 
+      u.name, 
+      u.email, 
+      u.phone, 
+      u.avatar,
+      u.verified,
+      u.created_at,
+      tp.bio,
+      tp.hourly_fee,
+      tp.education,
+      tp.experience,
+      tp.certifications,
+      tp.languages,
+      tp.teaching_style,
+      COALESCE(
+        (SELECT json_agg(DISTINCT s.name) 
+         FROM tutor_subjects ts 
+         JOIN subjects s ON ts.subject_id = s.id 
+         WHERE ts.tutor_id = u.id),
+        '[]'::json
+      ) as subjects
+    FROM users u
+    LEFT JOIN tutor_profiles tp ON u.id = tp.user_id
+    WHERE u.role = 'tutor' 
+      AND u.verified = false
+    ORDER BY u.created_at DESC
+  `)
+  return result.rows
+}
+/*export const getPendingTutors = async () => {
   const result = await db.query(`
     SELECT id, email, name, role, verified
     FROM users
@@ -113,27 +144,25 @@ export const getPendingTutors = async () => {
   `)
   return result.rows
 }
+// export const updateAvatar = async (userId, avatar) => {
+//   const result = await db.query(
+//     `UPDATE users SET avatar = $1 WHERE id = $2 RETURNING *`,
+//     [avatar, userId]
+//   )
+//   return result.rows[0]
+// }
+
 export const updateAvatar = async (userId, avatar) => {
   const result = await db.query(
-    `UPDATE users SET avatar = $1 WHERE id = $2 RETURNING *`,
+    `UPDATE users 
+     SET avatar = $1 
+     WHERE id = $2 
+     RETURNING *`,
     [avatar, userId]
   )
+
   return result.rows[0]
 }
-export const updatePassword =
-  async (userId, password) => {
-
-    const query = `
-      UPDATE users
-      SET password = $1
-      WHERE id = $2
-    `;
-
-    await pool.query(query, [
-      password,
-      userId
-    ]);
-};
 
 /*const pool = require('../config/db')
 

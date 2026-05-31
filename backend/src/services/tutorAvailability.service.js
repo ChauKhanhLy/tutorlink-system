@@ -4,7 +4,7 @@ import {
   replaceTutorAvailability,
 } from "../dal/tutorAvailability.dal.js";
 
-const addOneHour = (time) => {
+/*const addOneHour = (time) => {
   const [hour, minute] = time.split(":").map(Number);
 
   const nextHour = hour + 1;
@@ -13,10 +13,23 @@ const addOneHour = (time) => {
     2,
     "0",
   )}:00`;
-};
+};*/
+const addOneHour = (time) => {
+  const [hour, minute] = time.split(':').map(Number)
+  let nextHour = hour + 1
+  if (nextHour >= 24) nextHour = 23  // giới hạn đến 23:00
+  return `${String(nextHour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`
+}
 
 const normalizeTime = (time) => {
-  return `${time}:00`;
+  if (!time) return time;
+  return String(time).length === 5 ? `${time}:00` : time;
+};
+
+const AVAILABILITY_TEMPLATES = {
+  morning: { startTime: '08:00:00', endTime: '12:00:00' },
+  afternoon: { startTime: '13:00:00', endTime: '17:00:00' },
+  evening: { startTime: '18:00:00', endTime: '22:00:00' },
 };
 
 /**
@@ -31,7 +44,28 @@ const normalizeTime = (time) => {
  *   repeatWeekly: true
  * }
  */
-export const saveAvailabilityPreferences = async (tutorId, payload) => {
+export const saveAvailabilityPreferences = async (tutorId, payload, availableDays = []) => {
+  if (Array.isArray(payload)) {
+    const normalized = [];
+
+    for (const slot of payload) {
+      const template = AVAILABILITY_TEMPLATES[slot];
+      if (!template) continue;
+
+      for (const dayOfWeek of availableDays || []) {
+        normalized.push({
+          dayOfWeek,
+          specificDate: null,
+          startTime: template.startTime,
+          endTime: template.endTime,
+        });
+      }
+    }
+
+    await replaceTutorAvailability(tutorId, normalized);
+    return;
+  }
+
   const { dates = [], repeatWeekly = false } = payload || {};
 
   const normalized = [];
@@ -75,7 +109,7 @@ const toHourSlots = (startTime, endTime) => {
   return slots;
 };
 
-export const buildAvailabilitySlots = async (tutorId, daysAhead = 14) => {
+export const buildAvailabilitySlots = async (tutorId, daysAhead = 60) => {
   const rules = await getTutorAvailabilityRules(tutorId);
 
   if (!rules.length) return [];
@@ -85,6 +119,29 @@ export const buildAvailabilitySlots = async (tutorId, daysAhead = 14) => {
   const today = new Date(now);
 
   today.setHours(0, 0, 0, 0);
+
+  const endDate = new Date(today);
+  endDate.setDate(today.getDate() + daysAhead);
+
+  const bookingsRes = await db.query(
+    "SELECT datetime, type FROM bookings WHERE tutor_id = $1 AND datetime >= $2 AND datetime < $3 AND status != 'cancelled'",
+    [tutorId, today, endDate]
+  );
+
+  const bookedSlots = bookingsRes.rows.map((row) => {
+    const bookingDate = new Date(row.datetime);
+    const year = bookingDate.getFullYear();
+    const month = String(bookingDate.getMonth() + 1).padStart(2, "0");
+    const day = String(bookingDate.getDate()).padStart(2, "0");
+    const hour = String(bookingDate.getHours()).padStart(2, "0");
+    const minute = String(bookingDate.getMinutes()).padStart(2, "0");
+
+    return {
+      date: `${year}-${month}-${day}`,
+      time: `${hour}:${minute}`,
+      durationHours: row.type === "trial" ? 1 : 2,
+    };
+  });
 
   const result = [];
 
@@ -112,7 +169,11 @@ export const buildAvailabilitySlots = async (tutorId, daysAhead = 14) => {
     const specificDateRules = rules.filter((rule) => {
       if (!rule.specificDate) return false;
 
-      const ruleDate = new Date(rule.specificDate).toISOString().split("T")[0];
+      const d = new Date(rule.specificDate);
+      const ruleYear = d.getFullYear();
+      const ruleMonth = String(d.getMonth() + 1).padStart(2, "0");
+      const ruleDayOfMonth = String(d.getDate()).padStart(2, "0");
+      const ruleDate = `${ruleYear}-${ruleMonth}-${ruleDayOfMonth}`;
 
       return ruleDate === dateStr;
     });
@@ -136,6 +197,16 @@ export const buildAvailabilitySlots = async (tutorId, daysAhead = 14) => {
 
       times = times.filter((t) => parseInt(t.split(":")[0]) > currentHour);
     }
+
+    const bookedTimesForDay = bookedSlots.filter((slot) => slot.date === dateStr);
+    times = times.filter((time) => {
+      const timeHour = parseInt(time.split(":")[0]);
+
+      return !bookedTimesForDay.some((booked) => {
+        const bookedHour = parseInt(booked.time.split(":")[0]);
+        return timeHour >= bookedHour && timeHour < bookedHour + booked.durationHours;
+      });
+    });
 
     if (!times.length) continue;
 

@@ -83,35 +83,23 @@ export const getTutorAvailability = async (req, res) => {
   }
 }
 
-export const updateTutorAvailability = async (
-  req,
-  res
-) => {
+export const updateTutorAvailability = async (req, res) => {
   try {
-    const tutorId = req.params.id
+    const tutorId = req.params.id;
+    if (req.user?.id !== tutorId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Bạn chỉ có thể cập nhật lịch rảnh của chính mình'
+      });
+    }
 
-    const payload = req.body
-
-    await saveAvailabilityPreferences(
-      tutorId,
-      payload
-    )
-
-    const updatedSlots =
-      await buildAvailabilitySlots(tutorId)
-
-    res.json({
-      success: true,
-      message:
-        'Availability updated successfully',
-      data: updatedSlots,
-    })
+    const payload = req.body;
+    console.log('updateTutorAvailability received:', { tutorId, payload });
+    await saveAvailabilityPreferences(tutorId, payload);
+    const updatedSlots = await buildAvailabilitySlots(tutorId);
+    res.json({ success: true, message: 'Availability updated successfully', data: updatedSlots });
   } catch (err) {
-    console.error(err)
-
-    res.status(400).json({
-      success: false,
-      message: err.message,
-    })
+    console.error('updateTutorAvailability error:', err);
+    res.status(400).json({ success: false, message: err.message });
   }
-}
+};

@@ -134,7 +134,7 @@ export const updateAvatar = async (req, res) => {
      console.log("avatarUrl:", avatarUrl)
     // update DB
     const updatedUser = await userService.updateAvatar(userId, avatarUrl)
-    console.log("updated user:", user)
+    console.log("updated user:", updatedUser)
     // nếu không tìm thấy user
     if (!updatedUser) {
       
