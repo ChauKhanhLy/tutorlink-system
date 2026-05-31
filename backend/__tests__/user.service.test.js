@@ -16,7 +16,7 @@ const tutorAvailabilityService = {
 
 jest.unstable_mockModule('../src/dal/user.dal.js', () => userDAL)
 jest.unstable_mockModule('../src/config/db.js', () => ({ default: db }))
-jest.unstable_mockModule('./tutorAvailability.service.js', () => tutorAvailabilityService)
+jest.unstable_mockModule('../src/services/tutorAvailability.service.js', () => tutorAvailabilityService)
 
 const userService = await import('../src/services/user.service.js')
 

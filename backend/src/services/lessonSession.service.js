@@ -207,24 +207,33 @@ async function confirmLearnerStudied(lessonSessionId, learnerId) {
 
     await client.query("COMMIT");
 
-    // Giải ngân tiền cho gia sư sau khi commit thành công
-    // Dùng sau COMMIT để không rollback nếu wallet lỗi (tránh mất dữ liệu lesson)
     try {
-      const pricePerHour = parseFloat(session.lesson_price_per_hour || session.fee || 0);
-      if (pricePerHour > 0 && durationHours > 0) {
-        const earnedAmount = parseFloat((pricePerHour * durationHours).toFixed(0));
-        await depositToWallet(
-          session.tutor_id,
-          earnedAmount,
-          `Thu nhập buổi dạy - ${durationHours}h × ${pricePerHour.toLocaleString('vi-VN')}₫/h`
-        );
-        console.log(`[confirmLearnerStudied] Đã giải ngân ${earnedAmount}₫ cho gia sư ${session.tutor_id}`);
+      const complaintRes = await db.query(
+        "SELECT id FROM complaints WHERE booking_id = $1 AND status != 'rejected' LIMIT 1",
+        [session.booking_id]
+      );
+      const hasComplaint = complaintRes.rows.length > 0;
+
+      if (hasComplaint) {
+        console.log(`[confirmLearnerStudied] Buổi học #${session.booking_id} đang có khiếu nại chưa xử lý. Tạm hoãn giải ngân.`);
       } else {
-        console.log(`[confirmLearnerStudied] Bỏ qua giải ngân: pricePerHour=${pricePerHour}, duration=${durationHours}`);
+        const pricePerHour = parseFloat(session.lesson_price_per_hour || session.fee || 0);
+        if (pricePerHour > 0 && durationHours > 0) {
+          const earnedAmount = parseFloat((pricePerHour * durationHours).toFixed(0));
+          await depositToWallet(
+            session.tutor_id,
+            earnedAmount,
+            `Thu nhập buổi dạy - ${durationHours}h × ${pricePerHour.toLocaleString('vi-VN')}₫/h`,
+            session.booking_id,
+            'booking'
+          );
+          console.log(`[confirmLearnerStudied] Đã giải ngân ${earnedAmount}₫ cho gia sư ${session.tutor_id}`);
+        } else {
+          console.log(`[confirmLearnerStudied] Bỏ qua giải ngân: pricePerHour=${pricePerHour}, duration=${durationHours}`);
+        }
       }
     } catch (walletErr) {
       console.error('[confirmLearnerStudied] Lỗi giải ngân ví gia sư:', walletErr.message);
-      // Không throw - buổi học vẫn được ghi nhận hoàn thành
     }
 
     return updatedSession;

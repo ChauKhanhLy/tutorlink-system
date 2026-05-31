@@ -3,6 +3,18 @@ import VideoRoom from '../models/videoRoom.model.js';
 import db from '../config/db.js';
 import lessonSessionService from '../services/lessonSession.service.js';
 
+const ensureRecordingColumns = async () => {
+  await db.query(`
+    ALTER TABLE video_sessions
+    ADD COLUMN IF NOT EXISTS record_url TEXT
+  `);
+
+  await db.query(`
+    ALTER TABLE video_sessions
+    ADD COLUMN IF NOT EXISTS duration_minutes INTEGER DEFAULT 0
+  `);
+};
+
 export const getAllVideoRooms = async (req, res) => {
   try {
     const videoRooms = await VideoRoom.findAll({
@@ -220,6 +232,7 @@ export const uploadRecording = async (req, res) => {
   try {
     const { id } = req.params;
     const durationMinutes = req.body.duration_minutes ? parseInt(req.body.duration_minutes) : 0;
+    await ensureRecordingColumns();
 
     if (!req.file) {
       return res.status(400).json({ error: 'Không tìm thấy file video upload' });
@@ -234,18 +247,25 @@ export const uploadRecording = async (req, res) => {
     // Đường dẫn tương đối tĩnh để client truy cập qua static middleware
     const recordUrl = `/uploads/recordings/${req.file.filename}`;
 
-    videoRoom.record_url = recordUrl;
-    if (durationMinutes > 0) {
-      videoRoom.duration_minutes = durationMinutes;
-    }
-    await videoRoom.save();
+    const updateRes = await db.query(
+      `
+      UPDATE video_sessions
+      SET record_url = $1,
+          duration_minutes = $2
+      WHERE id = $3
+      RETURNING *
+      `,
+      [recordUrl, durationMinutes, id]
+    );
+
+    const updatedVideoRoom = updateRes.rows[0];
 
     console.log(`[uploadRecording] Đã lưu bản ghi cho video room ${id}: ${recordUrl}`);
 
     res.status(200).json({
       message: 'Tải lên bản ghi thành công',
       record_url: recordUrl,
-      videoRoom
+      videoRoom: updatedVideoRoom
     });
   } catch (error) {
     console.error('uploadRecording error:', error);

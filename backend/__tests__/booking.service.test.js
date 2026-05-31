@@ -22,7 +22,7 @@ const walletService = {
 jest.unstable_mockModule('../src/models/booking.model.js', () => ({ default: bookingModel }))
 jest.unstable_mockModule('../src/models/videoRoom.model.js', () => ({ default: videoRoomModel }))
 jest.unstable_mockModule('../src/config/db.js', () => ({ default: db }))
-jest.unstable_mockModule('./wallet.service.js', () => walletService)
+jest.unstable_mockModule('../src/services/wallet.service.js', () => walletService)
 
 const bookingService = await import('../src/services/booking.service.js')
 
