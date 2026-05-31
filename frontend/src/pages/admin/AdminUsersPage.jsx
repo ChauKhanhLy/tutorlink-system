@@ -86,10 +86,12 @@ export function AdminUsersPage() {
               onChange={(e) => setRoleFilter(e.target.value)}
               className="px-4 py-2 border border-slate-200 rounded-xl bg-white"
             >
-              <option value="all">Tất cả vai trò</option>
-              <option value="learner">Học viên</option>
-              <option value="tutor">Gia sư</option>
-              <option value="admin">Admin</option>
+<option value="all">Tất cả vai trò</option>
+<option value="learner">Học viên</option>
+<option value="tutor">Gia sư</option>
+<option value="admin">Admin</option>
+<option value="tutor_manager">Tutor Manager</option>
+<option value="support_staff">Support Staff</option>
             </select>
           </div>
 
@@ -131,14 +133,30 @@ export function AdminUsersPage() {
                       <td className="p-4">
                         <span
                           className={`px-3 py-1 rounded-full text-xs font-bold ${
-                            u.role === "admin"
-                              ? "bg-purple-100 text-purple-700"
-                              : u.role === "tutor"
+                              u.role === "admin"
+                                ? "bg-purple-100 text-purple-700"
+                                : u.role === "tutor_manager"
+                                ? "bg-orange-100 text-orange-700"
+                                : u.role === "support_staff"
+                                ? "bg-pink-100 text-pink-700"
+                                : u.role === "tutor"
                                 ? "bg-green-100 text-green-700"
                                 : "bg-blue-100 text-blue-700"
-                          }`}
+                            }`}
                         >
-                          {u.role}
+                          {
+                              u.role === "learner"
+                              ? "Học viên"
+                              : u.role === "tutor"
+                              ? "Gia sư"
+                              : u.role === "admin"
+                              ? "Admin"
+                              : u.role === "tutor_manager"
+                              ? "Tutor Manager"
+                              : u.role === "support_staff"
+                              ? "Support Staff"
+                              : u.role
+                          }
                         </span>
                       </td>
                       <td className="p-4">

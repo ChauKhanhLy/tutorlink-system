@@ -47,8 +47,8 @@ router.get(
 )
 module.exports = router*/
 import express from 'express'
-import authMiddleware, { isAdmin } from '../middlewares/auth.middleware.js'
-import roleMiddleware from '../middlewares/role.middleware.js'
+import authMiddleware, { authorize} from '../middlewares/auth.middleware.js'
+//import roleMiddleware from '../middlewares/role.middleware.js'
 import * as userDAL from '../dal/user.dal.js'
 import { verifyTutor, getPendingTutors, getStats, getAllConversations, getAdminId ,getAllBookingsAdmin,cancelBookingAdmin} from '../controllers/admin.controller.js'
 //import adminController from '../controllers/admin.controller.js'
@@ -59,7 +59,10 @@ const router = express.Router()
 router.get(
   '/stats',
   authMiddleware,
-  roleMiddleware('admin'),
+  authorize(
+    "admin",
+    "tutor_manager"
+  ),
   getStats
 )
 
@@ -67,7 +70,7 @@ router.get(
 router.get(
   '/users',
   authMiddleware,
-  roleMiddleware('admin'),
+ authorize('admin'),
   async (req, res) => {
     const users = await userDAL.getAllUsers()
     res.json(users)
@@ -78,7 +81,10 @@ router.get(
 router.post(
   '/verify-tutor/:id',
   authMiddleware,
-  roleMiddleware('admin'),
+  authorize(
+    'admin',
+    'tutor_manager'
+  ),
   verifyTutor
 )
 
@@ -86,7 +92,10 @@ router.post(
 router.post(
   '/reject-tutor/:id',
   authMiddleware,
-  roleMiddleware('admin'),
+   authorize(
+    'admin',
+    'tutor_manager'
+  ),
   async (req, res) => {
     const { id } = req.params
     const { reason } = req.body
@@ -101,25 +110,39 @@ router.post(
 router.get(
   '/tutors/pending',
   authMiddleware,
-  roleMiddleware('admin'),
+  authorize(
+    "admin",
+    "tutor_manager"
+  ),
   getPendingTutors
 )
 
 router.get(
   '/conversations',
   authMiddleware,
-  roleMiddleware('admin'),
+ authorize(
+    'admin',
+    'support_staff'
+  ),
   getAllConversations
 );
 
 router.get(
   "/bookings",
   authMiddleware,
+  authorize(
+    'admin',
+    'tutor_manager'
+  ),
   getAllBookingsAdmin
 );
 router.patch(
   "/bookings/:id/cancel",
   authMiddleware,
+  authorize(
+    "admin",
+    "tutor_manager"
+  ),
   cancelBookingAdmin
 );
 router.get('/id', getAdminId); // có thể không cần auth nếu public

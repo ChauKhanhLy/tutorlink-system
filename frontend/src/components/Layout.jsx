@@ -55,25 +55,71 @@ export function Layout() {
     { name: "Tin nhắn", path: "/messages", icon: MessageSquare },
   ];
 
-  const adminNavLinks = [
-    { name: "Dashboard", path: "/admin/dashboard", icon: LayoutDashboard },
-    {
-      name: "Duyệt gia sư",
-      path: "/admin/dashboard?tab=pending",
-      icon: UserPlus,
-    },
-    { name: "Tin nhắn hỗ trợ", path: "/admin/messages", icon: MessageSquare },
-    { name: "Quản lý người dùng", path: "/admin/users", icon: Users },
-    {name: "Quản lý lịch học",path: "/admin/bookings",icon: Calendar,},
-  ];
+ const adminNavLinks =
+  user?.role === "admin"
+    ? [
+        {
+          name: "Dashboard",
+          path: "/admin/dashboard",
+          icon: LayoutDashboard,
+        },
+        {
+          name: "Duyệt gia sư",
+          path: "/admin/dashboard?tab=pending",
+          icon: UserPlus,
+        },
+        {
+          name: "Tin nhắn hỗ trợ",
+          path: "/admin/messages",
+          icon: MessageSquare,
+        },
+        {
+          name: "Quản lý người dùng",
+          path: "/admin/users",
+          icon: Users,
+        },
+        {
+          name: "Quản lý lịch học",
+          path: "/admin/bookings",
+          icon: Calendar,
+        },
+      ]
+    : user?.role === "tutor_manager"
+    ? [
+        {
+          name: "Duyệt gia sư",
+          path: "/admin/dashboard?tab=pending",
+          icon: UserPlus,
+        },
+        {
+          name: "Quản lý lịch học",
+          path: "/admin/bookings",
+          icon: Calendar,
+        },
+      ]
+    : user?.role === "support_staff"
+    ? [
+        {
+          name: "Tin nhắn hỗ trợ",
+          path: "/admin/messages",
+          icon: MessageSquare,
+        },
+      ]
+    : [];
 
-  const navLinks =
-    user?.role === "admin"
-      ? adminNavLinks
-      : user?.role === "tutor"
-        ? tutorNavLinks
-        : learnerNavLinks;
+let navLinks = learnerNavLinks;
 
+if (user?.role === "tutor") {
+  navLinks = tutorNavLinks;
+}
+
+if (
+  ["admin", "tutor_manager", "support_staff"].includes(
+    user?.role
+  )
+) {
+  navLinks = adminNavLinks;
+}
   //const isAdmin = user?.role === "admin";
 
   const handleLogout = () => {
@@ -207,7 +253,52 @@ export function Layout() {
                               Quản lý người dùng
                             </Link>
                           </>
-                        ) : user?.role === "tutor" ? (
+                        ): user?.role === "tutor_manager" ? (
+                            <>
+                              <Link
+                                to="/admin/dashboard"
+                                className="block px-4 py-2 text-sm hover:bg-slate-100"
+                                onClick={() => setOpen(false)}
+                              >
+                                Dashboard
+                              </Link>
+
+                              <Link
+                                to="/admin/bookings"
+                                className="block px-4 py-2 text-sm hover:bg-slate-100"
+                                onClick={() => setOpen(false)}
+                              >
+                                Quản lý lịch học
+                              </Link>
+
+                              <Link
+                                to="/admin/dashboard?tab=pending"
+                                className="block px-4 py-2 text-sm hover:bg-slate-100"
+                                onClick={() => setOpen(false)}
+                              >
+                                Duyệt gia sư
+                              </Link>
+                            </>
+                          ) : user?.role === "support_staff" ? (
+                            <>
+                              <Link
+                                to="/admin/messages"
+                                className="block px-4 py-2 text-sm hover:bg-slate-100"
+                                onClick={() => setOpen(false)}
+                              >
+                                Tin nhắn hỗ trợ
+                              </Link>
+
+                              {/* Sau này có trang khiếu nại */}
+                              <Link
+                                to="/admin/complaints"
+                                className="block px-4 py-2 text-sm hover:bg-slate-100"
+                                onClick={() => setOpen(false)}
+                              >
+                                Khiếu nại
+                              </Link>
+                            </>
+                          ) : user?.role === "tutor" ? (
                           <>
                             <Link
                               to="/dashboard"

@@ -41,39 +41,92 @@ const parseLanguages = (languages) => {
 export function AdminDashboard() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const [activeTab, setActiveTab] = React.useState("pending");
+  if (
+  !["admin", "tutor_manager", "support_staff"].includes(
+    user?.role
+  )
+) {
+  return <Navigate to="/" replace />;
+}
+  const [activeTab, setActiveTab] =
+  React.useState(
+    user?.role === "support_staff"
+      ? "complaints"
+      : "pending"
+  );
   const [stats, setStats] = React.useState(null);
   const [pendingTutors, setPendingTutors] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
   const [selectedTutor, setSelectedTutor] = React.useState(null);
   const [rejectReason, setRejectReason] = React.useState("");
 
-  const sidebarItems = [
-    { id: "dashboard", name: "Tổng quan", icon: LayoutDashboard },
-    { id: "pending", name: "Duyệt gia sư", icon: UserPlus, badge: pendingTutors.length },
-    { id: "complaints", name: "Khiếu nại", icon: Flag, badge: 0 },
-  ];
+  const sidebarItems = [];
 
-  React.useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const [statsRes, pendingRes] = await Promise.all([
-        adminApi.getStats(),
-        adminApi.getPendingTutors(),
-      ]);
-      setStats(statsRes.data.data);
-      setPendingTutors(pendingRes.data.data);
-    } catch (err) {
-      console.error(err);
-      toast.error("Không thể tải dữ liệu");
-    } finally {
-      setLoading(false);
+if (
+  ["admin", "tutor_manager"].includes(
+    user?.role
+  )
+) {
+  sidebarItems.push(
+    {
+      id: "dashboard",
+      name: "Tổng quan",
+      icon: LayoutDashboard,
+    },
+    {
+      id: "pending",
+      name: "Duyệt gia sư",
+      icon: UserPlus,
+      badge: pendingTutors.length,
     }
-  };
+  );
+}
+
+if (
+  ["admin", "support_staff"].includes(
+    user?.role
+  )
+) {
+  sidebarItems.push({
+    id: "complaints",
+    name: "Khiếu nại",
+    icon: Flag,
+    badge: 0,
+  });
+}
+  React.useEffect(() => {
+  if (user?.role) {
+    fetchData();
+  }
+}, [user?.role]);
+
+const fetchData = async () => {
+  try {
+    setLoading(true);
+
+    if (
+      ["admin", "tutor_manager"].includes(
+        user?.role
+      )
+    ) {
+      const [statsRes, pendingRes] =
+        await Promise.all([
+          adminApi.getStats(),
+          adminApi.getPendingTutors(),
+        ]);
+
+      setStats(statsRes.data.data);
+      setPendingTutors(
+        pendingRes.data.data
+      );
+    }
+  } catch (err) {
+    console.error(err);
+    toast.error("Không thể tải dữ liệu");
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleApprove = async (id) => {
     try {
@@ -171,7 +224,13 @@ export function AdminDashboard() {
             </div>
             <div>
               <p className="text-sm font-bold text-slate-900">{user?.name}</p>
-              <p className="text-xs text-slate-500">Admin</p>
+              <p className="text-xs text-slate-500">
+  {user?.role === "admin"
+    ? "Admin"
+    : user?.role === "tutor_manager"
+    ? "Tutor Manager"
+    : "Support Staff"}
+</p>
             </div>
           </div>
           <button

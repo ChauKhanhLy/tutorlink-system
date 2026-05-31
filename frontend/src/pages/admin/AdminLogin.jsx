@@ -12,9 +12,16 @@ export function AdminLogin() {
 
   // Tự động chuyển hướng khi user đã là admin
   React.useEffect(() => {
-    if (user && user.role === "admin") {
-      navigate("/admin/dashboard", { replace: true });
-    }
+    if (
+  user &&
+  ["admin", "tutor_manager", "support_staff"].includes(
+    user.role
+  )
+) {
+  navigate("/admin/dashboard", {
+    replace: true,
+  });
+}
   }, [user, navigate]);
 
   const handleSubmit = async (e) => {
@@ -28,11 +35,19 @@ export function AdminLogin() {
       const res = await authApi.login({ email, password });
 
         // ❗ check role trực tiếp từ res
-        if (res.data.user.role !== "admin") {
-          toast.error("Tài khoản không có quyền truy cập admin");
-          setLoading(false); // 🔥 thêm dòng này
-          return;
-        }
+        if (
+  ![
+    "admin",
+    "tutor_manager",
+    "support_staff",
+  ].includes(res.data.user.role)
+) {
+  toast.error(
+    "Tài khoản không có quyền truy cập"
+  );
+  setLoading(false);
+  return;
+}
 
         // 🔥 format đúng cho AuthContext
         login({
@@ -65,7 +80,7 @@ export function AdminLogin() {
 
         <div className="bg-white rounded-3xl p-8 shadow-2xl">
           <h2 className="text-2xl font-bold text-slate-900 mb-2">
-            Đăng nhập Admin
+            Đăng nhập quản trị
           </h2>
           <p className="text-slate-500 mb-8">
             Truy cập bảng điều khiển quản trị

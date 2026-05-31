@@ -1,7 +1,17 @@
 import React from "react";
 import adminApi from "../../api/adminApi";
-import { Link } from "react-router-dom";
+import { Link ,Navigate} from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import { toast } from "sonner";
 export function AdminBookingsPage() {
+  const { user } = useAuth();
+  if (
+  !["admin", "tutor_manager"].includes(
+    user?.role
+  )
+) {
+  return <Navigate to="/" replace />;
+}
   const [search, setSearch] = React.useState("");
 const [statusFilter, setStatusFilter] = React.useState("all");
   const [bookings, setBookings] =
@@ -36,7 +46,7 @@ const [statusFilter, setStatusFilter] = React.useState("all");
 
     toast.success("Đã hủy lịch");
 
-    fetchBookings();
+    await loadBookings();
   } catch (err) {
     toast.error("Không thể hủy lịch");
   }
@@ -279,14 +289,16 @@ const filteredBookings = bookings.filter((booking) => {
           Đóng
         </button>
 
-        <button
-          onClick={() =>
-            handleCancelBooking(selectedBooking.id)
-          }
-          className="px-4 py-2 bg-red-100 text-red-700 rounded-xl hover:bg-red-200"
-        >
-          Hủy lịch
-        </button>
+   {selectedBooking.status !== "completed" && (
+  <button
+    onClick={() =>
+      handleCancelBooking(selectedBooking.id)
+    }
+    className="px-4 py-2 bg-red-100 text-red-700 rounded-xl hover:bg-red-200"
+  >
+    Hủy lịch
+  </button>
+)}
       </div>
     </div>
   </div>

@@ -12,9 +12,15 @@ export function AdminComplaintsPage() {
   const [selected, setSelected] = React.useState(null);
   const [resolutionNote, setResolutionNote] = React.useState("");
 
-  React.useEffect(() => {
+ React.useEffect(() => {
+  if (
+    ["admin", "support_staff"].includes(
+      user?.role
+    )
+  ) {
     fetchComplaints();
-  }, []);
+  }
+}, [user?.role]);
 
   const fetchComplaints = async () => {
     try {
@@ -39,8 +45,18 @@ export function AdminComplaintsPage() {
     }
   };
 
-  if (user?.role !== "admin") return <Navigate to="/admin/login" replace />;
-
+  if (
+  !["admin", "support_staff"].includes(
+    user?.role
+  )
+) {
+  return (
+    <Navigate
+      to="/admin/login"
+      replace
+    />
+  );
+}
   return (
     <div className="p-8">
       <div className="flex items-center gap-3 mb-6">
@@ -49,6 +65,11 @@ export function AdminComplaintsPage() {
       </div>
       {loading ? <div>Đang tải...</div> : (
         <div className="space-y-4">
+          {complaints.length === 0 && (
+              <div className="bg-white rounded-2xl border p-8 text-center text-slate-500">
+                Không có khiếu nại nào
+              </div>
+            )}
           {complaints.map(c => (
             <div key={c.id} className="bg-white rounded-2xl border p-5">
               <div className="flex justify-between">
