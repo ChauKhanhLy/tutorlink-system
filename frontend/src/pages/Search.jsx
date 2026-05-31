@@ -391,7 +391,6 @@ export function SearchPage() {
                           {tutor.bio ||
                             "Gia sư giàu kinh nghiệm, sẵn sàng hỗ trợ bạn đạt được mục tiêu học tập."}
                         </p>
-
                         <div className="mt-auto flex flex-col sm:flex-row items-center gap-3">
                           <Link
                             to={`/tutor/${tutor.id}`}

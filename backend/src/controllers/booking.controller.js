@@ -1,6 +1,7 @@
 import * as BookingService from '../services/booking.service.js';
 import * as WalletService from '../services/wallet.service.js';
 import db from '../config/db.js';
+import lessonSessionService from '../services/lessonSession.service.js';
 
 export const postBooking = async (req, res) => {
     try {
@@ -46,33 +47,36 @@ export const postBooking = async (req, res) => {
         }
 
         // Kiểm tra trùng lịch (tính đến khoảng cách thời gian) trước khi trừ tiền
-        // Regular booking: 2 tiếng, Trial booking: 1 tiếng
-        const duration = type === 'trial' ? 1 : 2;
+        // Regular booking: 120 phút, Trial booking: 50 phút
+        const durationMinutes = type === 'trial' ? 50 : 120;
         const conflictQuery = `
             SELECT * FROM bookings 
             WHERE tutor_id = $1 
-            AND status != 'cancelled'
+            AND status IN ('confirmed', 'done')
             AND (
-                -- Lớp mới bắt đầu trong khoảng thời gian của một lớp đã có
-                datetime >= $2::timestamp - INTERVAL '${duration} hours' 
-                AND datetime < $2::timestamp + INTERVAL '${duration} hours'
+                $2::timestamp < (datetime + (CASE WHEN type = 'trial' THEN INTERVAL '50 minutes' ELSE INTERVAL '2 hours' END))
+                AND
+                ($2::timestamp + INTERVAL '${durationMinutes} minutes') > datetime
             )
         `;
         const existing = await db.query(conflictQuery, [tutor_id, datetime]);
         if (existing.rows.length > 0) {
-            const conflictTime = new Date(existing.rows[0].datetime).toLocaleTimeString('vi-VN', {
+            const conflict = existing.rows[0];
+            const startStr = new Date(conflict.datetime).toLocaleTimeString('vi-VN', {
                 hour: '2-digit',
-                minute: '2-digit'
+                minute: '2-digit',
+                timeZone: 'Asia/Ho_Chi_Minh'
             });
-            const conflictDate = new Date(existing.rows[0].datetime).toLocaleDateString('vi-VN', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric'
+            const conflictDuration = conflict.type === 'trial' ? 50 : 120;
+            const endStr = new Date(new Date(conflict.datetime).getTime() + conflictDuration * 60000).toLocaleTimeString('vi-VN', {
+                hour: '2-digit',
+                minute: '2-digit',
+                timeZone: 'Asia/Ho_Chi_Minh'
             });
-            const durationText = duration === 1 ? '1 tiếng' : '2 tiếng';
+
             return res.status(400).json({ 
                 success: false, 
-                message: `Gia sư đã có lớp học vào ${conflictDate} lúc ${conflictTime}. Lớp ${type === 'trial' ? 'thử' : 'thật'} kéo dài ${durationText}, vui lòng chọn thời gian cách nhau ít nhất ${durationText}.` 
+                message: `Gia sư đã có lớp học từ ${startStr} đến ${endStr}. Vui lòng chọn khung giờ khác!` 
             });
         }
 
@@ -87,7 +91,7 @@ export const postBooking = async (req, res) => {
             console.log(`User has enough balance (${wallet.balance}) for fee ${fee}. Deduction will happen on tutor acceptance.`);
         }
 
-        console.log(`Creating booking: status=${type === 'trial' ? 'confirmed' : 'pending'}`);
+        console.log(`Creating booking: status=pending (Type: ${type})`);
         
         try {
             const newBooking = await BookingService.createBooking({
@@ -95,13 +99,11 @@ export const postBooking = async (req, res) => {
                 tutor_id,
                 subject_id,
                 datetime,
-                fee: type === 'trial' ? 0 : fee, // Học thử thường miễn phí
+                fee: type === 'trial' ? 0 : fee, 
                 type,
-                status: type === 'trial' ? 'confirmed' : 'pending'
+                status: 'pending'
             });
 
-            // Nếu là trial (confirmed ngay), tạo phòng luôn (Service đã làm việc này nếu status là confirmed)
-            
             console.log(`Booking created successfully: ${newBooking.id}`);
             res.status(201).json({ success: true, data: newBooking });
         } catch (bookingError) {
@@ -220,5 +222,96 @@ export const rejectBooking = async (req, res) => {
         res.status(200).json({ success: true, message: "Đã từ chối lịch học", data: updated });
     } catch (error) {
         res.status(400).json({ success: false, message: error.message });
+    }
+};
+
+export const getBookingById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const booking = await BookingService.getBookingById(id);
+        
+        if (!booking) {
+            return res.status(404).json({ success: false, message: "Không tìm thấy thông tin đặt lịch" });
+        }
+        
+        res.status(200).json({ success: true, data: booking });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+export const tutorConfirm = async (req, res) => {
+    try {
+        const bookingId = req.params.id;
+        let tutorId = req.user?.id;
+        const userRole = req.user?.role;
+
+        // Tìm thông tin booking để lấy tutor_id gốc
+        const bookingRes = await db.query('SELECT tutor_id FROM bookings WHERE id = $1', [bookingId]);
+        if (bookingRes.rows.length === 0) {
+            return res.status(404).json({ success: false, message: "Không tìm thấy booking cho lịch đặt này" });
+        }
+
+        const realTutorId = bookingRes.rows[0].tutor_id;
+
+        if (userRole === 'admin') {
+            tutorId = realTutorId; // Nếu là admin, gán tutorId thành gia sư thực tế để confirm hộ
+            console.log(`[tutorConfirm] Admin ${req.user?.id} đang xác nhận hộ Gia sư ${realTutorId} cho booking ${bookingId}`);
+        } else if (String(tutorId) !== String(realTutorId)) {
+            return res.status(403).json({ success: false, message: "Bạn không có quyền xác nhận buổi học này" });
+        }
+
+        // Tìm lesson_session cho booking này
+        const sessionRes = await db.query('SELECT id FROM lesson_sessions WHERE booking_id = $1', [bookingId]);
+        if (sessionRes.rows.length === 0) {
+            return res.status(404).json({ success: false, message: "Không tìm thấy buổi học cho lịch đặt này" });
+        }
+
+        const lessonSessionId = sessionRes.rows[0].id;
+
+        // Gọi lessonSessionService
+        const updated = await lessonSessionService.confirmTutorTaught(lessonSessionId, tutorId);
+        
+        return res.status(200).json({ success: true, data: updated });
+    } catch (error) {
+        return res.status(error.statusCode || 500).json({ success: false, message: error.message || "Xác nhận thất bại" });
+    }
+};
+
+export const learnerConfirm = async (req, res) => {
+    try {
+        const bookingId = req.params.id;
+        let learnerId = req.user?.id;
+        const userRole = req.user?.role;
+
+        // Tìm thông tin booking để lấy learner_id gốc
+        const bookingRes = await db.query('SELECT learner_id FROM bookings WHERE id = $1', [bookingId]);
+        if (bookingRes.rows.length === 0) {
+            return res.status(404).json({ success: false, message: "Không tìm thấy booking cho lịch đặt này" });
+        }
+
+        const realLearnerId = bookingRes.rows[0].learner_id;
+
+        if (userRole === 'admin') {
+            learnerId = realLearnerId; // Nếu là admin, gán learnerId thành học viên thực tế để confirm hộ
+            console.log(`[learnerConfirm] Admin ${req.user?.id} đang xác nhận hộ Học viên ${realLearnerId} cho booking ${bookingId}`);
+        } else if (String(learnerId) !== String(realLearnerId)) {
+            return res.status(403).json({ success: false, message: "Bạn không có quyền xác nhận buổi học này" });
+        }
+
+        // Tìm lesson_session cho booking này
+        const sessionRes = await db.query('SELECT id FROM lesson_sessions WHERE booking_id = $1', [bookingId]);
+        if (sessionRes.rows.length === 0) {
+            return res.status(404).json({ success: false, message: "Không tìm thấy buổi học cho lịch đặt này" });
+        }
+
+        const lessonSessionId = sessionRes.rows[0].id;
+
+        // Gọi lessonSessionService
+        const updated = await lessonSessionService.confirmLearnerStudied(lessonSessionId, learnerId);
+        
+        return res.status(200).json({ success: true, data: updated });
+    } catch (error) {
+        return res.status(error.statusCode || 500).json({ success: false, message: error.message || "Xác nhận thất bại" });
     }
 };

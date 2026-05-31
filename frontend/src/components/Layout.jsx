@@ -49,7 +49,7 @@ export function Layout() {
   ];
 
   const tutorNavLinks = [
-    { name: "Dashboard", path: "/dashboard", icon: GraduationCap },
+    { name: "Dashboard", path: "/tutor/dashboard", icon: GraduationCap },
     { name: "Lịch dạy", path: "/tutor/schedule", icon: Calendar },
     { name: "Học viên", path: "/tutor/students", icon: Users },
     { name: "Tin nhắn", path: "/messages", icon: MessageSquare },
@@ -202,7 +202,7 @@ export function Layout() {
                         ) : user?.role === "tutor" ? (
                           <>
                             <Link
-                              to="/dashboard"
+                              to="/tutor/dashboard"
                               className="block px-4 py-2 text-sm hover:bg-slate-100"
                               onClick={() => setOpen(false)}
                             >
@@ -215,6 +215,13 @@ export function Layout() {
                             >
                               Lịch dạy
                             </Link>
+                              <Link
+                                  to="/tutor/students"
+                                  className="block px-4 py-2 text-sm hover:bg-slate-100"
+                                  onClick={() => setOpen(false)}
+                                >
+                                  Học viên
+                                </Link>
                           </>
                         ) : (
                           <>

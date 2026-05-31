@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import adminApi from "../../api/adminApi";
 import { useAuth } from "../../context/AuthContext";
 import { ImageWithFallback } from "../../components/Image/ImageWithFallback";
+import { getAvatarUrl } from "../../utils/avatar.js";
 
 export function AdminUsersPage() {
   const { user } = useAuth();
@@ -118,7 +119,7 @@ export function AdminUsersPage() {
                       <td className="p-4">
                         <div className="flex items-center gap-3">
                           <ImageWithFallback
-                            src={u.avatar}
+                            src={getAvatarUrl(u.avatar)}
                             alt={u.name}
                             className="w-10 h-10 rounded-full object-cover"
                           />

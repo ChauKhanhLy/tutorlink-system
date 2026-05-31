@@ -19,6 +19,8 @@ import { toast } from "sonner";
 import { tutorApi } from "../api/tutorApi";
 import { bookingApi } from "../api/bookingApi";
 import { reviewApi } from "../api/reviewApi";
+import { favoriteApi } from "../api/favoriteApi";
+import { useAuth } from "../context/AuthContext.jsx";
 import { ImageWithFallback } from "../components/Image/ImageWithFallback";
 import { getAvatarUrl } from "../utils/avatar.js";
 
@@ -31,10 +33,14 @@ export function TutorProfilePage() {
   const [bookingType, setBookingType] = React.useState("trial"); // "trial" hoặc "regular"
   const [loading, setLoading] = React.useState(true);
   const [reviews, setReviews] = React.useState([]);
+  const calendarDayCount = Math.max(60, availableSlots.length);
   const formatVND = (price) => {
     return new Intl.NumberFormat("vi-VN").format(price || 0) + "đ";
   };
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [isFavorite, setIsFavorite] = React.useState(false);
+  const [favoriteLoading, setFavoriteLoading] = React.useState(false);
   const selectedDay = availableSlots.find((s) => s.date === selectedDate);
 
   React.useEffect(() => {
@@ -63,6 +69,22 @@ export function TutorProfilePage() {
     };
     fetchTutor();
   }, [id]);
+
+  // Kiểm tra trạng thái yêu thích
+  React.useEffect(() => {
+    const checkFavorite = async () => {
+      if (!user || user.role !== "learner" || !tutor) return;
+      try {
+        const res = await favoriteApi.getMyFavorites();
+        const favorites = res.data.data || [];
+        const found = favorites.some((fav) => fav.id === tutor.id);
+        setIsFavorite(found);
+      } catch (error) {
+        console.error("Lỗi kiểm tra yêu thích:", error);
+      }
+    };
+    checkFavorite();
+  }, [tutor, user]);
 
   /*const handleBooking = async () => {
     if (!selectedTime) {
@@ -124,53 +146,10 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
       return;
     }
 
-    /*try {
-      /*const startTime = new Date(`${selectedDate}T${selectedTime}`);
-      const endTime = new Date(startTime.getTime() + 50 * 60000);
-
-      // Lấy subject_id đầu tiên của gia sư nếu có
-      const subjectId = tutor.subject_ids?.[0] || null;
-
-      await bookingApi.create({
-        tutorId: tutor.id,
-        subjectId: subjectId,
-        startTime: startTime.toISOString(),
-        endTime: endTime.toISOString(),
-        type: bookingType,
-        fee: bookingType === "trial" ? 0 : (tutor.hourly_fee || 0)
-      });
-
-      toast.success(bookingType === "trial" ? "Đặt lịch học thử thành công!" : "Đặt lịch học thành công!");
-      navigate("/dashboard");
-      const datetimeString = `${selectedDate}T${selectedTime}:00Z`;
-
-      // 2. GỬI DỮ LIỆU LÊN BACKEND
-      const response = await bookingApi.create({
-        tutor_id: tutor.id,          // Phải dùng đúng tên tutor_id (có gạch dưới)
-        subject_id: tutor.subject_ids?.[0] || "900b2ea5-16ea-4c80-93b1-0f1cc50b4adf", // Mã thật đã test
-        datetime: datetimeString,    // Gửi datetime duy nhất
-        fee: bookingType === "trial" ? 0 : (tutor.hourly_fee || 150000),
-      });
-
-      if (response.data.success) {
-        toast.success("Đặt lịch thành công! Đang chuyển đến danh sách...");
-
-        // 3. ĐIỀU HƯỚNG
-        // Sau khi đặt xong, status sẽ là 'pending'. 
-        // Ta chuyển về Dashboard để người dùng nhấn nút "Thanh toán"
-        setTimeout(() => {
-          navigate("/dashboard");
-        }, 1500);
-      }
-    } catch (err) {
-      console.error("Lỗi đặt lịch:", err);
-      toast.error(err.response?.data?.message || "Lỗi không xác định");
-    }
-  };*/
     try {
       // --- BẮT ĐẦU ĐOẠN SỬA ---
       // 1. Xử lý selectedTime để chuyển từ "24.00" thành "00:00" (ngày hôm sau)
-      let [hours, minutes] = selectedTime.split(':');
+      let [hours, minutes] = selectedTime.split(":");
       hours = parseInt(hours);
       minutes = parseInt(minutes);
 
@@ -180,32 +159,62 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
         hours = hours - 24;
         const nextDay = new Date(selectedDate);
         nextDay.setDate(nextDay.getDate() + 1);
-        dateToUse = nextDay.toISOString().split('T')[0];
+        dateToUse = nextDay.toISOString().split("T")[0];
       }
 
       // 2. Tạo datetime đúng cách - giữ nguyên giờ Việt Nam
-      const datetimeString = `${dateToUse}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
+      const datetimeString = `${dateToUse}T${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:00`;
 
       // 3. Gửi datetime lên backend với timezone Việt Nam
-      const subjectId = tutor.subject_ids?.[0] || "900b2ea5-16ea-4c80-93b1-0f1cc50b4adf";
+      const subjectId =
+        tutor.subject_ids?.[0] || "900b2ea5-16ea-4c80-93b1-0f1cc50b4adf";
       const bookingData = {
         tutor_id: tutor.id,
         subject_id: subjectId,
         datetime: datetimeString, // Không ép về UTC, để backend xử lý
         type: bookingType,
-        fee: bookingType === "trial" ? 0 : (tutor.hourly_fee || 0)
+        fee: bookingType === "trial" ? 0 : tutor.hourly_fee || 0,
       };
 
       console.log("Sending booking data:", bookingData);
-
       await bookingApi.create(bookingData);
-
-      toast.success(bookingType === "trial" ? "Đặt lịch học thử thành công!" : "Đặt lịch học thành công!");
+      toast.success(
+        bookingType === "trial"
+          ? "Đặt lịch học thử thành công!"
+          : "Đặt lịch học thành công!",
+      );
       navigate("/dashboard");
     } catch (err) {
       console.error("Lỗi đặt lịch:", err);
       // Hiển thị thông báo lỗi cụ thể từ Backend ném về
       toast.error(err.response?.data?.message || "Gia sư đã có lịch dạy khác!");
+    }
+  };
+
+  const handleToggleFavorite = async () => {
+    if (!user) {
+      toast.error("Vui lòng đăng nhập để lưu gia sư");
+      return;
+    }
+    if (user.role !== "learner") {
+      toast.error("Chức năng chỉ dành cho học viên");
+      return;
+    }
+    setFavoriteLoading(true);
+    try {
+      if (isFavorite) {
+        await favoriteApi.removeFavorite(tutor.id);
+        setIsFavorite(false);
+        toast.success("Đã xóa khỏi danh sách yêu thích");
+      } else {
+        await favoriteApi.addFavorite(tutor.id);
+        setIsFavorite(true);
+        toast.success("Đã lưu gia sư vào danh sách");
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Có lỗi xảy ra");
+    } finally {
+      setFavoriteLoading(false);
     }
   };
 
@@ -285,8 +294,14 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
                       </div>
                     </div>
                     <div className="flex space-x-2">
-                      <button className="p-3 bg-slate-50 hover:bg-slate-100 rounded-2xl transition-colors border border-slate-100">
-                        <Heart className="h-5 w-5 text-slate-400" />
+                      <button
+                        onClick={handleToggleFavorite}
+                        disabled={favoriteLoading}
+                        className="p-3 bg-slate-50 hover:bg-slate-100 rounded-2xl transition-colors border border-slate-100"
+                      >
+                        <Heart
+                          className={`h-5 w-5 ${isFavorite ? "fill-rose-500 text-rose-500" : "text-slate-400"}`}
+                        />
                       </button>
                       <button className="p-3 bg-slate-50 hover:bg-slate-100 rounded-2xl transition-colors border border-slate-100">
                         <Share2 className="h-5 w-5 text-slate-400" />
@@ -324,7 +339,7 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
                           ? Array.isArray(tutor.languages)
                             ? tutor.languages.join(", ")
                             : typeof tutor.languages === "string" &&
-                              tutor.languages.startsWith("[")
+                                tutor.languages.startsWith("[")
                               ? JSON.parse(tutor.languages).join(", ")
                               : tutor.languages
                           : "Tiếng Việt"}
@@ -335,7 +350,8 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
                         Kinh nghiệm
                       </div>
                       <div className="text-sm font-bold text-slate-900">
-                        {tutor.experience || `${tutor.lessonsTaught || 120}+ bài học`}
+                        {tutor.experience ||
+                          `${tutor.lessonsTaught || 120}+ bài học`}
                       </div>
                     </div>
                   </div>
@@ -408,7 +424,9 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
                 </div>
                 <div className="space-y-8">
                   {reviews.length === 0 && (
-                    <p className="text-sm text-slate-500">Gia sư chưa có đánh giá nào.</p>
+                    <p className="text-sm text-slate-500">
+                      Gia sư chưa có đánh giá nào.
+                    </p>
                   )}
                   {reviews.map((review) => (
                     <div
@@ -451,7 +469,9 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
                       </p>
                       <div className="mt-4 text-xs font-bold text-slate-400">
                         {review.createdAt
-                          ? new Date(review.createdAt).toLocaleDateString("vi-VN")
+                          ? new Date(review.createdAt).toLocaleDateString(
+                              "vi-VN",
+                            )
                           : ""}
                       </div>
                     </div>
@@ -468,7 +488,9 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
                 <div className="p-8">
                   <div className="flex items-baseline justify-between mb-8">
                     <div className="text-3xl font-extrabold text-slate-900">
-                      {bookingType === "trial" ? "0đ" : formatVND(tutor.hourlyRate || tutor.hourly_fee)}
+                      {bookingType === "trial"
+                        ? "0đ"
+                        : formatVND(tutor.hourlyRate || tutor.hourly_fee)}
                     </div>
                     <div className="text-slate-400 text-sm font-bold">
                       Bài học 50 phút
@@ -483,19 +505,21 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
                     <div className="grid grid-cols-2 gap-3">
                       <button
                         onClick={() => setBookingType("trial")}
-                        className={`py-3 px-4 rounded-2xl text-sm font-bold transition-all border-2 ${bookingType === "trial"
-                          ? "border-indigo-600 bg-indigo-50 text-indigo-600 shadow-md"
-                          : "border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-200"
-                          }`}
+                        className={`py-3 px-4 rounded-2xl text-sm font-bold transition-all border-2 ${
+                          bookingType === "trial"
+                            ? "border-indigo-600 bg-indigo-50 text-indigo-600 shadow-md"
+                            : "border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-200"
+                        }`}
                       >
                         Học thử (0đ)
                       </button>
                       <button
                         onClick={() => setBookingType("regular")}
-                        className={`py-3 px-4 rounded-2xl text-sm font-bold transition-all border-2 ${bookingType === "regular"
-                          ? "border-indigo-600 bg-indigo-50 text-indigo-600 shadow-md"
-                          : "border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-200"
-                          }`}
+                        className={`py-3 px-4 rounded-2xl text-sm font-bold transition-all border-2 ${
+                          bookingType === "regular"
+                            ? "border-indigo-600 bg-indigo-50 text-indigo-600 shadow-md"
+                            : "border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-200"
+                        }`}
                       >
                         Học thật
                       </button>
@@ -517,7 +541,7 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
                         </button>
                       </div>
                     </div>
-                    <div className="grid grid-cols-7 gap-2 text-center mb-4">
+                    <div className="grid grid-cols-7 gap-2 text-center mb-4 max-h-64 overflow-y-auto pr-2">
                       {["T2", "T3", "T4", "T5", "T6", "T7", "CN"].map((d) => (
                         <span
                           key={d}
@@ -527,45 +551,57 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
                         </span>
                       ))}
 
-                      {/* Render 14 calendar days continuously */}
-                      {Array.from({ length: 14 }).map((_, idx) => {
-                        const d = new Date();
-                        d.setDate(d.getDate() + idx);
-                        const year = d.getFullYear();
-                        const month = String(d.getMonth() + 1).padStart(2, '0');
-                        const dayOfMonth = String(d.getDate()).padStart(2, '0');
-                        const dateStr = `${year}-${month}-${dayOfMonth}`;
+                      {/* Render upcoming calendar days continuously */}
+                      {Array.from({ length: calendarDayCount }).map(
+                        (_, idx) => {
+                          const d = new Date();
+                          d.setDate(d.getDate() + idx);
+                          const year = d.getFullYear();
+                          const month = String(d.getMonth() + 1).padStart(
+                            2,
+                            "0",
+                          );
+                          const dayOfMonth = String(d.getDate()).padStart(
+                            2,
+                            "0",
+                          );
+                          const dateStr = `${year}-${month}-${dayOfMonth}`;
 
-                        const jsDay = d.getDay(); // 0 (Sun) to 6 (Sat)
-                        const colStart = jsDay === 0 ? 7 : jsDay;
+                          const jsDay = d.getDay(); // 0 (Sun) to 6 (Sat)
+                          const colStart = jsDay === 0 ? 7 : jsDay;
 
-                        // Check if this date has available slots from backend
-                        const availableSlot = availableSlots.find(s => s.date === dateStr);
-                        const isAvailable = !!availableSlot;
+                          // Check if this date has available slots from backend
+                          const availableSlot = availableSlots.find(
+                            (s) => s.date === dateStr,
+                          );
+                          const isAvailable = !!availableSlot;
 
-                        // Only the very first box needs gridColumnStart to align properly
-                        const styleDesc = idx === 0 ? { gridColumnStart: colStart } : {};
+                          // Only the very first box needs gridColumnStart to align properly
+                          const styleDesc =
+                            idx === 0 ? { gridColumnStart: colStart } : {};
 
-                        return (
-                          <button
-                            key={dateStr}
-                            disabled={!isAvailable}
-                            style={styleDesc}
-                            onClick={() => {
-                              setSelectedDate(dateStr);
-                              setSelectedTime(null);
-                            }}
-                            className={`py-2 text-xs font-bold rounded-xl transition-all ${selectedDate === dateStr
-                              ? "bg-indigo-600 text-white shadow-lg"
-                              : isAvailable
-                                ? "hover:bg-indigo-50 text-slate-700 cursor-pointer"
-                                : "text-slate-300 cursor-not-allowed opacity-50"
+                          return (
+                            <button
+                              key={dateStr}
+                              disabled={!isAvailable}
+                              style={styleDesc}
+                              onClick={() => {
+                                setSelectedDate(dateStr);
+                                setSelectedTime(null);
+                              }}
+                              className={`py-2 text-xs font-bold rounded-xl transition-all ${
+                                selectedDate === dateStr
+                                  ? "bg-indigo-600 text-white shadow-lg"
+                                  : isAvailable
+                                    ? "hover:bg-indigo-50 text-slate-700 cursor-pointer"
+                                    : "text-slate-300 cursor-not-allowed opacity-50"
                               }`}
-                          >
-                            {d.getDate()}
-                          </button>
-                        );
-                      })}
+                            >
+                              {d.getDate()}
+                            </button>
+                          );
+                        },
+                      )}
                     </div>
                   </div>
 
@@ -580,10 +616,11 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
                           <button
                             key={time}
                             onClick={() => setSelectedTime(time)}
-                            className={`py-3 text-xs font-bold border rounded-2xl transition-all ${selectedTime === time
-                              ? "bg-indigo-50 border-indigo-600 text-indigo-600"
-                              : "border-slate-100 text-slate-600 hover:border-slate-200 hover:bg-slate-50"
-                              }`}
+                            className={`py-3 text-xs font-bold border rounded-2xl transition-all ${
+                              selectedTime === time
+                                ? "bg-indigo-50 border-indigo-600 text-indigo-600"
+                                : "border-slate-100 text-slate-600 hover:border-slate-200 hover:bg-slate-50"
+                            }`}
                           >
                             {time}
                           </button>

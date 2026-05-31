@@ -8,6 +8,8 @@ import {
   Trash2,
   DollarSign,
   Loader2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -16,11 +18,10 @@ import { tutorApi } from "../api/tutorApi";
 import { bookingApi } from "../api/bookingApi";
 import { FeedbackMiniPage } from "../components/FeedbackMiniPage";
 
-import { ImageWithFallback } from "../components/Image/ImageWithFallback";
 import { WalletPage } from "./Wallet.jsx";
 import DatePicker from "react-multi-date-picker";
 import "react-multi-date-picker/styles/colors/purple.css";
-import { getAvatarUrl } from "../utils/avatar.js";
+import { ScheduleCalendar } from "../components/ScheduleCalendar";
 
 import { toast } from "sonner";
 
@@ -28,27 +29,38 @@ export function TutorDashboard() {
   const navigate = useNavigate();
   const { user, refreshUser } = useAuth();
 
+  //const isPending =
+  //  user?.role === "tutor" &&
+  //  user?.verified === false;
+
+  const [loadingUser, setLoadingUser] =
+    React.useState(true);
+
+  const [stats, setStats] =
+    React.useState({
+      todaySessions: 0,
+      totalStudents: 0,
+      monthlyEarnings: 0,
+      avgRating: 0,
+    });
+   //const [activeTab, setActiveTab] = React.useState("sessions");
   const isPending = user?.role === "tutor" && user?.verified === false;
 
-  const [loadingUser, setLoadingUser] = React.useState(true);
+  //const [loadingUser, setLoadingUser] = React.useState(true);
   const [loadingAvailability, setLoadingAvailability] = React.useState(false);
 
-  const [stats, setStats] = React.useState({
-    todaySessions: 0,
-    totalStudents: 0,
-    monthlyEarnings: 0,
-    avgRating: 0,
-  });
 
   const [upcomingSessions, setUpcomingSessions] = React.useState([]);
   const [availability, setAvailability] = React.useState([]);
 
   const [activeTab, setActiveTab] = React.useState("sessions");
+  const [viewMode, setViewMode] = React.useState("calendar"); // "list" | "calendar"
   const [showAvailabilityModal, setShowAvailabilityModal] =
     React.useState(false);
 
   const fetchTutorData = async () => {
     if (!user?.id || isPending) return;
+
     try {
       const [statsRes, sessionsRes, availabilityRes] = await Promise.all([
         tutorApi.getTutorStats(),
@@ -57,7 +69,11 @@ export function TutorDashboard() {
       ]);
 
       setStats(statsRes.data.data || statsRes.data);
-      setUpcomingSessions(sessionsRes.data || []);
+      const mappedSessions = (sessionsRes.data || []).map(s => ({
+        ...s,
+        dateObj: new Date(s.datetime)
+      }));
+      setUpcomingSessions(mappedSessions);
       setAvailability(
         availabilityRes.data?.availableSlots || availabilityRes.data || [],
       );
@@ -70,9 +86,11 @@ export function TutorDashboard() {
   React.useEffect(() => {
     const loadUser = async () => {
       if (!user?.id) return;
+
       await refreshUser();
       setLoadingUser(false);
     };
+
     loadUser();
   }, [user?.id, refreshUser]);
 
@@ -85,8 +103,13 @@ export function TutorDashboard() {
   const handleAccept = async (bookingId) => {
     try {
       if (window.confirm("Bạn có chắc chắn muốn chấp nhận lịch học này?")) {
+        const booking = upcomingSessions.find(s => s.id === bookingId);
         await bookingApi.accept(bookingId);
-        toast.success("Đã chấp nhận lịch học và hoàn tất thanh toán!");
+        if (booking?.type === 'trial') {
+          toast.success("Đã xác nhận buổi học thử!");
+        } else {
+          toast.success("Đã chấp nhận lịch học và hoàn tất thanh toán!");
+        }
         await fetchTutorData();
       }
     } catch (err) {
@@ -132,26 +155,36 @@ export function TutorDashboard() {
   return (
     <div className="pt-24 min-h-screen bg-slate-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
         <div className="mb-8">
           <h1 className="text-3xl font-extrabold text-slate-900">
             Xin chào, {user?.name}
           </h1>
-          <p className="text-slate-500">Quản lý lớp học và thu nhập của bạn</p>
+
+          <p className="text-slate-500">
+            Quản lý lớp học và thu nhập của bạn
+          </p>
 
           {isPending && (
             <div className="mt-4 p-5 bg-yellow-50 border border-yellow-200 rounded-2xl">
+
               <p className="text-yellow-700 font-semibold mb-2">
                 Bạn chưa phải gia sư chính thức
               </p>
+
               <p className="text-sm text-yellow-600 mb-4">
                 Hãy hoàn thiện hồ sơ để gửi admin xét duyệt
               </p>
+
               <button
-                onClick={() => navigate("/become-tutor")}
+                onClick={() =>
+                  navigate("/become-tutor")
+                }
                 className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700"
               >
                 Đăng ký gia sư chính thức
               </button>
+
             </div>
           )}
         </div>
@@ -160,78 +193,89 @@ export function TutorDashboard() {
           <>
             {/* Stats */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+
               <StatCard
                 icon={Calendar}
                 label="Buổi học hôm nay"
                 value={stats.todaySessions}
                 color="bg-blue-50 text-blue-600"
               />
+
               <StatCard
                 icon={Users}
                 label="Học viên"
                 value={stats.totalStudents}
                 color="bg-green-50 text-green-600"
               />
+
               <StatCard
                 icon={Wallet}
                 label="Thu nhập tháng"
-                value={`${stats.monthlyEarnings.toLocaleString("vi-VN")} ₫`}
+                value={`${stats.monthlyEarnings.toLocaleString(
+                  "vi-VN"
+                )} ₫`}
                 color="bg-emerald-50 text-emerald-600"
               />
+
               <StatCard
                 icon={Star}
                 label="Đánh giá"
-                value={stats.avgRating.toFixed(1)}
+                value={(stats.avgRating || 0).toFixed(1)}
                 color="bg-amber-50 text-amber-600"
               />
-            </div>
 
-            {/* Tabs */}
-            <div className="flex gap-2 mb-8 bg-white p-1.5 rounded-2xl border border-slate-200 w-fit shadow-sm">
-              {[
-                { id: "sessions", label: "Lịch dạy", icon: Calendar },
-                { id: "wallet", label: "Ví của tôi", icon: Wallet },
-                { id: "availability", label: "Lịch rảnh", icon: Clock },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${
-                    activeTab === tab.id
-                      ? "bg-indigo-600 text-white shadow-md"
-                      : "text-slate-500 hover:bg-slate-50"
-                  }`}
-                >
-                  <tab.icon className="h-4 w-4" />
-                  {tab.label}
-                </button>
-              ))}
             </div>
+           
+            
+            {/* Quick Menu */}
+            <div className="grid md:grid-cols-3 gap-6 mb-10">
 
-            {/* Sessions */}
-            {activeTab === "sessions" && (
-              <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-8">
-                <h2 className="text-xl font-bold text-slate-900 mb-6">
-                  Lịch dạy sắp tới
-                </h2>
-                <div className="space-y-4">
-                  {upcomingSessions.length > 0 ? (
-                    upcomingSessions.map((session) => (
-                      <SessionCard
-                        key={session.id}
-                        session={session}
-                        onAccept={() => handleAccept(session.id)}
-                        onReject={() => handleReject(session.id)}
-                      />
-                    ))
-                  ) : (
-                    <p className="text-slate-400 text-center py-8">
-                      Chưa có lịch dạy nào sắp tới
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
+              <Link
+                to="/tutor/schedule"
+                className="bg-white p-8 rounded-3xl border border-slate-200 hover:border-indigo-300 transition-all"
+              >
+                <Calendar className="h-10 w-10 text-indigo-600 mb-4" />
+
+                <h3 className="text-xl font-bold text-slate-900 mb-2">
+                  Lịch dạy
+                </h3>
+
+                <p className="text-slate-500">
+                  Quản lý lịch học và lịch rảnh
+                </p>
+              </Link>
+
+              <Link
+                to="/tutor/students"
+                className="bg-white p-8 rounded-3xl border border-slate-200 hover:border-indigo-300 transition-all"
+              >
+                <Users className="h-10 w-10 text-indigo-600 mb-4" />
+
+                <h3 className="text-xl font-bold text-slate-900 mb-2">
+                  Học viên
+                </h3>
+
+                <p className="text-slate-500">
+                  Danh sách học viên học thử và học chính thức
+                </p>
+              </Link>
+
+              <Link
+                to="/wallet"
+                className="bg-white p-8 rounded-3xl border border-slate-200 hover:border-indigo-300 transition-all"
+              >
+                <Wallet className="h-10 w-10 text-indigo-600 mb-4" />
+
+                <h3 className="text-xl font-bold text-slate-900 mb-2">
+                  Ví của tôi
+                </h3>
+
+                <p className="text-slate-500">
+                  Xem số dư ví, nạp tiền và lịch sử thu nhập
+                </p>
+              </Link>
+
+            </div>
 
             {/* Wallet */}
             {activeTab === "wallet" && (
@@ -301,24 +345,22 @@ export function TutorDashboard() {
           </div>
         )}
       </div>
-
-      {showAvailabilityModal && (
-        <AvailabilityModal
-          onClose={() => setShowAvailabilityModal(false)}
-          onSave={handleUpdateAvailability}
-          isLoading={loadingAvailability}
-        />
-      )}
     </div>
   );
 }
 
-// ========== StatCard ==========
-function StatCard({ icon: Icon, label, value, color }) {
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  color,
+}) {
   return (
     <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
       <div className="flex items-center gap-3 mb-4">
-        <div className={`p-3 rounded-xl ${color}`}>
+        <div
+          className={`p-3 rounded-xl ${color}`}
+        >
           <Icon className="h-6 w-6" />
         </div>
         <span className="text-sm font-medium text-slate-500">{label}</span>
@@ -377,7 +419,9 @@ function SessionCard({ session, onAccept, onReject }) {
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2 mb-1">
               <h4 className="font-bold text-slate-900 truncate">
-                {session.subject || "Lớp học"}
+                <Link to={`/classroom/${session.tutor_id || session.tutorId}/${session.subject_id || session.subjectId}`} className="hover:text-indigo-600 transition-colors">
+                  {session.subject || "Lớp học"}
+                </Link>
               </h4>
               <span
                 className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider whitespace-nowrap ${
@@ -473,6 +517,7 @@ function AvailabilityModal({ onClose, onSave, isLoading = false }) {
   const [selectedDates, setSelectedDates] = React.useState([]);
   const [selectedTimes, setSelectedTimes] = React.useState([]);
   const [availabilityMap, setAvailabilityMap] = React.useState({});
+  const [repeatWeekly, setRepeatWeekly] = React.useState(false);
 
   const TIMES = [
     "08:00",
@@ -537,7 +582,7 @@ function AvailabilityModal({ onClose, onSave, isLoading = false }) {
       date,
       times,
     }));
-    await onSave({ dates: datesArray });
+    await onSave({ dates: datesArray, repeatWeekly });
   };
 
   return (
@@ -606,6 +651,24 @@ function AvailabilityModal({ onClose, onSave, isLoading = false }) {
                   </button>
                 )}
               />
+            </div>
+            <div className="mt-6 bg-white rounded-2xl p-4 border shadow-sm">
+              <p className="font-bold text-slate-800 mb-1">Lặp lại hàng tuần</p>
+              <p className="text-xs text-slate-500 mb-3">
+                Nếu bật, các ngày đã chọn sẽ thành lịch rảnh cố định theo thứ hàng tuần.
+              </p>
+              <button
+                type="button"
+                onClick={() => setRepeatWeekly(!repeatWeekly)}
+                disabled={isLoading}
+                className={`w-full py-3 rounded-xl font-bold transition ${
+                  repeatWeekly
+                    ? "bg-indigo-600 text-white"
+                    : "bg-slate-100 text-slate-500"
+                } disabled:opacity-50`}
+              >
+                {repeatWeekly ? "✓ Đang bật lặp hàng tuần" : "Không lặp"}
+              </button>
             </div>
             <button
               onClick={addCurrentDate}

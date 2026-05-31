@@ -17,12 +17,14 @@ import { toast } from "sonner";
 import { useAuth } from "../context/AuthContext";
 import { ImageWithFallback } from "../components/Image/ImageWithFallback";
 import api from "../api/axiosClient";
+import { getAvatarUrl } from "../utils/avatar";
 
 export function ProfilePage() {
   const {
-  user,
-  setUser
-} = useAuth()
+    user,
+    setUser,
+    updateUser,
+  } = useAuth();
  const [
   isEditingProfile,
   setIsEditingProfile
@@ -172,7 +174,10 @@ const handleSaveLearning = async () => {
 
       const res = await api.post("/users/avatar", formData);
 
-      ;
+      if (res.data && res.data.user) {
+        setUser(res.data.user);
+        localStorage.setItem("user", JSON.stringify(res.data.user));
+      }
       toast.success("Cập nhật avatar thành công");
     } catch (err) {
       console.error(err);
@@ -284,11 +289,12 @@ const handleChangePassword = async () => {
               <div className="relative w-32 h-32 mx-auto mb-4">
                 <div className="w-full h-full rounded-full overflow-hidden border-4 border-indigo-100 shadow-lg">
                   <ImageWithFallback
-                    src={
-                      user?.avatar
-                        ? `http://localhost:3000${user.avatar}`
-                        : "https://i.pravatar.cc/150"
-                    }
+                    // src={
+                    //   user?.avatar
+                    //     ? `http://localhost:3000${user.avatar}`
+                    //     : "https://i.pravatar.cc/150"
+                    // }
+                    src={getAvatarUrl(user?.avatar)}
                     alt={user?.name}
                     className="w-full h-full object-cover"
                   />
