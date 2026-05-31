@@ -28,23 +28,50 @@ const ensureTable = async () => {
     ADD COLUMN IF NOT EXISTS specific_date DATE
   `)
 
+  await db.query(`
+    CREATE INDEX IF NOT EXISTS idx_tutor_availabilities_tutor_id
+    ON tutor_availabilities (tutor_id)
+  `)
+
   isTableReady = true
 }
 
 export const replaceTutorAvailability = async (tutorId, items = []) => {
   await ensureTable();
-  console.log('replaceTutorAvailability: tutorId =', tutorId, 'items count =', items.length);
+  console.log('saveTutorAvailability: tutorId =', tutorId, 'items count =', items.length);
 
   const client = await db.connect();
   try {
     await client.query('BEGIN');
-    //await client.query('DELETE FROM tutor_availabilities WHERE tutor_id = $1', [tutorId]);
-    console.log('Deleted old availabilities for tutor', tutorId);
+    await client.query(
+      `DELETE FROM tutor_availabilities
+       WHERE tutor_id = $1
+         AND specific_date IS NOT NULL
+         AND specific_date < CURRENT_DATE`,
+      [tutorId]
+    );
+    console.log('Deleted past availabilities for tutor', tutorId);
 
     if (items.length) {
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
         console.log(`Inserting item ${i}:`, item);
+        await client.query(
+          `DELETE FROM tutor_availabilities
+           WHERE tutor_id = $1
+             AND COALESCE(day_of_week, -1) = COALESCE($2::smallint, -1)
+             AND COALESCE(specific_date, DATE '1900-01-01') = COALESCE($3::date, DATE '1900-01-01')
+             AND start_time = $4
+             AND end_time = $5`,
+          [
+            tutorId,
+            item.dayOfWeek ?? null,
+            item.specificDate ?? null,
+            item.startTime,
+            item.endTime
+          ]
+        );
+
         await client.query(
           `INSERT INTO tutor_availabilities 
            (tutor_id, day_of_week, specific_date, start_time, end_time, is_active)

@@ -14,6 +14,7 @@ import videoRoomRoutes from './routes/videoRoom.routes.js'
 import walletRoutes from './routes/wallet.routes.js'
 import authMiddleware, {isAdmin} from './middlewares/auth.middleware.js'
 import complaintRoutes from './routes/complaint.routes.js'
+import favoriteRoutes from './routes/favorite.routes.js'
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { findById } from './dal/user.dal.js'
@@ -53,6 +54,7 @@ app.use('/api/payments', paymentRoutes)
 app.use('/api/video-rooms', videoRoomRoutes)
 app.use('/api/wallet', walletRoutes)
 app.use('/api/complaints', complaintRoutes);
+app.use('/api/favorites', favoriteRoutes);
 
 /*app.get('/api/users/me', authMiddleware, (req, res) => {
   res.json({
