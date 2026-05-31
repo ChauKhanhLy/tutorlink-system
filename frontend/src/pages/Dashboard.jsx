@@ -39,9 +39,11 @@ export function DashboardPage() {
   const [tutors, setTutors] = React.useState([]);
   const [activeTab, setActiveTab] = React.useState("sessions");
   const [favorites, setFavorites] = React.useState([]);
+  const [favorites, setFavorites] = React.useState([]);
   const [messages, setMessages] = React.useState([]);
   const [wallet, setWallet] = React.useState(null);
   const [feedbackData, setFeedbackData] = React.useState(null);
+  const [loading, setLoading] = React.useState(true);
 
   const sidebarItems = [
     { id: "sessions", name: "Buổi học của tôi", icon: Calendar },
@@ -92,15 +94,39 @@ export function DashboardPage() {
         setSessions(bookingRes.data);
         setMessages(messageRes.data);
         setFavorites(favoriteRes.data.data || []);
+        setLoading(true);
+
+        // Chỉ fetch bookings (đã bao gồm tutor info trong response)
+        const bookingRes = await bookingApi.getMyBookings();
+        const bookings = bookingRes.data || [];
+        setSessions(bookings);
+
+        // Extract unique tutor info từ bookings (backend đã trả về tutorName, tutorAvatar)
+        const uniqueTutors = [...new Map(bookings
+          .filter(b => b.tutorId && b.tutorName)
+          .map(b => [b.tutorId, { id: b.tutorId, name: b.tutorName, avatar: b.tutorAvatar }])
+        ).values()];
+        setTutors(uniqueTutors);
+
+        // Fetch messages sau (deferred) - không block loading
+        messageApi.getConversations(user.id)
+          .then(messageRes => setMessages(messageRes.data))
+          .catch(() => setMessages([]));
       } catch (err) {
-        console.log(err);
+        console.error('Error fetching dashboard data:', err);
+      } finally {
+        setLoading(false);
       }
     };
 
-    if (user?.id) fetchData();
+    if (user?.id) {
+      fetchData();
+    } else {
+      setLoading(false);
+    }
   }, [user?.id]);
 
-  // Socket listener cho booking status changes
+  // Socket listener cho booking status changes - defer loading
   React.useEffect(() => {
     if (!user?.id) return;
 
@@ -126,6 +152,22 @@ export function DashboardPage() {
             toast.info(data.message || "Trạng thái lịch học đã thay đổi");
           });
         });
+    // Defer socket setup to avoid blocking initial render
+    const timer = setTimeout(() => {
+      import('../socket.js').then(({ default: socket }) => {
+        if (socket) {
+          socket.emit('register_user', user.id);
+          
+          socket.on('booking_status_changed', (data) => {
+            // Refresh bookings only
+            bookingApi.getMyBookings().then(bookingRes => {
+              setSessions(bookingRes.data || []);
+            });
+            
+            import('sonner').then(({ toast }) => {
+              toast.info(data.message || 'Trạng thái lịch học đã thay đổi');
+            });
+          });
 
         return () => {
           console.log("Cleaning up socket listener");
@@ -135,13 +177,34 @@ export function DashboardPage() {
         console.log("Socket not available");
       }
     });
+          return () => {
+            socket.off('booking_status_changed');
+          };
+        }
+      });
+    }, 2000); // Defer by 2 seconds
+
+    return () => clearTimeout(timer);
   }, [user?.id]);
 
-  const nextSession = sessions
-    ?.filter((s) => new Date(s.date) > new Date()) // buổi trong tương lai
-    .sort((a, b) => new Date(a.date) - new Date(b.date))[0];
+  const nextSession = Array.isArray(sessions) ? sessions
+    ?.filter((s) => new Date(s.datetime || s.date) > new Date() && (s.status === 'confirmed' || s.status === 'pending')) // buổi đã xác nhận hoặc chờ xác nhận trong tương lai
+    .sort((a, b) => new Date(a.datetime || a.date) - new Date(b.datetime || b.date))[0] : null;
 
   const nextTutor = tutors.find((t) => t.id === nextSession?.tutorId);
+
+  // Tính số buổi đã xác nhận/hoàn thành
+  const confirmedSessions = Array.isArray(sessions) ? sessions.filter(s => s.status === 'confirmed' || s.status === 'completed').length : 0;
+  const attendedSessions = Array.isArray(sessions) ? sessions.filter(s => s.attended === true).length : 0;
+  const attendanceRate = confirmedSessions > 0 ? Math.round((attendedSessions / confirmedSessions) * 100) : 0;
+
+  if (loading) {
+    return (
+      <div className="pt-32 flex justify-center items-center min-h-[60vh]">
+        <div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="pt-24 min-h-screen bg-slate-50">
@@ -287,8 +350,7 @@ export function DashboardPage() {
                   {activeTab === "settings" && "Cài đặt"}
                 </h1>
                 <p className="text-slate-500 font-medium">
-                  Chào mừng {user?.name || "bạn"}. Bạn có 2 buổi học trong tuần
-                  này.
+                  Chào mừng {user?.name || "bạn"}. Bạn có {confirmedSessions} buổi học đã xác nhận, đã học {attendedSessions} buổi ({attendanceRate}%).
                 </p>
               </div>
               <div className="flex items-center space-x-3">
@@ -330,7 +392,9 @@ export function DashboardPage() {
                             </div>
 
                             <h2 className="text-3xl font-bold mb-2">
-                              {nextSession.subject || "Chưa có môn"} với{" "}
+                              <Link to={`/classroom/${nextSession.tutor_id || nextSession.tutorId}/${nextSession.subject_id || nextSession.subjectId}`} className="hover:underline">
+                                {nextSession.subject || "Chưa có môn"}
+                              </Link> với{" "}
                               {nextTutor?.name || "Gia sư"}
                             </h2>
 
@@ -426,16 +490,20 @@ export function DashboardPage() {
                           session.status === "completed" &&
                           now >=
                             new Date(startTime.getTime() + 2 * 60 * 60 * 1000);
+                      {sessions && sessions.length > 0 ? (
+                        sessions.map((session) => {
+                          const tutor = tutors.find((t) => t.id === session.tutorId);
 
-                        return (
-                          <div
-                            key={session.id}
-                            className="group p-5 bg-slate-50 rounded-3xl border border-transparent hover:border-indigo-100 hover:bg-white transition-all duration-300 flex flex-col md:flex-row justify-between items-center gap-4"
-                          >
-                            <div className="flex items-center space-x-5">
-                              <div className="w-14 h-14 bg-indigo-100 rounded-2xl flex items-center justify-center">
-                                <Calendar className="h-6 w-6 text-indigo-600" />
-                              </div>
+                          return (
+                            <Link
+                              key={session.id}
+                              to={`/classroom/${session.tutor_id || session.tutorId}/${session.subject_id || session.subjectId}`}
+                              className="group p-5 bg-slate-50 rounded-3xl border border-transparent hover:border-indigo-100 hover:bg-white transition-all duration-300 flex items-center justify-between gap-4"
+                            >
+                              <div className="flex items-center space-x-5">
+                                <div className="w-14 h-14 bg-indigo-100 rounded-2xl flex items-center justify-center">
+                                  <Calendar className="h-6 w-6 text-indigo-600" />
+                                </div>
 
                               <div>
                                 <h4 className="font-bold text-slate-900 text-lg">
@@ -469,6 +537,10 @@ export function DashboardPage() {
                                         : "--:--")}
                                   </span>
                                 </div>
+                                <div>
+                                  <h4 className="font-bold text-slate-900 text-lg">
+                                    {session.subject || "Chưa có môn"}
+                                  </h4>
 
                                 <div className="text-xs text-slate-400 mt-1">
                                   Gia sư:{" "}
@@ -478,6 +550,11 @@ export function DashboardPage() {
                                 </div>
                               </div>
                             </div>
+                                  <div className="text-xs text-slate-400 mt-1">
+                                    Gia sư: {tutor?.name || session.tutorName || "Đang cập nhật"}
+                                  </div>
+                                </div>
+                              </div>
 
                             <div className="flex items-center space-x-3">
                               {/* <ImageWithFallback
@@ -564,6 +641,25 @@ export function DashboardPage() {
                           </div>
                         );
                       })}
+                              <div className="flex items-center space-x-3">
+                                <ImageWithFallback
+                                  src={tutor?.avatar || ""}
+                                  className="w-10 h-10 rounded-full border-2 border-white shadow-sm"
+                                />
+                                <ChevronRight className="h-5 w-5 text-slate-300 group-hover:text-indigo-600 transition-colors" />
+                              </div>
+                            </Link>
+                          );
+                        })
+                      ) : (
+                        <div className="text-center py-12">
+                          <Calendar className="h-16 w-16 text-slate-200 mx-auto mb-4" />
+                          <p className="text-slate-500 font-medium">Chưa có buổi học nào</p>
+                          <Link to="/search" className="text-indigo-600 font-bold text-sm mt-2 inline-block">
+                            Tìm gia sư để đặt lịch
+                          </Link>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

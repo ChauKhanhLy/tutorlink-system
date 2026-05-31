@@ -1,6 +1,7 @@
 import * as BookingService from '../services/booking.service.js';
 import * as WalletService from '../services/wallet.service.js';
 import db from '../config/db.js';
+import lessonSessionService from '../services/lessonSession.service.js';
 
 export const postBooking = async (req, res) => {
     try {
@@ -220,5 +221,96 @@ export const rejectBooking = async (req, res) => {
         res.status(200).json({ success: true, message: "Đã từ chối lịch học", data: updated });
     } catch (error) {
         res.status(400).json({ success: false, message: error.message });
+    }
+};
+
+export const getBookingById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const booking = await BookingService.getBookingById(id);
+        
+        if (!booking) {
+            return res.status(404).json({ success: false, message: "Không tìm thấy thông tin đặt lịch" });
+        }
+        
+        res.status(200).json({ success: true, data: booking });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+export const tutorConfirm = async (req, res) => {
+    try {
+        const bookingId = req.params.id;
+        let tutorId = req.user?.id;
+        const userRole = req.user?.role;
+
+        // Tìm thông tin booking để lấy tutor_id gốc
+        const bookingRes = await db.query('SELECT tutor_id FROM bookings WHERE id = $1', [bookingId]);
+        if (bookingRes.rows.length === 0) {
+            return res.status(404).json({ success: false, message: "Không tìm thấy booking cho lịch đặt này" });
+        }
+
+        const realTutorId = bookingRes.rows[0].tutor_id;
+
+        if (userRole === 'admin') {
+            tutorId = realTutorId; // Nếu là admin, gán tutorId thành gia sư thực tế để confirm hộ
+            console.log(`[tutorConfirm] Admin ${req.user?.id} đang xác nhận hộ Gia sư ${realTutorId} cho booking ${bookingId}`);
+        } else if (String(tutorId) !== String(realTutorId)) {
+            return res.status(403).json({ success: false, message: "Bạn không có quyền xác nhận buổi học này" });
+        }
+
+        // Tìm lesson_session cho booking này
+        const sessionRes = await db.query('SELECT id FROM lesson_sessions WHERE booking_id = $1', [bookingId]);
+        if (sessionRes.rows.length === 0) {
+            return res.status(404).json({ success: false, message: "Không tìm thấy buổi học cho lịch đặt này" });
+        }
+
+        const lessonSessionId = sessionRes.rows[0].id;
+
+        // Gọi lessonSessionService
+        const updated = await lessonSessionService.confirmTutorTaught(lessonSessionId, tutorId);
+        
+        return res.status(200).json({ success: true, data: updated });
+    } catch (error) {
+        return res.status(error.statusCode || 500).json({ success: false, message: error.message || "Xác nhận thất bại" });
+    }
+};
+
+export const learnerConfirm = async (req, res) => {
+    try {
+        const bookingId = req.params.id;
+        let learnerId = req.user?.id;
+        const userRole = req.user?.role;
+
+        // Tìm thông tin booking để lấy learner_id gốc
+        const bookingRes = await db.query('SELECT learner_id FROM bookings WHERE id = $1', [bookingId]);
+        if (bookingRes.rows.length === 0) {
+            return res.status(404).json({ success: false, message: "Không tìm thấy booking cho lịch đặt này" });
+        }
+
+        const realLearnerId = bookingRes.rows[0].learner_id;
+
+        if (userRole === 'admin') {
+            learnerId = realLearnerId; // Nếu là admin, gán learnerId thành học viên thực tế để confirm hộ
+            console.log(`[learnerConfirm] Admin ${req.user?.id} đang xác nhận hộ Học viên ${realLearnerId} cho booking ${bookingId}`);
+        } else if (String(learnerId) !== String(realLearnerId)) {
+            return res.status(403).json({ success: false, message: "Bạn không có quyền xác nhận buổi học này" });
+        }
+
+        // Tìm lesson_session cho booking này
+        const sessionRes = await db.query('SELECT id FROM lesson_sessions WHERE booking_id = $1', [bookingId]);
+        if (sessionRes.rows.length === 0) {
+            return res.status(404).json({ success: false, message: "Không tìm thấy buổi học cho lịch đặt này" });
+        }
+
+        const lessonSessionId = sessionRes.rows[0].id;
+
+        // Gọi lessonSessionService
+        const updated = await lessonSessionService.confirmLearnerStudied(lessonSessionId, learnerId);
+        
+        return res.status(200).json({ success: true, data: updated });
+    } catch (error) {
+        return res.status(error.statusCode || 500).json({ success: false, message: error.message || "Xác nhận thất bại" });
     }
 };

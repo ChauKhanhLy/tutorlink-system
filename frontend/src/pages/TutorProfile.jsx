@@ -176,11 +176,22 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
       };
 
       console.log("Sending booking data:", bookingData);
+<<<<<<< HEAD
 
       await bookingApi.create(bookingData);
+=======
+      
+      const response = await bookingApi.create(bookingData);
+      const newBooking = response.data?.data || response.data;
+>>>>>>> 01f0bd640697d55039d1d66c7234aeaea0dcb277
 
       toast.success(bookingType === "trial" ? "Đặt lịch học thử thành công!" : "Đặt lịch học thành công!");
-      navigate("/dashboard");
+      
+      if (newBooking?.id) {
+        navigate(`/booking-success/${newBooking.id}`);
+      } else {
+        navigate("/dashboard");
+      }
     } catch (err) {
       console.error("Lỗi đặt lịch:", err);
       // Hiển thị thông báo lỗi cụ thể từ Backend ném về
@@ -278,15 +289,17 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
                         <div className="flex items-center">
                           <Star className="h-4 w-4 text-amber-500 fill-amber-500 mr-1.5" />
                           <span className="text-sm font-bold text-slate-900">
+<<<<<<< HEAD
                             {Number(tutor.rating || 0).toFixed(1)}
+=======
+                            {reviews.length > 0
+                              ? (reviews.reduce((sum, r) => sum + Number(r.rating), 0) / reviews.length).toFixed(1)
+                              : tutor.rating || 0}
+>>>>>>> 01f0bd640697d55039d1d66c7234aeaea0dcb277
                           </span>
                           <span className="text-slate-400 text-sm ml-1">
-                            ({tutor.reviewCount || 0} đánh giá)
+                            ({reviews.length} đánh giá)
                           </span>
-                        </div>
-                        <div className="w-1.5 h-1.5 bg-slate-200 rounded-full"></div>
-                        <div className="text-sm font-bold text-indigo-600">
-                          Đánh giá cao
                         </div>
                       </div>
                     </div>
@@ -411,11 +424,18 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
                   <div className="flex items-center">
                     <Star className="h-5 w-5 text-amber-500 fill-amber-500 mr-2" />
                     <span className="text-2xl font-bold text-slate-900">
+<<<<<<< HEAD
                       {Number(tutor.rating || 0).toFixed(1)}
+=======
+                      {reviews.length > 0
+                        ? (reviews.reduce((sum, r) => sum + Number(r.rating), 0) / reviews.length).toFixed(1)
+                        : tutor.rating || 0}
+>>>>>>> 01f0bd640697d55039d1d66c7234aeaea0dcb277
                     </span>
                     <span className="text-slate-400 font-bold ml-2">/ 5.0</span>
                   </div>
                 </div>
+<<<<<<< HEAD
                 <div className="space-y-8">
                   {reviews.length === 0 && (
                     <p className="text-sm text-slate-500">Gia sư chưa có đánh giá nào.</p>
@@ -445,27 +465,109 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                               Đánh giá đã xác minh
                             </p>
+=======
+
+                {/* Session Reviews - Only show average */}
+                <div className="mb-12">
+                  <div className="flex items-center gap-2 mb-6">
+                    <div className="w-2 h-8 bg-indigo-600 rounded-full"></div>
+                    <h3 className="text-lg font-bold text-slate-900">Đánh giá buổi học</h3>
+                    <span className="px-3 py-1 bg-indigo-100 text-indigo-600 text-xs font-bold rounded-full">
+                      {reviews.filter(r => r.review_type === 'session').length}
+                    </span>
+                  </div>
+                  {reviews.filter(r => r.review_type === 'session').length > 0 ? (
+                    <div className="bg-indigo-50 rounded-2xl p-6 border border-indigo-100">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-slate-600 mb-2">Số sao trung bình</p>
+                          <div className="flex items-center">
+                            <Star className="h-6 w-6 text-amber-500 fill-amber-500 mr-2" />
+                            <span className="text-3xl font-bold text-slate-900">
+                              {(() => {
+                                const sessionReviews = reviews.filter(r => r.review_type === 'session');
+                                return sessionReviews.length > 0
+                                  ? (sessionReviews.reduce((sum, r) => sum + Number(r.rating), 0) / sessionReviews.length).toFixed(1)
+                                  : 0;
+                              })()}
+                            </span>
+                            <span className="text-slate-400 font-bold ml-2">/ 5.0</span>
+>>>>>>> 01f0bd640697d55039d1d66c7234aeaea0dcb277
                           </div>
                         </div>
-                        <div className="flex">
-                          {[1, 2, 3, 4, 5].map((s) => (
-                            <Star
-                              key={s}
-                              className={`h-3 w-3 ${s <= Number(review.rating) ? "text-amber-500 fill-amber-500" : "text-slate-200 fill-slate-200"}`}
-                            />
-                          ))}
+                        <div className="text-right">
+                          <p className="text-sm text-slate-600 mb-2">Tổng số buổi học</p>
+                          <p className="text-2xl font-bold text-indigo-600">
+                            {reviews.filter(r => r.review_type === 'session').length}
+                          </p>
                         </div>
                       </div>
-                      <p className="text-slate-600 text-sm leading-relaxed italic">
-                        "{review.comment || "Buổi học hữu ích và chất lượng."}"
-                      </p>
-                      <div className="mt-4 text-xs font-bold text-slate-400">
-                        {review.createdAt
-                          ? new Date(review.createdAt).toLocaleDateString("vi-VN")
-                          : ""}
-                      </div>
                     </div>
-                  ))}
+                  ) : (
+                    <p className="text-sm text-slate-500 italic">Chưa có đánh giá buổi học nào.</p>
+                  )}
+                </div>
+
+                {/* Tutor Reviews - Show full details */}
+                <div>
+                  <div className="flex items-center gap-2 mb-6">
+                    <div className="w-2 h-8 bg-amber-500 rounded-full"></div>
+                    <h3 className="text-lg font-bold text-slate-900">Đánh giá tổng quan</h3>
+                    <span className="px-3 py-1 bg-amber-100 text-amber-600 text-xs font-bold rounded-full">
+                      {reviews.filter(r => r.review_type === 'tutor').length}
+                    </span>
+                  </div>
+                  <div className="space-y-6">
+                    {reviews.filter(r => r.review_type === 'tutor').length === 0 && (
+                      <p className="text-sm text-slate-500 italic">Chưa có đánh giá tổng quan nào.</p>
+                    )}
+                    {reviews.filter(r => r.review_type === 'tutor').map((review) => (
+                      <div
+                        key={review.id}
+                        className="pb-6 border-b border-slate-100 last:border-none last:pb-0"
+                      >
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 rounded-full bg-slate-100 overflow-hidden">
+                              <ImageWithFallback
+                                src={`https://i.pravatar.cc/100?u=${review.reviewerId || review.reviewer_id || review.id}`}
+                                alt="Học viên"
+                              />
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-bold text-slate-900">
+                                Học viên
+                              </h4>
+                              <p className="text-[10px] font-bold text-amber-600 uppercase tracking-widest">
+                                Đánh giá tổng quan
+                              </p>
+                              {review.subject_name && (
+                                <p className="text-xs font-bold text-slate-400 mt-1">
+                                  Môn: {review.subject_name}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex">
+                            {[1, 2, 3, 4, 5].map((s) => (
+                              <Star
+                                key={s}
+                                className={`h-3 w-3 ${s <= Number(review.rating) ? "text-amber-500 fill-amber-500" : "text-slate-200 fill-slate-200"}`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                        <p className="text-slate-600 text-sm leading-relaxed italic">
+                          "{review.comment || "Gia sư giỏi và tận tâm."}"
+                        </p>
+                        <div className="mt-4 text-xs font-bold text-slate-400">
+                          {review.createdAt
+                            ? new Date(review.createdAt).toLocaleDateString("vi-VN")
+                            : ""}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </section>
             </div>
