@@ -20,6 +20,7 @@ import { useAuth } from "../../context/AuthContext";
 import adminApi from "../../api/adminApi";
 import { ImageWithFallback } from "../../components/Image/ImageWithFallback";
 import {AdminComplaintsPage} from "./AdminComplaintsPage";
+import { getAvatarUrl } from "../../utils/avatar.js";
 
 // Helper: format số tiền VNĐ
 const formatVND = (value) => {
@@ -233,7 +234,7 @@ export function AdminDashboard() {
                   >
                     <div className="flex items-start gap-4">
                       <ImageWithFallback
-                        src={tutor.avatar}
+                        src={getAvatarUrl(tutor.avatar)}
                         alt={tutor.name}
                         className="w-16 h-16 rounded-xl object-cover"
                       />
@@ -356,7 +357,7 @@ export function AdminDashboard() {
               {/* Thông tin cơ bản */}
               <div className="flex items-center gap-4 pb-3 border-b border-slate-100">
                 <ImageWithFallback
-                  src={selectedTutor.avatar}
+                  src={getAvatarUrl(selectedTutor.avatar)}
                   alt={selectedTutor.name}
                   className="w-20 h-20 rounded-xl object-cover"
                 />

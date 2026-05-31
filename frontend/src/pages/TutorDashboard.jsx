@@ -20,9 +20,9 @@ export function TutorDashboard() {
   const navigate = useNavigate();
   const { user, refreshUser } = useAuth();
 
-  const isPending =
-    user?.role === "tutor" &&
-    user?.verified === false;
+  //const isPending =
+  //  user?.role === "tutor" &&
+  //  user?.verified === false;
 
   const [loadingUser, setLoadingUser] =
     React.useState(true);
@@ -37,20 +37,14 @@ export function TutorDashboard() {
    const [activeTab, setActiveTab] = React.useState("sessions");
   const isPending = user?.role === "tutor" && user?.verified === false;
 
-  const [loadingUser, setLoadingUser] = React.useState(true);
+  //const [loadingUser, setLoadingUser] = React.useState(true);
   const [loadingAvailability, setLoadingAvailability] = React.useState(false);
 
-  const [stats, setStats] = React.useState({
-    todaySessions: 0,
-    totalStudents: 0,
-    monthlyEarnings: 0,
-    avgRating: 0,
-  });
 
   const [upcomingSessions, setUpcomingSessions] = React.useState([]);
   const [availability, setAvailability] = React.useState([]);
 
-  const [activeTab, setActiveTab] = React.useState("sessions");
+  // const [activeTab, setActiveTab] = React.useState("sessions");
   const [showAvailabilityModal, setShowAvailabilityModal] =
     React.useState(false);
 
@@ -58,12 +52,6 @@ export function TutorDashboard() {
     if (!user?.id || isPending) return;
 
     try {
-      const statsRes =
-        await tutorApi.getTutorStats();
-
-      setStats(
-        statsRes.data.data ||
-        statsRes.data
       const [statsRes, sessionsRes, availabilityRes] = await Promise.all([
         tutorApi.getTutorStats(),
         bookingApi.getTutorBookings(),
@@ -77,9 +65,7 @@ export function TutorDashboard() {
       );
     } catch (err) {
       console.error(err);
-      toast.error(
-        "Không thể tải dữ liệu"
-      );
+      toast.error("Không thể tải dữ liệu");
     }
   };
 
@@ -223,7 +209,7 @@ export function TutorDashboard() {
            
             
             {/* Quick Menu */}
-            <div className="grid md:grid-cols-2 gap-6 mb-10">
+            <div className="grid md:grid-cols-3 gap-6 mb-10">
 
               <Link
                 to="/tutor/schedule"
@@ -252,6 +238,21 @@ export function TutorDashboard() {
 
                 <p className="text-slate-500">
                   Danh sách học viên học thử và học chính thức
+                </p>
+              </Link>
+
+              <Link
+                to="/wallet"
+                className="bg-white p-8 rounded-3xl border border-slate-200 hover:border-indigo-300 transition-all"
+              >
+                <Wallet className="h-10 w-10 text-indigo-600 mb-4" />
+
+                <h3 className="text-xl font-bold text-slate-900 mb-2">
+                  Ví của tôi
+                </h3>
+
+                <p className="text-slate-500">
+                  Xem số dư ví, nạp tiền và lịch sử thu nhập
                 </p>
               </Link>
 
