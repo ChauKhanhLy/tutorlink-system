@@ -17,7 +17,7 @@ import { tutorApi } from "../api/tutorApi";
 import { bookingApi } from "../api/bookingApi";
 
 import { ImageWithFallback } from "../components/Image/ImageWithFallback";
-
+import { getAvatarUrl } from "../utils/avatar.js";
 import { toast } from "sonner";
 
 export function TutorSchedulePage() {
@@ -108,10 +108,10 @@ export function TutorSchedulePage() {
  const handleReject = async (bookingId) => {
      try {
        if (window.confirm("Bạn có chắc chắn muốn từ chối lịch học này?")) {
-         await bookingApi.reject(bookingId);
-         toast.success("Đã từ chối lịch học");
-         await ffetchScheduleData();
-       }
+          await bookingApi.reject(bookingId);
+          toast.success("Đã từ chối lịch học");
+          await fetchScheduleData();
+        }
      } catch (err) {
        console.error(err);
        toast.error(err.response?.data?.message || "Không thể từ chối lịch học");
@@ -148,7 +148,7 @@ if (isPending) {
   return (
     <div className="pt-24 min-h-screen bg-slate-50">
 
-      <div className="max-w-7xl mx-auto px-4">
+      <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
         {/* Lịch dạy */}
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-8">
 
@@ -292,13 +292,11 @@ function SessionCard({ session, onAccept, onReject }) {
          <div className="flex items-center gap-4 min-w-0">
            <div className="relative flex-shrink-0">
              <div className="w-14 h-14 rounded-2xl overflow-hidden border-2 border-white shadow-sm">
-               <ImageWithFallback
-                 src={
-                   session.studentAvatar ||
-                   `https://i.pravatar.cc/150?u=${session.learner_id}`
-                 }
-                 alt={session.studentName}
-               />
+                <ImageWithFallback
+                  src={getAvatarUrl(session.studentAvatar)}
+                  alt={session.studentName}
+                  className="w-full h-full object-cover"
+                />
              </div>
              <div
                className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${

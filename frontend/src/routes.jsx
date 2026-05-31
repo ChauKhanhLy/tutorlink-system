@@ -16,13 +16,13 @@ import { BecomeTutorPage } from "./pages/BecomeTutor";
 import { AdminLogin } from "./pages/admin/AdminLogin";
 import { AdminDashboard } from "./pages/admin/AdminDashboard";
 import { TutorDashboard } from "./pages/TutorDashboard";
+import { TutorSchedulePage } from "./pages/TutorSchedulePage";
+import {TutorStudentsPage} from "./pages/TutorStudentsPage";
 import { VideoRoomPage } from "./pages/VideoRoom";
 import { AdminMessagesPage } from "./pages/admin/AdminMessagesPage";
 import { AdminUsersPage } from "./pages/admin/AdminUsersPage";
 import { WalletPage } from "./pages/Wallet";
 import { QRConfirmPage } from "./pages/QRConfirm";
-import { TutorSchedulePage }from "./pages/TutorSchedulePage";
-import { TutorStudentsPage }from "./pages/TutorStudentsPage";
 
 export const router = createBrowserRouter([
   {
@@ -50,23 +50,22 @@ export const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
-     {
-  path: "tutor/schedule",
-  element: (
-    <ProtectedRoute requiredRole="tutor">
-      <TutorSchedulePage />
-    </ProtectedRoute>
-  ),
-},
-
-{
-  path: "tutor/students",
-  element: (
-    <ProtectedRoute requiredRole="tutor">
-      <TutorStudentsPage />
-    </ProtectedRoute>
-  ),
-},
+      {
+        path: "tutor/schedule",
+        element: (
+          <ProtectedRoute requiredRole="tutor">
+            <TutorSchedulePage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "tutor/students",
+        element: (
+          <ProtectedRoute requiredRole="tutor">
+            <TutorStudentsPage />
+          </ProtectedRoute>
+        ),
+      },
       {
         path: "messages",
         element: (

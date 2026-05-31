@@ -21,9 +21,10 @@ import { getAvatarUrl } from "../utils/avatar";
 
 export function ProfilePage() {
   const {
-  user,
-  setUser
-} = useAuth()
+    user,
+    setUser,
+    updateUser,
+  } = useAuth();
  const [
   isEditingProfile,
   setIsEditingProfile
