@@ -56,10 +56,12 @@ export const getAllComplaints = async (filters = {}) => {
   await ensureComplaintTable();
   let query = `
     SELECT c.*, 
-           u1.name as reporter_name, u2.name as reported_name
+           u1.name as reporter_name, u2.name as reported_name,
+           vs.record_url as video_record_url
     FROM complaints c
     LEFT JOIN users u1 ON c.reporter_id = u1.id
     LEFT JOIN users u2 ON c.reported_id = u2.id
+    LEFT JOIN video_sessions vs ON c.booking_id = vs.booking_id
     WHERE 1=1
   `;
   const values = [];

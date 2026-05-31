@@ -20,7 +20,7 @@ export const getOrCreateWallet = async (userId) => {
     return wallet;
 };
 
-export const depositToWallet = async (userId, amount, description = 'Nạp tiền vào ví') => {
+export const depositToWallet = async (userId, amount, description = 'Nạp tiền vào ví', referenceId = null, referenceType = null, transactionType = 'deposit') => {
     const t = await sequelize.transaction();
     
     try {
@@ -37,10 +37,12 @@ export const depositToWallet = async (userId, amount, description = 'Nạp tiề
         const transaction = await Transaction.create({
             user_id: userId,
             wallet_id: wallet.id,
-            type: 'deposit',
+            type: transactionType,
             amount: parseFloat(amount),
             description,
             status: 'completed',
+            reference_id: referenceId,
+            reference_type: referenceType,
             processed_at: new Date()
         }, { transaction: t });
         
