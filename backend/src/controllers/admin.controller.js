@@ -146,3 +146,22 @@ export const getAdminId = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+export const cancelBookingAdmin = async (
+  req,
+  res
+) => {
+  try {
+    const booking =
+      await bookingService.cancelBookingByAdmin(
+        req.params.id
+      );
+
+    res.json(booking);
+  } catch (err) {
+    console.error(err);
+
+    res.status(500).json({
+      message: "Lỗi server",
+    });
+  }
+};

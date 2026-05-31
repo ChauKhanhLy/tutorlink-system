@@ -8,6 +8,7 @@ const adminApi = {
   getUsers: () => axiosClient.get("/admin/users"),
   updateUserStatus: (id, data) => axiosClient.patch(`/admin/users/${id}`, data),
   getAllBookings: () =>axiosClient.get("/admin/bookings"),
+  cancelBooking: (id) =>axiosClient.patch(`/admin/bookings/${id}/cancel` ),
 };
 
 export default adminApi;

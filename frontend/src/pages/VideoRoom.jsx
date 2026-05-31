@@ -148,12 +148,20 @@ export function VideoRoomPage() {
       {/* Header */}
       <header className="flex items-center justify-between px-6 py-3 bg-slate-800/50 backdrop-blur-sm border-b border-slate-700 z-10">
         <div className="flex items-center gap-4">
+             {user?.role === "admin" ? (
+                <Link
+                  to="/admin/bookings"
+                  className="text-slate-400 hover:text-white flex items-center gap-2"
+                >
+                  ← <span className="hidden md:inline">Rời phòng</span>
+                </Link>
+              ) : (
           <Link
             to="/dashboard"
             className="text-slate-400 hover:text-white flex items-center gap-2"
           >
             ← <span className="hidden md:inline">Rời phòng</span>
-          </Link>
+          </Link>)}
           <div className="h-6 w-px bg-slate-700 hidden md:block"></div>
           <div className="flex items-center gap-3">
             <div className="flex flex-col">

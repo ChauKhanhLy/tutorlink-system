@@ -279,3 +279,18 @@ export const getAllBookings = async () => {
 
   return result.rows;
 };
+export const cancelBookingByAdmin = async (
+  bookingId
+) => {
+  const result = await db.query(
+    `
+      UPDATE bookings
+      SET status = 'cancel'
+      WHERE id = $1
+      RETURNING *
+    `,
+    [bookingId]
+  );
+
+  return result.rows[0];
+};
