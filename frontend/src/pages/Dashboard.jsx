@@ -23,7 +23,6 @@ import { FeedbackMiniPage } from "../components/FeedbackMiniPage";
 import messageApi from "../api/messageApi";
 //import { billingApi } from "../api/billingApi";
 import { ImageWithFallback } from "../components/Image/ImageWithFallback";
-import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { TutorDashboard } from "./TutorDashboard";
 import { getAvatarUrl } from "../utils/avatar";
@@ -31,17 +30,13 @@ import { getAvatarUrl } from "../utils/avatar";
 export function DashboardPage() {
   const { user, logout } = useAuth();
 
-  if (user?.role === "tutor") {
-    return <TutorDashboard />;
-  }
-
   const [sessions, setSessions] = React.useState([]);
   const [tutors, setTutors] = React.useState([]);
   const [activeTab, setActiveTab] = React.useState("sessions");
   const [favorites, setFavorites] = React.useState([]);
-  const [favorites, setFavorites] = React.useState([]);
+  //const [favorites, setFavorites] = React.useState([]);
   const [messages, setMessages] = React.useState([]);
-  const [wallet, setWallet] = React.useState(null);
+  const [wallet] = React.useState(null);
   const [feedbackData, setFeedbackData] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
 
@@ -97,7 +92,7 @@ export function DashboardPage() {
         setLoading(true);
 
         // Chỉ fetch bookings (đã bao gồm tutor info trong response)
-        const bookingRes = await bookingApi.getMyBookings();
+        //const bookingRes = await bookingApi.getMyBookings();
         const bookings = bookingRes.data || [];
         setSessions(bookings);
 
@@ -119,39 +114,19 @@ export function DashboardPage() {
       }
     };
 
-    if (user?.id) {
+    if (user?.id && user?.role !== "tutor") {
       fetchData();
     } else {
       setLoading(false);
     }
-  }, [user?.id]);
+  }, [user?.id, user?.role]);
 
   // Socket listener cho booking status changes - defer loading
-  React.useEffect(() => {
-    if (!user?.id) return;
 
-    console.log("Setting up socket listener for user:", user.id);
+    // Defer socket setup to avoid blocking initial render
+ React.useEffect(() => {
+    if (!user?.id || user?.role === "tutor") return;
 
-    // Import socket
-    import("../socket.js").then(({ default: socket }) => {
-      if (socket) {
-        console.log("Socket connected, registering user:", user.id);
-
-        // Register user với socket
-        socket.emit("register_user", user.id);
-
-        // Lắng nghe thay đổi status của booking
-        socket.on("booking_status_changed", (data) => {
-          console.log("Booking status changed received:", data);
-
-          // Refresh lại data bookings
-          fetchData();
-
-          // Show toast notification
-          import("sonner").then(({ toast }) => {
-            toast.info(data.message || "Trạng thái lịch học đã thay đổi");
-          });
-        });
     // Defer socket setup to avoid blocking initial render
     const timer = setTimeout(() => {
       import('../socket.js').then(({ default: socket }) => {
@@ -169,14 +144,6 @@ export function DashboardPage() {
             });
           });
 
-        return () => {
-          console.log("Cleaning up socket listener");
-          socket.off("booking_status_changed");
-        };
-      } else {
-        console.log("Socket not available");
-      }
-    });
           return () => {
             socket.off('booking_status_changed');
           };
@@ -185,7 +152,11 @@ export function DashboardPage() {
     }, 2000); // Defer by 2 seconds
 
     return () => clearTimeout(timer);
-  }, [user?.id]);
+  }, [user?.id, user?.role]);
+
+  if (user?.role === "tutor") {
+    return <TutorDashboard />;
+  }
 
   const nextSession = Array.isArray(sessions) ? sessions
     ?.filter((s) => new Date(s.datetime || s.date) > new Date() && (s.status === 'confirmed' || s.status === 'pending')) // buổi đã xác nhận hoặc chờ xác nhận trong tương lai
@@ -453,7 +424,8 @@ export function DashboardPage() {
                       </button>
                     </div>
                     <div className="space-y-4">
-                      {sessions.map((session) => {
+                      {sessions && sessions.length > 0 ? (
+                        sessions.map((session) => {
                         const tutor = tutors.find(
                           (t) => t.id === session.tutorId,
                         );
@@ -463,11 +435,6 @@ export function DashboardPage() {
                             session.datetime ||
                             session.date,
                         );
-                        const endTime = new Date(
-                          session.room_end_time ||
-                            new Date(startTime).getTime() + 60 * 60 * 1000,
-                        );
-
                         // Cho phép vào phòng bất cứ lúc nào nếu có room_id (phục vụ testing)
                         //const canJoin = !!session.room_id && session.status !== 'cancelled' && session.status !== 'done';
                         const canJoin =
@@ -490,10 +457,6 @@ export function DashboardPage() {
                           session.status === "completed" &&
                           now >=
                             new Date(startTime.getTime() + 2 * 60 * 60 * 1000);
-                      {sessions && sessions.length > 0 ? (
-                        sessions.map((session) => {
-                          const tutor = tutors.find((t) => t.id === session.tutorId);
-
                           return (
                             <Link
                               key={session.id}
@@ -537,19 +500,6 @@ export function DashboardPage() {
                                         : "--:--")}
                                   </span>
                                 </div>
-                                <div>
-                                  <h4 className="font-bold text-slate-900 text-lg">
-                                    {session.subject || "Chưa có môn"}
-                                  </h4>
-
-                                <div className="text-xs text-slate-400 mt-1">
-                                  Gia sư:{" "}
-                                  {tutor?.name ||
-                                    session.tutorName ||
-                                    "Đang cập nhật"}
-                                </div>
-                              </div>
-                            </div>
                                   <div className="text-xs text-slate-400 mt-1">
                                     Gia sư: {tutor?.name || session.tutorName || "Đang cập nhật"}
                                   </div>
@@ -638,18 +588,8 @@ export function DashboardPage() {
                                 Phản hồi
                               </button>
                             </div>
-                          </div>
-                        );
-                      })}
-                              <div className="flex items-center space-x-3">
-                                <ImageWithFallback
-                                  src={tutor?.avatar || ""}
-                                  className="w-10 h-10 rounded-full border-2 border-white shadow-sm"
-                                />
-                                <ChevronRight className="h-5 w-5 text-slate-300 group-hover:text-indigo-600 transition-colors" />
-                              </div>
                             </Link>
-                          );
+                        );
                         })
                       ) : (
                         <div className="text-center py-12">
