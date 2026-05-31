@@ -21,6 +21,8 @@ import { AdminMessagesPage } from "./pages/admin/AdminMessagesPage";
 import { AdminUsersPage } from "./pages/admin/AdminUsersPage";
 import { WalletPage } from "./pages/Wallet";
 import { QRConfirmPage } from "./pages/QRConfirm";
+import { TutorSchedulePage }from "./pages/TutorSchedulePage";
+import { TutorStudentsPage }from "./pages/TutorStudentsPage";
 
 export const router = createBrowserRouter([
   {
@@ -48,22 +50,23 @@ export const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
-      {
-        path: "tutor/schedule",
-        element: (
-          <ProtectedRoute requiredRole="tutor">
-            <TutorDashboard />
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: "tutor/students",
-        element: (
-          <ProtectedRoute requiredRole="tutor">
-            <TutorDashboard />
-          </ProtectedRoute>
-        ),
-      },
+     {
+  path: "tutor/schedule",
+  element: (
+    <ProtectedRoute requiredRole="tutor">
+      <TutorSchedulePage />
+    </ProtectedRoute>
+  ),
+},
+
+{
+  path: "tutor/students",
+  element: (
+    <ProtectedRoute requiredRole="tutor">
+      <TutorStudentsPage />
+    </ProtectedRoute>
+  ),
+},
       {
         path: "messages",
         element: (
