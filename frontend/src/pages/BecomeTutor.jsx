@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { useAuth } from "../context/AuthContext";
 import { tutorApi } from "../api/tutorApi";
 import { ImageWithFallback } from "../components/Image/ImageWithFallback";
+import { getAvatarUrl } from "../utils/avatar";
 
 export function BecomeTutorPage() {
   const navigate = useNavigate();
@@ -320,12 +321,18 @@ export function BecomeTutorPage() {
                   <label className="block text-sm font-bold text-slate-700 mb-2">
                     Ảnh đại diện
                   </label>
+
                   <div className="flex items-center gap-4">
                     <ImageWithFallback
-                      src={formData.avatar}
+                      src={ getAvatarUrl(formData.avatar)
+                        // formData.avatar
+                        //   ? URL.createObjectURL(formData.avatar)
+                        //   : getAvatarUrl(user?.avatar)
+                      }
                       alt={formData.name}
-                      className="w-12 h-12 rounded-full object-cover"
+                      className="w-16 h-16 rounded-full object-cover"
                     />
+
                     <input
                       type="url"
                       value={formData.avatar}
@@ -334,6 +341,12 @@ export function BecomeTutorPage() {
                       }
                       placeholder="URL ảnh đại diện"
                       className="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                      // type="file"
+                      // accept="image/*"
+                      // onChange={(e) =>
+                      //   handleInputChange("avatar", e.target.files[0])
+                      // }
+                      // className="flex-1"
                     />
                   </div>
                 </div>

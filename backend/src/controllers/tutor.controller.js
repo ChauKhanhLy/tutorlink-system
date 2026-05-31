@@ -87,6 +87,13 @@ export const getTutorAvailability = async (req, res) => {
 export const updateTutorAvailability = async (req, res) => {
   try {
     const tutorId = req.params.id;
+    if (req.user?.id !== tutorId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Bạn chỉ có thể cập nhật lịch rảnh của chính mình'
+      });
+    }
+
     const payload = req.body;
     console.log('updateTutorAvailability received:', { tutorId, payload });
     await saveAvailabilityPreferences(tutorId, payload);

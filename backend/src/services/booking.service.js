@@ -125,16 +125,25 @@ export const getMyBookings = async (learner_id) => {
     const query = `
         SELECT 
             b.*,
-            u.name as tutorName,
-            s.name as subject,
-            vs.id as room_id,
-            vs.status as room_status,
-            vs.start_time as room_start_time,
-            vs.end_time as room_end_time
+            b.tutor_id as "tutorId",
+            b.learner_id as "learnerId",
+            b.subject_id as "subjectId",
+            u.name as "tutorName",
+            u.avatar as "tutorAvatar",
+            s.name as "subject",
+            vs.id as "room_id",
+            vs.status as "room_status",
+            vs.start_time as "room_start_time",
+            vs.end_time as "room_end_time",
+            ls.tutor_confirmed,
+            ls.learner_confirmed,
+            ls.attended,
+            ls.id as "lesson_session_id"
         FROM bookings b
         JOIN users u ON b.tutor_id = u.id
         LEFT JOIN subjects s ON b.subject_id = s.id
         LEFT JOIN video_sessions vs ON b.id = vs.booking_id
+        LEFT JOIN lesson_sessions ls ON b.id = ls.booking_id
         WHERE b.learner_id = $1
         ORDER BY b.datetime ASC
     `;
@@ -151,20 +160,27 @@ export const getBookingById = async (id) => {
     const query = `
         SELECT 
             b.*,
-            u.name as tutorName,
-            u.avatar as tutorAvatar,
-            u.id as tutorId,
-            l.name as studentName,
-            s.name as subjectName,
-            vs.id as room_id,
-            vs.status as room_status,
-            vs.start_time as room_start_time,
-            vs.end_time as room_end_time
+            b.tutor_id as "tutorId",
+            b.learner_id as "learnerId",
+            u.name as "tutorName",
+            u.avatar as "tutorAvatar",
+            l.name as "studentName",
+            l.avatar as "studentAvatar",
+            s.name as "subject",
+            vs.id as "room_id",
+            vs.status as "room_status",
+            vs.start_time as "room_start_time",
+            vs.end_time as "room_end_time",
+            ls.tutor_confirmed,
+            ls.learner_confirmed,
+            ls.attended,
+            ls.id as "lesson_session_id"
         FROM bookings b
         JOIN users u ON b.tutor_id = u.id
         JOIN users l ON b.learner_id = l.id
         LEFT JOIN subjects s ON b.subject_id = s.id
         LEFT JOIN video_sessions vs ON b.id = vs.booking_id
+        LEFT JOIN lesson_sessions ls ON b.id = ls.booking_id
         WHERE b.id = $1
     `;
     const result = await db.query(query, [id]);
@@ -176,6 +192,7 @@ export const getBookingById = async (id) => {
         if (newRoom) {
             booking.room_id = newRoom.id;
         }
+        await ensureLessonSessionExists(booking);
     }
 
     return booking;
@@ -218,6 +235,39 @@ async function ensureVideoRoomsExist(bookings) {
         }
     }
 }
+
+export const ensureLessonSessionExists = async (booking) => {
+    if (booking.status === 'confirmed') {
+        const existingSession = await db.query('SELECT id FROM lesson_sessions WHERE booking_id = $1', [booking.id]);
+        if (existingSession.rows.length === 0) {
+            const lessonSessionId = uuidv4();
+            const sessionDate = new Date(booking.datetime);
+            const duration = booking.type === 'trial' ? 1 : 2;
+            const endTime = new Date(sessionDate.getTime() + duration * 60 * 60 * 1000);
+
+            await db.query(`
+                INSERT INTO lesson_sessions (
+                    id, booking_id, session_date, start_time, end_time, 
+                    duration_hours, tutor_confirmed, learner_confirmed, attended, status, 
+                    created_at, updated_at
+                ) VALUES ($1, $2, $3, $4, $5, 0, false, false, false, 'scheduled', NOW(), NOW())
+            `, [lessonSessionId, booking.id, sessionDate.toISOString().split('T')[0], sessionDate, endTime]);
+
+            console.log(`Created missing lesson_session for booking: ${booking.id}`);
+            
+            // Also link it in video_sessions if video_session exists
+            await db.query('UPDATE video_sessions SET lesson_session_id = $1 WHERE booking_id = $2', [lessonSessionId, booking.id]);
+            
+            // Update in-memory booking object
+            booking.lesson_session_id = lessonSessionId;
+            booking.tutor_confirmed = false;
+            booking.learner_confirmed = false;
+            booking.attended = false;
+        } else {
+            booking.lesson_session_id = existingSession.rows[0].id;
+        }
+    }
+};
 
 export const updateStatus = async (id, status) => {
     const client = await db.connect();
@@ -320,25 +370,35 @@ export const getBookingsForTutor = async (tutor_id) => {
     const query = `
         SELECT 
             b.*,
-            u.name as studentName,
-            u.avatar as studentAvatar,
-            s.name as subject,
-            vs.id as room_id,
-            vs.status as room_status,
-            vs.start_time as room_start_time,
-            vs.end_time as room_end_time
+            b.tutor_id as "tutorId",
+            b.learner_id as "learnerId",
+            u.name as "studentName",
+            u.avatar as "studentAvatar",
+            s.name as "subject",
+            vs.id as "room_id",
+            vs.status as "room_status",
+            vs.start_time as "room_start_time",
+            vs.end_time as "room_end_time",
+            ls.tutor_confirmed,
+            ls.learner_confirmed,
+            ls.attended,
+            ls.id as "lesson_session_id"
         FROM bookings b
         JOIN users u ON b.learner_id = u.id
         LEFT JOIN subjects s ON b.subject_id = s.id
         LEFT JOIN video_sessions vs ON b.id = vs.booking_id
+        LEFT JOIN lesson_sessions ls ON b.id = ls.booking_id
         WHERE b.tutor_id = $1 AND b.status != 'cancelled'
         ORDER BY b.datetime ASC
     `;
     const result = await db.query(query, [tutor_id]);
     const bookings = result.rows;
-
-    // Đảm bảo các buổi đã confirmed đều có phòng họp
+    
+    // Đảm bảo các buổi đã confirmed đều có phòng họp và lesson session
     await ensureVideoRoomsExist(bookings);
-
+    for (let booking of bookings) {
+        await ensureLessonSessionExists(booking);
+    }
+    
     return bookings;
 };

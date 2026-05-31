@@ -19,6 +19,7 @@ import { ImageWithFallback } from "../components/Image/ImageWithFallback";
 import messageApi from "../api/messageApi";
 import userApi from "../api/userApi";
 import { useAuth } from "../context/AuthContext";
+import { getAvatarUrl } from "../utils/avatar";
 
 export function MessagesPage({ adminMode = false }) {
   const { user } = useAuth();
@@ -276,16 +277,20 @@ export function MessagesPage({ adminMode = false }) {
               <button
                 key={chat.id}
                 onClick={() => setActiveChat(chat.id)}
-                className={`w-full flex items-center p-4 transition-all border-b border-slate-50/50 ${
-                  activeChat === chat.id
-                    ? "bg-white shadow-sm ring-1 ring-slate-100 border-l-4 border-l-indigo-600"
-                    : "hover:bg-slate-100/50"
-                }`}
+                className={`w-full flex items-center p-4 transition-all border-b border-slate-50/50 ${activeChat === chat.id
+                  ? "bg-white shadow-sm ring-1 ring-slate-100 border-l-4 border-l-indigo-600"
+                  : "hover:bg-slate-100/50"
+                  }`}
               >
                 <div className="relative flex-shrink-0">
                   <div className="w-14 h-14 rounded-2xl overflow-hidden border-2 border-white shadow-sm">
                     <ImageWithFallback
-                      src={chat.avatar}
+                      //src={chat.avatar}
+                      src={
+                        chat?.avatar
+                          ? getAvatarUrl(chat.avatar)
+                          : "/img/images.jpg"
+                      }
                       alt={chat.name}
                       className="w-full h-full object-cover"
                     />
@@ -311,7 +316,7 @@ export function MessagesPage({ adminMode = false }) {
                         chat.unread > 0
                           ? "font-bold text-slate-900"
                           : "text-slate-500 font-medium"
-                      }`}
+                        }`}
                     >
                       {chat.lastMsg}
                     </p>
@@ -336,10 +341,18 @@ export function MessagesPage({ adminMode = false }) {
             <header className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 <div className="w-10 h-10 rounded-xl overflow-hidden shadow-sm">
-                  <ImageWithFallback
-                    src={currentTutor?.avatar}
+                  {/* <ImageWithFallback
+                    //src={currentTutor?.avatar}
+                    src={getAvatarUrl(currentTutor?.avatar)}
                     alt={currentTutor?.name}
                     className="w-full h-full object-cover"
+                  /> */}
+                  <ImageWithFallback
+                    src={
+                      currentTutor?.avatar
+                        ? getAvatarUrl(currentTutor.avatar)
+                        : "/img/images.jpg"
+                    }
                   />
                 </div>
                 <div>
@@ -381,17 +394,15 @@ export function MessagesPage({ adminMode = false }) {
               {messages.map((msg) => (
                 <div
                   key={msg.id}
-                  className={`flex ${
-                    msg.sender_id === userId ? "justify-end" : "justify-start"
-                  }`}
+                  className={`flex ${msg.sender_id === userId ? "justify-end" : "justify-start"
+                    }`}
                 >
                   <div className="max-w-[75%]">
                     <div
-                      className={`px-5 py-3.5 rounded-3xl text-sm ${
-                        msg.sender_id === userId
-                          ? "bg-indigo-600 text-white"
-                          : "bg-white text-slate-700"
-                      }`}
+                      className={`px-5 py-3.5 rounded-3xl text-sm ${msg.sender_id === userId
+                        ? "bg-indigo-600 text-white"
+                        : "bg-white text-slate-700"
+                        }`}
                     >
                       {msg.content}
                     </div>
@@ -467,7 +478,12 @@ export function MessagesPage({ adminMode = false }) {
           <div className="p-8 text-center flex-1">
             <div className="w-32 h-32 rounded-[2.5rem] overflow-hidden mx-auto mb-6 shadow-2xl shadow-indigo-500/10 border-4 border-slate-50">
               <ImageWithFallback
-                src={currentTutor.avatar}
+                //src={currentTutor.avatar}
+                src={
+                  currentTutor?.avatar
+                    ? getAvatarUrl(currentTutor.avatar)
+                    : "/img/images.jpg"
+                }
                 alt={currentTutor.name}
                 className="w-full h-full object-cover"
               />

@@ -3,7 +3,22 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    try {
+      const storedUser = localStorage.getItem("user");
+      const token = localStorage.getItem("token");
+      if (storedUser && token) {
+        const parsedUser = JSON.parse(storedUser);
+        return {
+          ...parsedUser,
+          verified: parsedUser?.verified ?? false
+        };
+      }
+    } catch (err) {
+      console.error("Lỗi khởi tạo user:", err);
+    }
+    return null;
+  });
 
   // load user từ localStorage khi reload
   useEffect(() => {
@@ -13,12 +28,15 @@ export const AuthProvider = ({ children }) => {
     if (storedUser && token) {
       try {
         const parsedUser = JSON.parse(storedUser);
+
         setUser({
           ...parsedUser,
           verified: parsedUser?.verified ?? false
         });
       } catch (err) {
         console.error("Lỗi parse user:", err);
+
+        // 🔥 reset luôn nếu lỗi
         localStorage.removeItem("user");
         localStorage.removeItem("token");
         setUser(null);
@@ -30,7 +48,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   // login
-  const login = useCallback(({user, token}) => {
+  const login = ({ user, token }) => {
     if (!token) {
       throw new Error("Missing auth token");
     }
@@ -48,9 +66,9 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem("user");
     localStorage.removeItem("token");
     setUser(null);
-  }, []);
-  
-  const refreshUser = useCallback(async () => {
+  };
+
+  const refreshUser = async () => {
     try {
       const token = localStorage.getItem("token");
       if (!token) return;
@@ -62,6 +80,8 @@ export const AuthProvider = ({ children }) => {
       });
 
       const data = await res.json();
+
+      const data = await res.json();
       console.log("ME API DATA:", data);
 
       const normalizedUser = {
@@ -70,14 +90,24 @@ export const AuthProvider = ({ children }) => {
       };
 
       localStorage.setItem("user", JSON.stringify(normalizedUser));
-      setUser(normalizedUser);
+      setUser(normalizedUser); // 🔥 bắt buộc
     } catch (err) {
       console.error("Refresh user lỗi:", err);
     }
-  }, []);
+  };
+
+  const updateUser = (newUser) => {
+    const normalizedUser = {
+      ...newUser,
+      verified: newUser?.verified ?? false,
+    };
+
+    localStorage.setItem("user", JSON.stringify(normalizedUser));
+    setUser(normalizedUser);
+  };
 
   return (
-    <AuthContext.Provider value={{ user, setUser, login, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, setUser, updateUser, login, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

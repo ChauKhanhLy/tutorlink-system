@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { bookingApi } from "../api/bookingApi";
 import { tutorApi } from "../api/tutorApi";
 import { ImageWithFallback } from "../components/Image/ImageWithFallback";
+import { getAvatarUrl } from "../utils/avatar.js";
 
 export function BookingPage() {
   const [bookings, setBookings] = React.useState([]);
@@ -47,7 +48,7 @@ export function BookingPage() {
       toast.success("Đã hủy đặt lịch thành công");
       fetchBookings(); // Refresh
     } catch (err) {
-        console.error("Failed to cancel booking:", err);
+      console.error("Failed to cancel booking:", err);
       toast.error("Hủy thất bại, vui lòng thử lại");
     }
   };
@@ -97,11 +98,10 @@ export function BookingPage() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${
-                activeTab === tab.id
-                  ? "bg-indigo-600 text-white shadow-md"
-                  : "text-slate-500 hover:bg-slate-50"
-              }`}
+              className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${activeTab === tab.id
+                ? "bg-indigo-600 text-white shadow-md"
+                : "text-slate-500 hover:bg-slate-50"
+                }`}
             >
               {tab.label}
             </button>
@@ -120,8 +120,8 @@ export function BookingPage() {
               {activeTab === "upcoming"
                 ? "Bạn chưa đặt lịch học nào. Hãy tìm gia sư phù hợp ngay!"
                 : activeTab === "past"
-                ? "Bạn chưa có buổi học nào đã qua."
-                : "Không có buổi học nào bị hủy."}
+                  ? "Bạn chưa có buổi học nào đã qua."
+                  : "Không có buổi học nào bị hủy."}
             </p>
             <Link
               to="/search"
@@ -145,8 +145,12 @@ export function BookingPage() {
                     <div className="flex-shrink-0">
                       <div className="w-24 h-24 rounded-2xl overflow-hidden">
                         <ImageWithFallback
-                          src={tutor?.avatar || "https://i.pravatar.cc/150"}
-                          alt={tutor?.name}
+                          src={
+                            tutor?.avatar
+                              ? getAvatarUrl(tutor.avatar)
+                              : "/img/images.jpg"
+                          }
+                          alt={tutor?.name || "Gia sư"}
                           className="w-full h-full object-cover"
                         />
                       </div>

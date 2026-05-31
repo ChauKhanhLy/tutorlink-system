@@ -16,6 +16,8 @@ import { BecomeTutorPage } from "./pages/BecomeTutor";
 import { AdminLogin } from "./pages/admin/AdminLogin";
 import { AdminDashboard } from "./pages/admin/AdminDashboard";
 import { TutorDashboard } from "./pages/TutorDashboard";
+import { TutorSchedulePage } from "./pages/TutorSchedulePage";
+import {TutorStudentsPage} from "./pages/TutorStudentsPage";
 import { VideoRoomPage } from "./pages/VideoRoom";
 import { AdminMessagesPage } from "./pages/admin/AdminMessagesPage";
 import { AdminUsersPage } from "./pages/admin/AdminUsersPage";
@@ -54,7 +56,7 @@ export const router = createBrowserRouter([
         path: "tutor/schedule",
         element: (
           <ProtectedRoute requiredRole="tutor">
-            <TutorDashboard />
+            <TutorSchedulePage />
           </ProtectedRoute>
         ),
       },
@@ -62,7 +64,7 @@ export const router = createBrowserRouter([
         path: "tutor/students",
         element: (
           <ProtectedRoute requiredRole="tutor">
-            <TutorDashboard />
+            <TutorStudentsPage />
           </ProtectedRoute>
         ),
       },

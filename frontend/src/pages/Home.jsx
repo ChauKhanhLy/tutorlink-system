@@ -12,6 +12,7 @@ import {
 import { motion } from "framer-motion";
 import { tutorApi } from "../api/tutorApi";
 import { ImageWithFallback } from "../components/Image/ImageWithFallback";
+import { getAvatarUrl } from "../utils/avatar";
 
 export function LandingPage() {
   const [tutors, setTutors] = React.useState([]);
@@ -237,7 +238,8 @@ export function LandingPage() {
               >
                 <div className="relative h-48">
                   <ImageWithFallback
-                    src={tutor.avatar}
+                    //src={tutor.avatar}
+                    src={getAvatarUrl(tutor?.avatar)}
                     alt={tutor.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                   />

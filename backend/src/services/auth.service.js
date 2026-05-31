@@ -377,16 +377,34 @@ export const login = async ({ email, password }) => {
   )
 
   return {
-    token,
-    user: {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      verified: user.verified,
-      email_verified: user.email_verified
-    }
+  token,
+  user: {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    phone: user.phone,
+    location: user.location,
+    bio: user.bio,
+    avatar: user.avatar,
+    role: user.role,
+    verified: user.verified,
+    email_verified: user.email_verified,
+    current_level:
+  user.current_level,
+
+school:
+  user.school,
+
+grade:
+  user.grade,
+
+target:
+  user.target,
+
+learning_goal:
+  user.learning_goal,
   }
+}
 }
 export const forgotPassword =
 async (email) => {
@@ -490,6 +508,49 @@ async ({
       "Password reset successful"
   };
 }
+export const changePassword = async (
+  userId,
+  currentPassword,
+  newPassword
+) => {
+
+  const user =
+    await userDAL.findById(userId);
+
+  if (!user) {
+    throw new Error(
+      "Không tìm thấy user"
+    );
+  }
+
+  const isMatch =
+    await bcrypt.compare(
+      currentPassword,
+      user.password
+    );
+
+  if (!isMatch) {
+    throw new Error(
+      "Mật khẩu hiện tại không đúng"
+    );
+  }
+
+  if (newPassword.length < 8) {
+    throw new Error(
+      "Mật khẩu phải tối thiểu 8 ký tự"
+    );
+  }
+
+  const hashedPassword =
+    await bcrypt.hash(newPassword, 10);
+
+  await userDAL.updatePassword(
+    userId,
+    hashedPassword
+  );
+
+  return true;
+};
 /*const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
 const userDAL = require('../dal/user.dal')

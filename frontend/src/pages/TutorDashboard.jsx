@@ -16,8 +16,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { tutorApi } from "../api/tutorApi";
 import { bookingApi } from "../api/bookingApi";
+import { FeedbackMiniPage } from "../components/FeedbackMiniPage";
 
-import { ImageWithFallback } from "../components/Image/ImageWithFallback";
 import { WalletPage } from "./Wallet.jsx";
 import DatePicker from "react-multi-date-picker";
 import "react-multi-date-picker/styles/colors/purple.css";
@@ -29,17 +29,26 @@ export function TutorDashboard() {
   const navigate = useNavigate();
   const { user, refreshUser } = useAuth();
 
+  //const isPending =
+  //  user?.role === "tutor" &&
+  //  user?.verified === false;
+
+  const [loadingUser, setLoadingUser] =
+    React.useState(true);
+
+  const [stats, setStats] =
+    React.useState({
+      todaySessions: 0,
+      totalStudents: 0,
+      monthlyEarnings: 0,
+      avgRating: 0,
+    });
+   const [activeTab, setActiveTab] = React.useState("sessions");
   const isPending = user?.role === "tutor" && user?.verified === false;
 
-  const [loadingUser, setLoadingUser] = React.useState(true);
+  //const [loadingUser, setLoadingUser] = React.useState(true);
   const [loadingAvailability, setLoadingAvailability] = React.useState(false);
 
-  const [stats, setStats] = React.useState({
-    todaySessions: 0,
-    totalStudents: 0,
-    monthlyEarnings: 0,
-    avgRating: 0,
-  });
 
   const [upcomingSessions, setUpcomingSessions] = React.useState([]);
   const [availability, setAvailability] = React.useState([]);
@@ -51,6 +60,7 @@ export function TutorDashboard() {
 
   const fetchTutorData = async () => {
     if (!user?.id || isPending) return;
+
     try {
       const [statsRes, sessionsRes, availabilityRes] = await Promise.all([
         tutorApi.getTutorStats(),
@@ -76,9 +86,11 @@ export function TutorDashboard() {
   React.useEffect(() => {
     const loadUser = async () => {
       if (!user?.id) return;
+
       await refreshUser();
       setLoadingUser(false);
     };
+
     loadUser();
   }, [user?.id, refreshUser]);
 
@@ -143,26 +155,36 @@ export function TutorDashboard() {
   return (
     <div className="pt-24 min-h-screen bg-slate-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
         <div className="mb-8">
           <h1 className="text-3xl font-extrabold text-slate-900">
             Xin chào, {user?.name}
           </h1>
-          <p className="text-slate-500">Quản lý lớp học và thu nhập của bạn</p>
+
+          <p className="text-slate-500">
+            Quản lý lớp học và thu nhập của bạn
+          </p>
 
           {isPending && (
             <div className="mt-4 p-5 bg-yellow-50 border border-yellow-200 rounded-2xl">
+
               <p className="text-yellow-700 font-semibold mb-2">
                 Bạn chưa phải gia sư chính thức
               </p>
+
               <p className="text-sm text-yellow-600 mb-4">
                 Hãy hoàn thiện hồ sơ để gửi admin xét duyệt
               </p>
+
               <button
-                onClick={() => navigate("/become-tutor")}
+                onClick={() =>
+                  navigate("/become-tutor")
+                }
                 className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700"
               >
                 Đăng ký gia sư chính thức
               </button>
+
             </div>
           )}
         </div>
@@ -171,107 +193,89 @@ export function TutorDashboard() {
           <>
             {/* Stats */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+
               <StatCard
                 icon={Calendar}
                 label="Buổi học hôm nay"
                 value={stats.todaySessions}
                 color="bg-blue-50 text-blue-600"
               />
+
               <StatCard
                 icon={Users}
                 label="Học viên"
                 value={stats.totalStudents}
                 color="bg-green-50 text-green-600"
               />
+
               <StatCard
                 icon={Wallet}
                 label="Thu nhập tháng"
-                value={`${(stats.monthlyEarnings || 0).toLocaleString("vi-VN")} ₫`}
+                value={`${stats.monthlyEarnings.toLocaleString(
+                  "vi-VN"
+                )} ₫`}
                 color="bg-emerald-50 text-emerald-600"
               />
+
               <StatCard
                 icon={Star}
                 label="Đánh giá"
                 value={(stats.avgRating || 0).toFixed(1)}
                 color="bg-amber-50 text-amber-600"
               />
+
             </div>
+           
+            
+            {/* Quick Menu */}
+            <div className="grid md:grid-cols-3 gap-6 mb-10">
 
-            {/* Tabs */}
-            <div className="flex gap-2 mb-8 bg-white p-1.5 rounded-2xl border border-slate-200 w-fit shadow-sm">
-              {[
-                { id: "sessions", label: "Lịch dạy", icon: Calendar },
-                { id: "wallet", label: "Ví của tôi", icon: Wallet },
-                { id: "availability", label: "Lịch rảnh", icon: Clock },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${
-                    activeTab === tab.id
-                      ? "bg-indigo-600 text-white shadow-md"
-                      : "text-slate-500 hover:bg-slate-50"
-                  }`}
-                >
-                  <tab.icon className="h-4 w-4" />
-                  {tab.label}
-                </button>
-              ))}
+              <Link
+                to="/tutor/schedule"
+                className="bg-white p-8 rounded-3xl border border-slate-200 hover:border-indigo-300 transition-all"
+              >
+                <Calendar className="h-10 w-10 text-indigo-600 mb-4" />
+
+                <h3 className="text-xl font-bold text-slate-900 mb-2">
+                  Lịch dạy
+                </h3>
+
+                <p className="text-slate-500">
+                  Quản lý lịch học và lịch rảnh
+                </p>
+              </Link>
+
+              <Link
+                to="/tutor/students"
+                className="bg-white p-8 rounded-3xl border border-slate-200 hover:border-indigo-300 transition-all"
+              >
+                <Users className="h-10 w-10 text-indigo-600 mb-4" />
+
+                <h3 className="text-xl font-bold text-slate-900 mb-2">
+                  Học viên
+                </h3>
+
+                <p className="text-slate-500">
+                  Danh sách học viên học thử và học chính thức
+                </p>
+              </Link>
+
+              <Link
+                to="/wallet"
+                className="bg-white p-8 rounded-3xl border border-slate-200 hover:border-indigo-300 transition-all"
+              >
+                <Wallet className="h-10 w-10 text-indigo-600 mb-4" />
+
+                <h3 className="text-xl font-bold text-slate-900 mb-2">
+                  Ví của tôi
+                </h3>
+
+                <p className="text-slate-500">
+                  Xem số dư ví, nạp tiền và lịch sử thu nhập
+                </p>
+              </Link>
+
             </div>
-
-            {/* Sessions */}
-            {activeTab === "sessions" && (
-              <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-8">
-                <div className="flex items-center justify-between mb-8">
-                  <h2 className="text-xl font-bold text-slate-900">
-                    Lịch dạy của tôi
-                  </h2>
-                  <div className="flex bg-slate-100 p-1 rounded-xl">
-                    <button
-                      onClick={() => setViewMode("calendar")}
-                      className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                        viewMode === "calendar"
-                          ? "bg-white text-indigo-600 shadow-sm"
-                          : "text-slate-500 hover:text-slate-700"
-                      }`}
-                    >
-                      Lịch tháng
-                    </button>
-                    <button
-                      onClick={() => setViewMode("list")}
-                      className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                        viewMode === "list"
-                          ? "bg-white text-indigo-600 shadow-sm"
-                          : "text-slate-500 hover:text-slate-700"
-                      }`}
-                    >
-                      Danh sách
-                    </button>
-                  </div>
-                </div>
-
-                {viewMode === "list" ? (
-                  <div className="space-y-4">
-                    {upcomingSessions.length > 0 ? (
-                      upcomingSessions.map((session) => (
-                        <SessionCard
-                          key={session.id}
-                          session={session}
-                          onAccept={() => handleAccept(session.id)}
-                          onReject={() => handleReject(session.id)}
-                        />
-                      ))
-                    ) : (
-                      <p className="text-slate-400 text-center py-8">
-                        Chưa có lịch dạy nào sắp tới
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <ScheduleCalendar sessions={upcomingSessions} />
-                )}
-              </div>
-            )}
 
             {/* Wallet */}
             {activeTab === "wallet" && (
@@ -341,24 +345,22 @@ export function TutorDashboard() {
           </div>
         )}
       </div>
-
-      {showAvailabilityModal && (
-        <AvailabilityModal
-          onClose={() => setShowAvailabilityModal(false)}
-          onSave={handleUpdateAvailability}
-          isLoading={loadingAvailability}
-        />
-      )}
     </div>
   );
 }
 
-// ========== StatCard ==========
-function StatCard({ icon: Icon, label, value, color }) {
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  color,
+}) {
   return (
     <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
       <div className="flex items-center gap-3 mb-4">
-        <div className={`p-3 rounded-xl ${color}`}>
+        <div
+          className={`p-3 rounded-xl ${color}`}
+        >
           <Icon className="h-6 w-6" />
         </div>
         <span className="text-sm font-medium text-slate-500">{label}</span>
@@ -370,6 +372,8 @@ function StatCard({ icon: Icon, label, value, color }) {
 
 // ========== SessionCard ==========
 function SessionCard({ session, onAccept, onReject }) {
+  const [showFeedback, setShowFeedback] = React.useState(false);
+
   const dateObj = session.dateObj;
   const isValidDate = dateObj && !isNaN(dateObj.getTime());
   const formattedDate = isValidDate
@@ -396,10 +400,12 @@ function SessionCard({ session, onAccept, onReject }) {
             <div className="w-14 h-14 rounded-2xl overflow-hidden border-2 border-white shadow-sm">
               <ImageWithFallback
                 src={
-                  session.studentAvatar ||
-                  `https://i.pravatar.cc/150?u=${session.learner_id}`
+                  session.studentAvatar
+                    ? getAvatarUrl(session.studentAvatar)
+                    : "/img/images.jpg"
                 }
                 alt={session.studentName}
+                className="w-full h-full object-cover"
               />
             </div>
             <div
@@ -482,8 +488,26 @@ function SessionCard({ session, onAccept, onReject }) {
                   : "Đã xong"}
             </div>
           )}
+          {/* Nút báo cáo */}
+          <button
+            onClick={() => setShowFeedback(true)}
+            className="text-red-500 text-sm px-2 py-1 rounded-lg hover:bg-red-50"
+          >
+            Phản hồi
+          </button>
         </div>
       </div>
+
+      {/* Modal ComplaintForm - đặt trong cùng return */}
+      {showFeedback && (
+        <FeedbackMiniPage
+          onClose={() => setShowFeedback(false)}
+          bookingId={session.id}
+          targetUserId={session.studentId || session.learner_id}
+          targetName={session.studentName || session.learner_name}
+          targetRole="student"
+        />
+      )}
     </div>
   );
 }

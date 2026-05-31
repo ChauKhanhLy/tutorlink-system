@@ -94,6 +94,7 @@ export function ClassroomPage() {
 
   const nextBooking = bookings.find(b => new Date(b.datetime || b.date) > new Date());
   const pastBookings = bookings.filter(b => new Date(b.datetime || b.date) <= new Date());
+  const confirmedBookings = bookings.filter(b => b.status === 'confirmed' || b.status === 'completed').length;
 
   return (
     <div className="pt-24 pb-20 bg-slate-50 min-h-screen">
@@ -121,17 +122,23 @@ export function ClassroomPage() {
                   <div className="flex items-center gap-4 text-indigo-100 font-medium">
                      <span className="flex items-center"><User className="h-4 w-4 mr-1.5" /> Gia sư: {tutor.name}</span>
                      <span className="w-1 h-1 bg-white/40 rounded-full"></span>
-                     <span>{bookings.length} buổi học đã đăng ký</span>
+                     <span>{confirmedBookings} buổi học đã xác nhận</span>
                   </div>
                 </div>
               </div>
               
               <div className="flex gap-4">
-                 <Link 
+                 <Link
                    to={`/messages?tutorId=${tutor.id}`}
                    className="px-6 py-3 bg-white/20 backdrop-blur-md border border-white/30 text-white font-bold rounded-2xl hover:bg-white/30 transition-all flex items-center"
                  >
                    <MessageSquare className="h-5 w-5 mr-2" /> Nhắn tin
+                 </Link>
+                 <Link
+                   to={`/review?tutorId=${tutor.id}&subjectId=${subject.id}&type=tutor`}
+                   className="px-6 py-3 bg-white/20 backdrop-blur-md border border-white/30 text-white font-bold rounded-2xl hover:bg-white/30 transition-all flex items-center"
+                 >
+                   <Star className="h-5 w-5 mr-2" /> Đánh giá gia sư
                  </Link>
                  <button className="p-3 bg-white/20 backdrop-blur-md border border-white/30 text-white rounded-2xl hover:bg-white/30 transition-all">
                     <ShieldCheck className="h-6 w-6" />
@@ -225,6 +232,12 @@ export function ClassroomPage() {
                         </div>
                         
                         <div className="flex items-center gap-3">
+                           <Link 
+                             to={`/lesson/${booking.id}`}
+                             className="px-6 py-2.5 bg-white border border-indigo-200 text-indigo-600 text-sm font-bold rounded-xl hover:bg-indigo-50 transition-all flex items-center"
+                           >
+                             Xem chi tiết <ArrowRight className="ml-2 h-4 w-4" />
+                           </Link>
                            {isUpcoming ? (
                              <Link 
                                to={`/room/${booking.room_id || booking.id}`}
