@@ -97,7 +97,7 @@ export function TutorSchedulePage() {
       if (window.confirm("Bạn có chắc chắn muốn chấp nhận lịch học này?")) {
         await bookingApi.accept(bookingId);
         toast.success("Đã chấp nhận lịch học và hoàn tất thanh toán!");
-        await fetchTutorData();
+        await fetchScheduleData();
       }
     } catch (err) {
       console.error(err);
@@ -110,7 +110,7 @@ export function TutorSchedulePage() {
        if (window.confirm("Bạn có chắc chắn muốn từ chối lịch học này?")) {
          await bookingApi.reject(bookingId);
          toast.success("Đã từ chối lịch học");
-         await fetchTutorData();
+         await ffetchScheduleData();
        }
      } catch (err) {
        console.error(err);
@@ -123,7 +123,7 @@ export function TutorSchedulePage() {
      try {
        await tutorApi.updateAvailability(user.id, data);
        toast.success("Cập nhật lịch rảnh thành công!");
-       await fetchTutorData(); // refresh toàn bộ dữ liệu
+       await fetchScheduleData(); // refresh toàn bộ dữ liệu
        setShowAvailabilityModal(false);
      } catch (err) {
        console.error(err);
@@ -149,7 +149,7 @@ if (isPending) {
     <div className="pt-24 min-h-screen bg-slate-50">
 
       <div className="max-w-7xl mx-auto px-4">
-
+        {/* Lịch dạy */}
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-8">
 
           <div className="flex items-center justify-between mb-6">
@@ -189,7 +189,65 @@ if (isPending) {
           </div>
 
         </div>
+        {/* Lịch rảnh */}
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-8">
+        <h2 className="text-xl font-bold text-slate-900 mb-6">
+          Lịch rảnh của tôi
+        </h2>
 
+        <div className="max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+          <div className="space-y-6">
+            {availability.length > 0 ? (
+              availability.map((slot, index) => {
+                const [year, month, day] = slot.date
+                  .split("-")
+                  .map(Number);
+
+                const dateObj = new Date(
+                  year,
+                  month - 1,
+                  day
+                );
+
+                return (
+                  <div key={index}>
+                    <p className="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-indigo-400" />
+                      {dateObj.toLocaleDateString("vi-VN", {
+                        weekday: "long",
+                        day: "numeric",
+                        month: "long",
+                      })}
+                    </p>
+
+                    <div className="flex flex-wrap gap-2">
+                      {slot.times.map((time, tIndex) => (
+                        <span
+                          key={tIndex}
+                          className="px-3 py-1 bg-slate-50 text-slate-600 text-xs font-medium rounded-lg border border-slate-100"
+                        >
+                          {time}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <p className="text-slate-400 text-center py-8">
+                Chưa cập nhật lịch rảnh
+              </p>
+            )}
+          </div>
+        </div>
+
+        <button
+          onClick={() => setShowAvailabilityModal(true)}
+          className="mt-6 w-full flex items-center justify-center px-4 py-3 border-2 border-dashed border-slate-200 rounded-2xl text-slate-500 font-bold text-sm hover:border-indigo-300 hover:text-indigo-600 transition-all"
+        >
+          Cập nhật lịch rảnh
+        </button>
+      </div>
       </div>
 
       {
