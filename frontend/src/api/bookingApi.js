@@ -40,6 +40,11 @@ const normalizeBooking = (booking) => {
         })
       : "",
     startTime: isValidDate ? dateObj.toISOString() : null,
+    // Trạng thái xác nhận từ lesson_sessions (được JOIN trong backend)
+    tutor_confirmed: booking?.tutor_confirmed ?? false,
+    learner_confirmed: booking?.learner_confirmed ?? false,
+    attended: booking?.attended ?? false,
+    lesson_session_id: booking?.lesson_session_id || null,
   };
 };
 
@@ -76,4 +81,21 @@ export const bookingApi = {
   accept: (bookingId) => axiosClient.patch(`/bookings/${bookingId}/accept`),
 
   reject: (bookingId) => axiosClient.patch(`/bookings/${bookingId}/reject`),
+
+  getById: async (id) => {
+    const res = await axiosClient.get(`/bookings/${id}`);
+    const raw = res?.data?.data || res.data;
+    return {
+      ...res,
+      data: normalizeBooking(raw),
+    };
+  },
+
+  // Gia sư xác nhận đã dạy
+  tutorConfirm: (bookingId) =>
+    axiosClient.post(`/bookings/${bookingId}/tutor-confirm`),
+
+  // Học viên xác nhận đã học
+  learnerConfirm: (bookingId) =>
+    axiosClient.post(`/bookings/${bookingId}/learner-confirm`),
 };

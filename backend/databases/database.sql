@@ -187,10 +187,14 @@ CREATE TABLE public.reviews (
     id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
     booking_id uuid,
     reviewer_id uuid,
+    tutor_id uuid,
+    subject_id uuid,
+    review_type character varying(20) DEFAULT 'session',
     rating integer,
     comment text,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT reviews_rating_check CHECK (((rating >= 1) AND (rating <= 5)))
+    CONSTRAINT reviews_rating_check CHECK (((rating >= 1) AND (rating <= 5))),
+    CONSTRAINT reviews_review_type_check CHECK (((review_type)::text = ANY ((ARRAY['session'::character varying, 'tutor'::character varying])::text[])))
 );
 
 

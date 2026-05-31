@@ -3,7 +3,22 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    try {
+      const storedUser = localStorage.getItem("user");
+      const token = localStorage.getItem("token");
+      if (storedUser && token) {
+        const parsedUser = JSON.parse(storedUser);
+        return {
+          ...parsedUser,
+          verified: parsedUser?.verified ?? false
+        };
+      }
+    } catch (err) {
+      console.error("Lỗi khởi tạo user:", err);
+    }
+    return null;
+  });
 
   // load user từ localStorage khi reload
   useEffect(() => {
@@ -18,7 +33,6 @@ export const AuthProvider = ({ children }) => {
           ...parsedUser,
           verified: parsedUser?.verified ?? false
         });
-
       } catch (err) {
         console.error("Lỗi parse user:", err);
 
@@ -27,7 +41,6 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem("token");
         setUser(null);
       }
-
     } else {
       localStorage.removeItem("user");
       localStorage.removeItem("token");
