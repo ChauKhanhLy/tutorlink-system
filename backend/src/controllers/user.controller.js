@@ -27,6 +27,7 @@ export const updateProfileInfo =
       const {
         name,
         phone,
+        avatar,
         location,
         bio
       } = req.body;
@@ -37,6 +38,7 @@ export const updateProfileInfo =
           {
             name,
             phone,
+            avatar,
             location,
             bio
           }
@@ -119,42 +121,79 @@ export const becomeTutor = async (req, res) => {
 
 export const updateAvatar = async (req, res) => {
   try {
-    console.log("API HIT")
     const userId = req.user.id
-    console.log("userId:", userId)
 
-    console.log(" file:", req.file)
-    // không có file
     if (!req.file) {
-      return res.status(400).json({ message: 'Không có file upload' })
+      return res.status(400).json({
+        message: "Không có file upload"
+      })
     }
 
-    // tạo đường dẫn avatar
     const avatarUrl = `/uploads/${req.file.filename}`
-     console.log("avatarUrl:", avatarUrl)
-    // update DB
+    console.log("avatarUrl:", avatarUrl)
+
     const updatedUser = await userService.updateAvatar(userId, avatarUrl)
-    console.log("updated user:", updatedUser)
-    // nếu không tìm thấy user
+
     if (!updatedUser) {
-      
-      return res.status(404).json({ message: 'User not found' })
+      return res.status(404).json({
+        message: "User not found"
+      })
     }
 
-    // loại bỏ password
     const { password, ...userWithoutPassword } = updatedUser
 
-    // trả về chuẩn
-    res.json({
+    return res.status(200).json({
       message: "Update avatar success",
       user: userWithoutPassword
     })
-
   } catch (err) {
-    console.error(err)
-    res.status(500).json({ message: err.message })
+    console.error("Lỗi updateAvatar:", err)
+
+    return res.status(500).json({
+      message: "Lỗi server khi upload avatar",
+      error: err.message
+    })
   }
 }
+
+// export const updateAvatar = async (req, res) => {
+//   try {
+//     console.log("API HIT")
+//     const userId = req.user.id
+//     console.log("userId:", userId)
+
+//     console.log(" file:", req.file)
+//     // không có file
+//     if (!req.file) {
+//       return res.status(400).json({ message: 'Không có file upload' })
+//     }
+
+//     // tạo đường dẫn avatar
+//     const avatarUrl = `/uploads/${req.file.filename}`
+//      console.log("avatarUrl:", avatarUrl)
+//     // update DB
+//     const updatedUser = await userService.updateAvatar(userId, avatarUrl)
+//     console.log("updated user:", updatedUser)
+//     // nếu không tìm thấy user
+//     if (!updatedUser) {
+      
+//       return res.status(404).json({ message: 'User not found' })
+//     }
+
+//     // loại bỏ password
+//     const { password, ...userWithoutPassword } = updatedUser
+
+//     // trả về chuẩn
+//     res.json({
+//       message: "Update avatar success",
+//       user: userWithoutPassword
+//     })
+
+//   } catch (err) {
+//     console.error(err)
+//     res.status(500).json({ message: err.message })
+//   }
+// }
 
 
 /*const userService = require('../services/user.service')
