@@ -5,6 +5,11 @@ import {
   Wallet,
   Star,
   Clock,
+  Trash2,
+  DollarSign,
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -14,6 +19,10 @@ import { bookingApi } from "../api/bookingApi";
 import { FeedbackMiniPage } from "../components/FeedbackMiniPage";
 
 import { WalletPage } from "./Wallet.jsx";
+import DatePicker from "react-multi-date-picker";
+import "react-multi-date-picker/styles/colors/purple.css";
+import { ScheduleCalendar } from "../components/ScheduleCalendar";
+
 import { toast } from "sonner";
 
 export function TutorDashboard() {
@@ -44,7 +53,8 @@ export function TutorDashboard() {
   const [upcomingSessions, setUpcomingSessions] = React.useState([]);
   const [availability, setAvailability] = React.useState([]);
 
-  // const [activeTab, setActiveTab] = React.useState("sessions");
+  const [activeTab, setActiveTab] = React.useState("sessions");
+  const [viewMode, setViewMode] = React.useState("calendar"); // "list" | "calendar"
   const [showAvailabilityModal, setShowAvailabilityModal] =
     React.useState(false);
 
@@ -59,7 +69,11 @@ export function TutorDashboard() {
       ]);
 
       setStats(statsRes.data.data || statsRes.data);
-      setUpcomingSessions(sessionsRes.data || []);
+      const mappedSessions = (sessionsRes.data || []).map(s => ({
+        ...s,
+        dateObj: new Date(s.datetime)
+      }));
+      setUpcomingSessions(mappedSessions);
       setAvailability(
         availabilityRes.data?.availableSlots || availabilityRes.data || [],
       );
@@ -89,8 +103,13 @@ export function TutorDashboard() {
   const handleAccept = async (bookingId) => {
     try {
       if (window.confirm("Bạn có chắc chắn muốn chấp nhận lịch học này?")) {
+        const booking = upcomingSessions.find(s => s.id === bookingId);
         await bookingApi.accept(bookingId);
-        toast.success("Đã chấp nhận lịch học và hoàn tất thanh toán!");
+        if (booking?.type === 'trial') {
+          toast.success("Đã xác nhận buổi học thử!");
+        } else {
+          toast.success("Đã chấp nhận lịch học và hoàn tất thanh toán!");
+        }
         await fetchTutorData();
       }
     } catch (err) {
@@ -201,7 +220,7 @@ export function TutorDashboard() {
               <StatCard
                 icon={Star}
                 label="Đánh giá"
-                value={stats.avgRating.toFixed(1)}
+                value={(stats.avgRating || 0).toFixed(1)}
                 color="bg-amber-50 text-amber-600"
               />
 

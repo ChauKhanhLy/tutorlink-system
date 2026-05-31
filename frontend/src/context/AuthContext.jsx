@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 
 const AuthContext = createContext();
 
@@ -59,10 +59,10 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem("token", token);
     localStorage.setItem("user", JSON.stringify(normalizedUser));
     setUser(normalizedUser);
-  };
+  }, []);
 
   // logout
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem("user");
     localStorage.removeItem("token");
     setUser(null);
@@ -81,6 +81,7 @@ export const AuthProvider = ({ children }) => {
 
       const data = await res.json();
 
+      const data = await res.json();
       console.log("ME API DATA:", data);
 
       const normalizedUser = {

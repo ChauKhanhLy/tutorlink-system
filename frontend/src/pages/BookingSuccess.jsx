@@ -1,11 +1,11 @@
 import React from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
-import { 
-  CheckCircle, 
-  Calendar, 
-  Clock, 
-  User, 
-  ArrowRight, 
+import {
+  CheckCircle,
+  Calendar,
+  Clock,
+  User,
+  ArrowRight,
   CreditCard,
   BookOpen,
   MapPin,
@@ -59,13 +59,13 @@ export function BookingSuccessPage() {
   }
 
   const isTrial = booking.type === "trial";
-  const formattedDate = booking.dateObj 
-    ? booking.dateObj.toLocaleDateString("vi-VN", { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-      })
+  const formattedDate = booking.dateObj
+    ? booking.dateObj.toLocaleDateString("vi-VN", {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })
     : "Chưa xác định";
 
   return (
@@ -81,14 +81,14 @@ export function BookingSuccessPage() {
           >
             <CheckCircle className="h-12 w-12 text-emerald-600" />
           </motion.div>
-          <motion.h1 
+          <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-4xl font-extrabold text-slate-900 mb-4"
           >
             Đặt lịch thành công!
           </motion.h1>
-          <motion.p 
+          <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
@@ -109,9 +109,9 @@ export function BookingSuccessPage() {
           <div className="bg-indigo-600 p-8 text-white relative overflow-hidden">
             <div className="flex items-center space-x-6 relative z-10">
               <div className="w-20 h-20 rounded-2xl overflow-hidden border-4 border-white/20 shadow-lg">
-                <ImageWithFallback 
-                  src={booking.tutorAvatar} 
-                  alt={booking.tutorName} 
+                <ImageWithFallback
+                  src={booking.tutorAvatar}
+                  alt={booking.tutorName}
                   className="w-full h-full object-cover"
                 />
               </div>
@@ -119,7 +119,7 @@ export function BookingSuccessPage() {
                 <div className="text-indigo-100 text-xs font-bold uppercase tracking-widest mb-1">Gia sư hướng dẫn</div>
                 <h3 className="text-2xl font-bold">{booking.tutorName}</h3>
                 <div className="flex items-center mt-1 text-indigo-100 text-sm">
-                  <BookOpen className="h-3.5 w-3.5 mr-1.5" /> 
+                  <BookOpen className="h-3.5 w-3.5 mr-1.5" />
                   <Link to={`/classroom/${booking.tutor_id || booking.tutorId}/${booking.subject_id || booking.subjectId}`} className="hover:underline font-bold">
                     {booking.subjectName || "Môn học"}
                   </Link>
@@ -131,76 +131,75 @@ export function BookingSuccessPage() {
 
           {/* Details Grid */}
           <div className="p-10">
-             <div className="grid md:grid-cols-2 gap-10 mb-10">
-                <div className="space-y-6">
-                   <div className="flex items-start space-x-4">
-                      <div className="p-3 bg-slate-50 rounded-2xl text-indigo-600">
-                         <Calendar className="h-6 w-6" />
-                      </div>
-                      <div>
-                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Ngày học</div>
-                        <div className="font-bold text-slate-900">{formattedDate}</div>
-                      </div>
-                   </div>
-                   <div className="flex items-start space-x-4">
-                      <div className="p-3 bg-slate-50 rounded-2xl text-indigo-600">
-                         <Clock className="h-6 w-6" />
-                      </div>
-                      <div>
-                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Thời gian</div>
-                        <div className="font-bold text-slate-900">{booking.time} (50 phút)</div>
-                      </div>
-                   </div>
+            <div className="grid md:grid-cols-2 gap-10 mb-10">
+              <div className="space-y-6">
+                <div className="flex items-start space-x-4">
+                  <div className="p-3 bg-slate-50 rounded-2xl text-indigo-600">
+                    <Calendar className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Ngày học</div>
+                    <div className="font-bold text-slate-900">{formattedDate}</div>
+                  </div>
                 </div>
+                <div className="flex items-start space-x-4">
+                  <div className="p-3 bg-slate-50 rounded-2xl text-indigo-600">
+                    <Clock className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Thời gian</div>
+                    <div className="font-bold text-slate-900">{booking.time} ({isTrial ? '50 phút' : '2 tiếng'})</div>
+                  </div>
+                </div>
+              </div>
 
-                <div className="space-y-6">
-                   <div className="flex items-start space-x-4">
-                      <div className="p-3 bg-slate-50 rounded-2xl text-indigo-600">
-                         <CreditCard className="h-6 w-6" />
-                      </div>
-                      <div>
-                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Học phí</div>
-                        <div className="font-bold text-slate-900">
-                          {isTrial ? "Miễn phí (Học thử)" : `${booking.fee?.toLocaleString('vi-VN')}đ`}
-                        </div>
-                      </div>
-                   </div>
-                   <div className="flex items-start space-x-4">
-                      <div className="p-3 bg-slate-50 rounded-2xl text-indigo-600">
-                         <MapPin className="h-6 w-6" />
-                      </div>
-                      <div>
-                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Hình thức</div>
-                        <div className="font-bold text-slate-900">Online (Jitsi Meet)</div>
-                      </div>
-                   </div>
+              <div className="space-y-6">
+                <div className="flex items-start space-x-4">
+                  <div className="p-3 bg-slate-50 rounded-2xl text-indigo-600">
+                    <CreditCard className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Học phí</div>
+                    <div className="font-bold text-slate-900">
+                      {isTrial ? "Miễn phí (Học thử)" : `${booking.fee?.toLocaleString('vi-VN')}đ`}
+                    </div>
+                  </div>
                 </div>
-             </div>
+                <div className="flex items-start space-x-4">
+                  <div className="p-3 bg-slate-50 rounded-2xl text-indigo-600">
+                    <MapPin className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Hình thức</div>
+                    <div className="font-bold text-slate-900">Online (Jitsi Meet)</div>
+                  </div>
+                </div>
+              </div>
+            </div>
 
-             <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                   <ShieldCheck className="h-5 w-5 text-indigo-600" />
-                   <span className="text-sm font-bold text-slate-600">Trạng thái đặt lịch</span>
-                </div>
-                <span className={`px-4 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider ${
-                   booking.status === 'confirmed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+            <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <ShieldCheck className="h-5 w-5 text-indigo-600" />
+                <span className="text-sm font-bold text-slate-600">Trạng thái đặt lịch</span>
+              </div>
+              <span className={`px-4 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider ${booking.status === 'confirmed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
                 }`}>
-                   {booking.status === 'confirmed' ? 'Đã xác nhận' : 'Chờ xác nhận'}
-                </span>
-             </div>
+                {booking.status === 'confirmed' ? 'Đã xác nhận' : 'Chờ xác nhận'}
+              </span>
+            </div>
           </div>
         </motion.div>
 
         {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-4 mb-12">
-          <Link 
-            to="/dashboard" 
+          <Link
+            to="/dashboard"
             className="flex-1 px-8 py-5 bg-indigo-600 text-white text-center font-bold rounded-2xl hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-500/20"
           >
             Về Dashboard
           </Link>
-          <Link 
-            to={`/messages?tutorId=${booking.tutorId}`} 
+          <Link
+            to={`/messages?tutorId=${booking.tutorId}`}
             className="flex-1 px-8 py-5 bg-white border-2 border-slate-200 text-slate-700 text-center font-bold rounded-2xl hover:bg-slate-50 transition-all"
           >
             Nhắn tin cho gia sư
@@ -210,14 +209,14 @@ export function BookingSuccessPage() {
         {/* Suggestion Section */}
         <div className="bg-white rounded-[2.5rem] p-8 border border-slate-200 text-center relative overflow-hidden group">
           <div className="relative z-10">
-             <h4 className="text-xl font-bold text-slate-900 mb-2">Muốn tìm hiểu thêm về {booking.subjectName}?</h4>
-             <p className="text-slate-500 mb-6 font-medium">Khám phá lộ trình học tập và đội ngũ gia sư hàng đầu cho môn học này.</p>
-             <Link 
-               to={`/classroom/${booking.tutor_id || booking.tutorId}/${booking.subject_id || booking.subjectId}`} 
-               className="inline-flex items-center font-bold text-indigo-600 group-hover:translate-x-2 transition-transform duration-300"
-             >
-               Xem chi tiết lớp học <ChevronRight className="ml-1 h-5 w-5" />
-             </Link>
+            <h4 className="text-xl font-bold text-slate-900 mb-2">Muốn tìm hiểu thêm về {booking.subjectName}?</h4>
+            <p className="text-slate-500 mb-6 font-medium">Khám phá lộ trình học tập và đội ngũ gia sư hàng đầu cho môn học này.</p>
+            <Link
+              to={`/classroom/${booking.tutor_id || booking.tutorId}/${booking.subject_id || booking.subjectId}`}
+              className="inline-flex items-center font-bold text-indigo-600 group-hover:translate-x-2 transition-transform duration-300"
+            >
+              Xem chi tiết lớp học <ChevronRight className="ml-1 h-5 w-5" />
+            </Link>
           </div>
           <div className="absolute top-0 left-0 w-2 h-full bg-indigo-600 group-hover:w-4 transition-all"></div>
         </div>

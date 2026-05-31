@@ -1,4 +1,4 @@
-import { sequelize } from '../config/database.js';
+import sequelize from '../config/database.js';
 import User from './user.model.js';
 import TutorProfile from './tutor_profile.model.js';
 import Booking from './booking.model.js';
@@ -25,17 +25,17 @@ const models = {
 // User associations
 User.hasOne(TutorProfile, { foreignKey: 'user_id', as: 'tutorProfile' });
 User.hasMany(Booking, { foreignKey: 'learner_id', as: 'learnerBookings' });
+User.hasMany(Booking, { foreignKey: 'tutor_id', as: 'tutorBookings' });
 User.hasOne(Wallet, { foreignKey: 'user_id', as: 'wallet' });
 User.hasMany(Transaction, { foreignKey: 'user_id', as: 'transactions' });
 User.hasMany(Settlement, { foreignKey: 'user_id', as: 'settlements' });
 
 // TutorProfile associations
 TutorProfile.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
-TutorProfile.hasMany(Booking, { foreignKey: 'tutor_id', as: 'bookings' });
 
 // Booking associations
 Booking.belongsTo(User, { foreignKey: 'learner_id', as: 'learner' });
-Booking.belongsTo(TutorProfile, { foreignKey: 'tutor_id', as: 'tutor' });
+Booking.belongsTo(User, { foreignKey: 'tutor_id', as: 'tutor' });
 Booking.hasMany(Review, { foreignKey: 'booking_id', as: 'reviews' });
 Booking.hasMany(Payment, { foreignKey: 'booking_id', as: 'payments' });
 Booking.hasOne(VideoRoom, { foreignKey: 'booking_id', as: 'videoRoom' });

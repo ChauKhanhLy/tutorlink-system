@@ -30,6 +30,7 @@ export function TutorProfilePage() {
   const [availableSlots, setAvailableSlots] = React.useState([]);
   const [selectedDate, setSelectedDate] = React.useState(null);
   const [selectedTime, setSelectedTime] = React.useState(null);
+  const [currentMonth, setCurrentMonth] = React.useState(new Date());
   const [bookingType, setBookingType] = React.useState("trial"); // "trial" hoặc "regular"
   const [loading, setLoading] = React.useState(true);
   const [reviews, setReviews] = React.useState([]);
@@ -50,10 +51,12 @@ export function TutorProfilePage() {
         const tutorData = res.data;
         setTutor(tutorData);
 
-        // gọi thêm API availability
-        const slotRes = await tutorApi.getAvailability(id);
+        // gọi thêm API availability - lấy 60 ngày để bao phủ tháng này và tháng sau
+        const slotRes = await tutorApi.getAvailability(id, { days: 60 });
         const slots = slotRes.data?.availableSlots || slotRes.data || [];
         setAvailableSlots(slots);
+        
+        // Mặc định chọn ngày đầu tiên có slot
         if (slots.length > 0) {
           setSelectedDate(slots[0].date);
         }
@@ -171,7 +174,7 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
       const bookingData = {
         tutor_id: tutor.id,
         subject_id: subjectId,
-        datetime: datetimeString, // Không ép về UTC, để backend xử lý
+        datetime: isoDatetime, 
         type: bookingType,
         fee: bookingType === "trial" ? 0 : tutor.hourly_fee || 0,
       };
@@ -493,7 +496,7 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
                         : formatVND(tutor.hourlyRate || tutor.hourly_fee)}
                     </div>
                     <div className="text-slate-400 text-sm font-bold">
-                      Bài học 50 phút
+                      {bookingType === 'trial' ? 'Bài học 50 phút' : 'Bài học 2 tiếng'}
                     </div>
                   </div>
 
@@ -526,17 +529,34 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
                     </div>
                   </div>
 
-                  {/* Calendar Widget Simplified */}
+                  {/* Calendar Widget - Full Monthly View */}
                   <div className="mb-8">
-                    <div className="flex items-center justify-between mb-4">
-                      <h4 className="text-sm font-bold text-slate-900">
-                        Chọn ngày
+                    <div className="flex items-center justify-between mb-6">
+                      <h4 className="text-sm font-bold text-slate-900 capitalize">
+                        {currentMonth.toLocaleDateString("vi-VN", {
+                          month: "long",
+                          year: "numeric",
+                        })}
                       </h4>
-                      <div className="flex space-x-2">
-                        <button className="p-1.5 rounded-lg hover:bg-slate-100">
+                      <div className="flex space-x-1">
+                        <button
+                          onClick={() => {
+                            const prev = new Date(currentMonth);
+                            prev.setMonth(prev.getMonth() - 1);
+                            setCurrentMonth(prev);
+                          }}
+                          className="p-2 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors"
+                        >
                           <ChevronLeft className="h-4 w-4" />
                         </button>
-                        <button className="p-1.5 rounded-lg hover:bg-slate-100">
+                        <button
+                          onClick={() => {
+                            const next = new Date(currentMonth);
+                            next.setMonth(next.getMonth() + 1);
+                            setCurrentMonth(next);
+                          }}
+                          className="p-2 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors"
+                        >
                           <ChevronRight className="h-4 w-4" />
                         </button>
                       </div>
@@ -550,6 +570,7 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
                           {d}
                         </span>
                       ))}
+                    </div>
 
                       {/* Render upcoming calendar days continuously */}
                       {Array.from({ length: calendarDayCount }).map(
@@ -666,7 +687,7 @@ const timeParts = selectedTime.match(/(\d+):(\d+)\s+(SA|CH)/);
                     Buổi học thử
                   </h4>
                   <p className="text-xs text-indigo-600/70 leading-relaxed font-medium">
-                    Mới đến với TutorLink? Buổi học 30 phút đầu tiên của bạn
+                    Mới đến với TutorLink? Buổi học 50 phút đầu tiên của bạn
                     hoàn toàn miễn phí!
                   </p>
                 </div>

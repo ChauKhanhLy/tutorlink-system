@@ -25,6 +25,7 @@ import messageApi from "../api/messageApi";
 import { ImageWithFallback } from "../components/Image/ImageWithFallback";
 import { useAuth } from "../context/AuthContext";
 import { TutorDashboard } from "./TutorDashboard";
+import { ScheduleCalendar } from "../components/ScheduleCalendar";
 import { getAvatarUrl } from "../utils/avatar";
 
 export function DashboardPage() {
@@ -78,15 +79,20 @@ export function DashboardPage() {
   React.useEffect(() => {
     const fetchData = async () => {
       try {
-        const [tutorRes, bookingRes, messageRes, favoriteRes] = await Promise.all([
-          tutorApi.getAll(),
-          bookingApi.getMyBookings(),
-          messageApi.getConversations(user.id),
-          favoriteApi.getMyFavorites(),
-        ]);
+        const [tutorRes, bookingRes, messageRes, favRes] =
+          await Promise.all([
+            tutorApi.getAll(),
+            bookingApi.getMyBookings(),
+            messageApi.getConversations(user.id),
+            favoriteApi.getMyFavorites(),
+          ]);
 
         setTutors(tutorRes.data.tutors || []);
-        setSessions(bookingRes.data);
+        const mappedSessions = (bookingRes.data || []).map(s => ({
+          ...s,
+          dateObj: new Date(s.datetime)
+        }));
+        setSessions(mappedSessions);
         setMessages(messageRes.data);
         setFavorites(favoriteRes.data.data || []);
         setLoading(true);
@@ -307,7 +313,6 @@ export function DashboardPage() {
             </div>
           </aside>
 
-          {/* Main Content Area */}
           <main className="flex-1 space-y-8 pb-20">
             {/* Top Bar for Dashboard */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -362,18 +367,21 @@ export function DashboardPage() {
                               </span>
                             </div>
 
-                            <h2 className="text-3xl font-bold mb-2">
-                              <Link to={`/classroom/${nextSession.tutor_id || nextSession.tutorId}/${nextSession.subject_id || nextSession.subjectId}`} className="hover:underline">
-                                {nextSession.subject || "Chưa có môn"}
-                              </Link> với{" "}
-                              {nextTutor?.name || "Gia sư"}
-                            </h2>
+                          <h2 className="text-3xl font-bold mb-2">
+                            <Link
+                              to={`/classroom/${nextSession.tutor_id || nextSession.tutorId}/${nextSession.subject_id || nextSession.subjectId}`}
+                              className="hover:underline"
+                            >
+                              {nextSession.subject || "Chưa có môn"}
+                            </Link>{" "}
+                            với {nextTutor?.name || "Gia sư"}
+                          </h2>
 
-                            <p className="text-indigo-100 text-sm mb-6 opacity-80">
-                              {new Date(nextSession.date).toLocaleDateString()}{" "}
-                              lúc {nextSession.time || "??"} •{" "}
-                              {nextSession.meetingLink ? "Online" : "Offline"}
-                            </p>
+                          <p className="text-indigo-100 text-sm mb-6 opacity-80">
+                            {nextSession.dateObj.toLocaleDateString("vi-VN")} lúc{" "}
+                            {nextSession.time || "??"} •{" "}
+                            {nextSession.meetingLink ? "Online" : "Offline"}
+                          </p>
 
                             <div className="flex flex-wrap gap-4">
                               {nextSession?.room_id ? (
@@ -410,18 +418,38 @@ export function DashboardPage() {
                           <Calendar className="h-16 w-16 text-white opacity-80" />
                         </div>
                       </div>
+                      <div className="absolute top-0 right-0 -mt-20 -mr-20 w-80 h-80 bg-white/10 rounded-full blur-3xl"></div>
                     </div>
-                    <div className="absolute top-0 right-0 -mt-20 -mr-20 w-80 h-80 bg-white/10 rounded-full blur-3xl"></div>
-                  </div>
+                  )}
 
+                  {/* Sessions management */}
                   <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-8">
                     <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-100">
                       <h3 className="text-xl font-bold text-slate-900">
-                        Buổi học sắp tới
+                        Buổi học của tôi
                       </h3>
-                      <button className="text-sm font-bold text-indigo-600 hover:underline">
-                        Xem lịch
-                      </button>
+                      <div className="flex bg-slate-100 p-1 rounded-xl">
+                        <button
+                          onClick={() => setViewMode("calendar")}
+                          className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                            viewMode === "calendar"
+                              ? "bg-white text-indigo-600 shadow-sm"
+                              : "text-slate-500 hover:text-slate-700"
+                          }`}
+                        >
+                          Lịch tháng
+                        </button>
+                        <button
+                          onClick={() => setViewMode("list")}
+                          className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                            viewMode === "list"
+                              ? "bg-white text-indigo-600 shadow-sm"
+                              : "text-slate-500 hover:text-slate-700"
+                          }`}
+                        >
+                          Danh sách
+                        </button>
+                      </div>
                     </div>
                     <div className="space-y-4">
                       {sessions && sessions.length > 0 ? (

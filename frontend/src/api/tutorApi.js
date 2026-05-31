@@ -25,7 +25,7 @@ export const tutorApi = {
 
   getById: (id) => axiosClient.get(`/tutors/${id}`),
 
-  getAvailability: (id) => axiosClient.get(`/tutors/${id}/availability`),
+  getAvailability: (id, params) => axiosClient.get(`/tutors/${id}/availability`, { params }),
 
   updateAvailability: (id, data) =>
     axiosClient.post(`/tutors/${id}/availability`, data),
