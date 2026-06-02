@@ -1,14 +1,21 @@
 import express from 'express'
-import authMiddleware from '../middlewares/auth.middleware.js'
-import roleMiddleware from '../middlewares/role.middleware.js'
-import { getTutorAvailability, getTutorById, getTutorStats, updateTutorAvailability } from '../controllers/tutor.controller.js'
+import authMiddleware, {
+  authorize
+} from '../middlewares/auth.middleware.js'
+
+import {
+  getTutorAvailability,
+  getTutorById,
+  getTutorStats,
+  updateTutorAvailability
+} from '../controllers/tutor.controller.js'
 
 const router = express.Router()
 
 router.get(
   '/dashboard',
   authMiddleware,
-  roleMiddleware('tutor'),
+  authorize('tutor'),
   (req, res) => {
     res.json({ message: "Tutor dashboard" })
   }
@@ -17,7 +24,7 @@ router.get(
 router.get(
   '/stats',
   authMiddleware,
-  roleMiddleware('tutor'),
+  authorize('tutor'),
   getTutorStats
 )
 
@@ -26,7 +33,7 @@ router.get('/:id/availability', getTutorAvailability)
 router.post(
   '/:id/availability',
   authMiddleware,
-  roleMiddleware('tutor'),
+ authorize('tutor'),
   updateTutorAvailability
 )
 

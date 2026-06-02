@@ -7,6 +7,9 @@ const adminApi = {
   rejectTutor: (id, reason) => axiosClient.post(`/admin/reject-tutor/${id}`, { reason }),
   getUsers: () => axiosClient.get("/admin/users"),
   updateUserStatus: (id, data) => axiosClient.patch(`/admin/users/${id}`, data),
+   getAllBookings: () =>axiosClient.get("/admin/bookings"),
+   cancelBooking: (id) =>axiosClient.patch(`/admin/bookings/${id}/cancel` ),
+
 };
 
 export default adminApi;

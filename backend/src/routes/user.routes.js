@@ -3,7 +3,9 @@ import {  becomeTutor, getUserById,updateProfileInfo,updateLearningInfo} from '.
 import authMiddleware from '../middlewares/auth.middleware.js'
 import { upload } from '../middlewares/upload.middlewares.js'
 import { updateAvatar } from '../controllers/user.controller.js'
-
+import {
+  changePassword
+} from "../controllers/user.controller.js";
 const router = express.Router()
 router.get('/:id', getUserById)
 router.post('/become-tutor', authMiddleware, becomeTutor)
@@ -23,6 +25,11 @@ router.put(
   "/me/learning",
   authMiddleware,
   updateLearningInfo
+);
+router.put(
+  "/change-password",
+  authMiddleware,
+  changePassword
 );
 export default router
 
