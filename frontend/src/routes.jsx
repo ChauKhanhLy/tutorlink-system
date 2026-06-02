@@ -22,7 +22,7 @@ import { AdminUsersPage } from "./pages/admin/AdminUsersPage";
 import { WalletPage } from "./pages/Wallet";
 import { QRConfirmPage } from "./pages/QRConfirm";
 import { AdminBookingsPage } from "./pages/admin/AdminBookingsPage";
-
+import { AdminComplaintsPage } from "./pages/admin/AdminComplaintsPage";
 export const router = createBrowserRouter([
   {
     path: "/",
@@ -191,6 +191,19 @@ export const router = createBrowserRouter([
       ]}
     >
       <AdminBookingsPage />
+    </ProtectedRoute>
+  ),
+},
+{
+  path: "admin/complaints",
+  element: (
+    <ProtectedRoute
+      requiredRoles={[
+        "admin",
+        "support_staff",
+      ]}
+    >
+      <AdminComplaintsPage />
     </ProtectedRoute>
   ),
 },

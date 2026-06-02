@@ -20,7 +20,7 @@ import { useAuth } from "../../context/AuthContext";
 import adminApi from "../../api/adminApi";
 import { ImageWithFallback } from "../../components/Image/ImageWithFallback";
 import {AdminComplaintsPage} from "./AdminComplaintsPage";
-
+import { getAvatarUrl } from "../../utils/avatar";
 // Helper: format số tiền VNĐ
 const formatVND = (value) => {
   if (!value && value !== 0) return "Chưa có";
@@ -292,7 +292,7 @@ const fetchData = async () => {
                   >
                     <div className="flex items-start gap-4">
                       <ImageWithFallback
-                        src={tutor.avatar}
+                        src={getAvatarUrl(tutor.avatar)}
                         alt={tutor.name}
                         className="w-16 h-16 rounded-xl object-cover"
                       />
@@ -414,11 +414,11 @@ const fetchData = async () => {
             <div className="p-6 space-y-5">
               {/* Thông tin cơ bản */}
               <div className="flex items-center gap-4 pb-3 border-b border-slate-100">
-                <ImageWithFallback
-                  src={selectedTutor.avatar}
-                  alt={selectedTutor.name}
-                  className="w-20 h-20 rounded-xl object-cover"
-                />
+                  <ImageWithFallback
+                    src={getAvatarUrl(selectedTutor.avatar)}
+                    alt={selectedTutor.name}
+                    className="w-20 h-20 rounded-xl object-cover"
+                  />
                 <div>
                   <h4 className="font-bold text-xl">{selectedTutor.name}</h4>
                   <p className="text-slate-500">{selectedTutor.email}</p>

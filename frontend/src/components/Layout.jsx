@@ -139,16 +139,22 @@ if (
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center">
-            <Link
-              to={
-                user?.role === "admin"
-                  ? "/admin/dashboard"
-                  : user
+              <Link
+                to={
+                  user?.role === "admin"
+                    ? "/admin/dashboard"
+                    : user?.role === "tutor_manager"
+                    ? "/admin/dashboard"
+                    : user?.role === "support_staff"
+                    ? "/admin/complaints"
+                    : user?.role === "tutor"
+                    ? "/tutor/dashboard"
+                    : user
                     ? "/dashboard"
                     : "/"
-              }
-              className="flex items-center space-x-2"
-            >
+                }
+                className="flex items-center space-x-2"
+              >
               <div className="bg-indigo-600 p-2 rounded-xl">
                 <GraduationCap className="h-6 w-6 text-white" />
               </div>

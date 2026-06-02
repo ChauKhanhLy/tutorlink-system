@@ -101,6 +101,22 @@ export const verifyTutor = async (id) => {
     [id]
   )
 }
+export const updateAvatar = async (
+  userId,
+  avatar
+) => {
+  const result = await db.query(
+    `
+    UPDATE users
+    SET avatar = $1
+    WHERE id = $2
+    RETURNING *
+    `,
+    [avatar, userId]
+  );
+
+  return result.rows[0];
+};
 
 // pending tutors
 // dal/user.dal.js

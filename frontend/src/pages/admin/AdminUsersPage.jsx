@@ -120,7 +120,12 @@ export function AdminUsersPage() {
                       <td className="p-4">
                         <div className="flex items-center gap-3">
                           <ImageWithFallback
-                            src={u.avatar}
+                            src={
+                              u.avatar ||
+                              `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                                u.name
+                              )}`
+                            }
                             alt={u.name}
                             className="w-10 h-10 rounded-full object-cover"
                           />
