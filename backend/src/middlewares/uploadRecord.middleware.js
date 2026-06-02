@@ -1,13 +1,11 @@
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
-
 // Đảm bảo thư mục lưu trữ video tồn tại
 const recordingDir = 'uploads/recordings';
 if (!fs.existsSync(recordingDir)) {
   fs.mkdirSync(recordingDir, { recursive: true });
 }
-
 // Cấu hình lưu trữ cho recordings
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -20,7 +18,6 @@ const storage = multer.diskStorage({
     cb(null, `recording-${roomId}-${Date.now()}${ext}`);
   }
 });
-
 // Chỉ cho phép upload video .webm hoặc .mp4
 const fileFilter = (req, file, cb) => {
   const allowedMimeTypes = ['video/webm', 'video/mp4', 'video/x-matroska', 'application/octet-stream'];
@@ -30,7 +27,6 @@ const fileFilter = (req, file, cb) => {
     cb(new Error('Chỉ chấp nhận upload file video (.webm, .mp4)'), false);
   }
 };
-
 export const uploadRecordingMiddleware = multer({
   storage,
   fileFilter,
