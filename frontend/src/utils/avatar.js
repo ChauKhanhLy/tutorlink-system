@@ -7,6 +7,6 @@ export const getAvatarUrl = (avatar) => {
         return avatar;
     }
 
-    const backendUrl = import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || "http://localhost:3000";
+    const backendUrl = import.meta.env.VITE_API_BASE_URL?.replace('/api', '')  ;
     return `${backendUrl}${avatar}`;
 };
