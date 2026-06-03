@@ -414,7 +414,7 @@ export function LessonPage() {
                 <p className="text-xs text-slate-500 mb-2 font-medium">Bản ghi hình buổi học trực tuyến:</p>
                 <div className="overflow-hidden rounded-2xl border border-slate-200 shadow-md bg-slate-950">
                   <video
-                    src={`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || }${videoRoom.record_url}`}
+                    src={`${import.meta.env.VITE_API_BASE_URL?.replace('/api',)  }${videoRoom.record_url}`}
                     controls
                     className="w-full aspect-video object-contain"
                     poster="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=60"
