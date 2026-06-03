@@ -5,5 +5,26 @@
     "pg-hstore": "^2.3.4",
     "qrcode": "^1.5.4",
     "sequelize": "^6.37.8"
-  }
+  },
+  "name": "tutorlink-system",
+  "version": "1.0.0",
+  "description": "",
+  "main": "check_db.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ChauKhanhLy/tutorlink-system.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ChauKhanhLy/tutorlink-system/issues"
+  },
+  "homepage": "https://github.com/ChauKhanhLy/tutorlink-system#readme"
 }
