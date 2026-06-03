@@ -55,23 +55,70 @@ export function Layout() {
     { name: "Tin nhắn", path: "/messages", icon: MessageSquare },
   ];
 
-  const adminNavLinks = [
-    { name: "Dashboard", path: "/admin/dashboard", icon: LayoutDashboard },
-    {
-      name: "Duyệt gia sư",
-      path: "/admin/dashboard?tab=pending",
-      icon: UserPlus,
-    },
-    { name: "Tin nhắn hỗ trợ", path: "/admin/messages", icon: MessageSquare },
-    { name: "Quản lý người dùng", path: "/admin/users", icon: Users },
-  ];
+ const adminNavLinks =
+  user?.role === "admin"
+    ? [
+        {
+          name: "Dashboard",
+          path: "/admin/dashboard",
+          icon: LayoutDashboard,
+        },
+        {
+          name: "Duyệt gia sư",
+          path: "/admin/dashboard?tab=pending",
+          icon: UserPlus,
+        },
+        {
+          name: "Tin nhắn hỗ trợ",
+          path: "/admin/messages",
+          icon: MessageSquare,
+        },
+        {
+          name: "Quản lý người dùng",
+          path: "/admin/users",
+          icon: Users,
+        },
+        {
+          name: "Quản lý lịch học",
+          path: "/admin/bookings",
+          icon: Calendar,
+        },
+      ]
+    : user?.role === "tutor_manager"
+    ? [
+        {
+          name: "Duyệt gia sư",
+          path: "/admin/dashboard?tab=pending",
+          icon: UserPlus,
+        },
+        {
+          name: "Quản lý lịch học",
+          path: "/admin/bookings",
+          icon: Calendar,
+        },
+      ]
+    : user?.role === "support_staff"
+    ? [
+        {
+          name: "Tin nhắn hỗ trợ",
+          path: "/admin/messages",
+          icon: MessageSquare,
+        },
+      ]
+    : [];
 
-  const navLinks =
-    user?.role === "admin"
-      ? adminNavLinks
-      : user?.role === "tutor"
-        ? tutorNavLinks
-        : learnerNavLinks;
+let navLinks = learnerNavLinks;
+
+if (user?.role === "tutor") {
+  navLinks = tutorNavLinks;
+}
+if (
+  ["admin", "tutor_manager", "support_staff"].includes(
+    user?.role
+  )
+) {
+  navLinks = adminNavLinks;
+}
 
   //const isAdmin = user?.role === "admin";
 
@@ -92,11 +139,17 @@ export function Layout() {
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center">
-            <Link
-              to={
-                user?.role === "admin"
-                  ? "/admin/dashboard"
-                  : user
+              <Link
+                to={
+                  user?.role === "admin"
+                    ? "/admin/dashboard"
+                    : user?.role === "tutor_manager"
+                    ? "/admin/dashboard"
+                    : user?.role === "support_staff"
+                    ? "/admin/complaints"
+                    : user?.role === "tutor"
+                    ? "/tutor/dashboard"
+                    : user
                     ? "/dashboard"
                     : "/"
               }
@@ -185,6 +238,14 @@ export function Layout() {
                               Dashboard
                             </Link>
                             <Link
+                            to="/admin/bookings"
+                            className="block px-4 py-2 text-sm hover:bg-slate-100"
+                            onClick={() => setOpen(false)}
+                          >
+                            Quản lý lịch học
+                          </Link>
+
+                            <Link
                               to="/admin/messages"
                               className="block px-4 py-2 text-sm hover:bg-slate-100"
                               onClick={() => setOpen(false)}
@@ -199,7 +260,52 @@ export function Layout() {
                               Quản lý người dùng
                             </Link>
                           </>
-                        ) : user?.role === "tutor" ? (
+                        ): user?.role === "tutor_manager" ? (
+                            <>
+                              <Link
+                                to="/admin/dashboard"
+                                className="block px-4 py-2 text-sm hover:bg-slate-100"
+                                onClick={() => setOpen(false)}
+                              >
+                                Dashboard
+                              </Link>
+
+                              <Link
+                                to="/admin/bookings"
+                                className="block px-4 py-2 text-sm hover:bg-slate-100"
+                                onClick={() => setOpen(false)}
+                              >
+                                Quản lý lịch học
+                              </Link>
+
+                              <Link
+                                to="/admin/dashboard?tab=pending"
+                                className="block px-4 py-2 text-sm hover:bg-slate-100"
+                                onClick={() => setOpen(false)}
+                              >
+                                Duyệt gia sư
+                              </Link>
+                            </>
+                          ) : user?.role === "support_staff" ? (
+                            <>
+                              <Link
+                                to="/admin/messages"
+                                className="block px-4 py-2 text-sm hover:bg-slate-100"
+                                onClick={() => setOpen(false)}
+                              >
+                                Tin nhắn hỗ trợ
+                              </Link>
+
+                              {/* Sau này có trang khiếu nại */}
+                              <Link
+                                to="/admin/complaints"
+                                className="block px-4 py-2 text-sm hover:bg-slate-100"
+                                onClick={() => setOpen(false)}
+                              >
+                                Khiếu nại
+                              </Link>
+                            </>
+                          ) : user?.role === "tutor" ? (
                           <>
                             <Link
                               to="/tutor/dashboard"

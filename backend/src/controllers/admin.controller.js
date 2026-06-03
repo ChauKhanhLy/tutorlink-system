@@ -26,6 +26,22 @@ exports.getPendingTutors = async (req, res) => {
 //import userService from '../services/user.service.js'
 import { verifyTutor as verifyTutorService, getPendingTutors as getPendingTutorsService } from '../services/user.service.js'
 import db from '../config/db.js';
+import * as bookingService from "../services/booking.service.js";
+
+export const getAllBookingsAdmin = async (req, res) => {
+  try {
+    const bookings =
+      await bookingService.getAllBookings();
+
+    res.json(bookings);
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      message: "Lỗi server",
+    });
+  }
+};
 
 export const verifyTutor = async (req, res) => {
   try {
@@ -129,5 +145,24 @@ export const getAdminId = async (req, res) => {
     res.json({ adminId: result.rows[0].id });
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+};
+export const cancelBookingAdmin = async (
+  req,
+  res
+) => {
+  try {
+    const booking =
+      await bookingService.cancelBookingByAdmin(
+        req.params.id
+      );
+
+    res.json(booking);
+  } catch (err) {
+    console.error(err);
+
+    res.status(500).json({
+      message: "Lỗi server",
+    });
   }
 };

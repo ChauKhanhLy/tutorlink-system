@@ -13,7 +13,7 @@ import paymentRoutes from './routes/payment.routes.js'
 import videoRoomRoutes from './routes/videoRoom.routes.js'
 import walletRoutes from './routes/wallet.routes.js'
 import subjectRoutes from './routes/subject.routes.js'
-import authMiddleware, {isAdmin} from './middlewares/auth.middleware.js'
+import authMiddleware, { authorize } from './middlewares/auth.middleware.js'
 import complaintRoutes from './routes/complaint.routes.js'
 import favoriteRoutes from './routes/favorite.routes.js'
 import path from 'path';

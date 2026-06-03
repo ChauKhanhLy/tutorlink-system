@@ -63,7 +63,7 @@ export function LessonPage() {
 
   const handleViewVideo = async () => {
     if (videoRoom?.record_url) {
-      const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
       window.open(`${backendUrl}${videoRoom.record_url}`, "_blank");
     } else {
       toast.info("Tính năng xem lại ghi hình đang được phát triển hoặc buổi học chưa được ghi hình.");
@@ -414,7 +414,7 @@ export function LessonPage() {
                 <p className="text-xs text-slate-500 mb-2 font-medium">Bản ghi hình buổi học trực tuyến:</p>
                 <div className="overflow-hidden rounded-2xl border border-slate-200 shadow-md bg-slate-950">
                   <video
-                    src={`${import.meta.env.VITE_BACKEND_URL || "http://localhost:5000"}${videoRoom.record_url}`}
+                    src={`${import.meta.env.VITE_BACKEND_URL || "http://localhost:3000"}${videoRoom.record_url}`}
                     controls
                     className="w-full aspect-video object-contain"
                     poster="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=60"
@@ -422,10 +422,10 @@ export function LessonPage() {
                   <div className="p-3 bg-slate-900 border-t border-slate-800 flex justify-between items-center text-[10px] text-slate-400">
                     <div className="flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full bg-emerald-500 block animate-pulse"></span>
-                      <span>Ghi hình ({videoRoom.duration_minutes || 0} phút)</span>
+                      <span>Bản ghi hình</span>
                     </div>
                     <a
-                      href={`${import.meta.env.VITE_BACKEND_URL || "http://localhost:5000"}${videoRoom.record_url}`}
+                      href={`${import.meta.env.VITE_BACKEND_URL || "http://localhost:3000"}${videoRoom.record_url}`}
                       download={`buoi-hoc-${id}.webm`}
                       target="_blank"
                       rel="noopener noreferrer"

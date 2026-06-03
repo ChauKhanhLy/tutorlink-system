@@ -1,7 +1,8 @@
 import { updateProfile as updateProfileService, becomeTutor as becomeTutorService } from '../services/user.service.js'
 import { findById } from '../dal/user.dal.js'
 import * as userService from '../services/user.service.js'
-
+import bcrypt from "bcrypt";
+import * as userDAL from "../dal/user.dal.js";
 export const getUserById = async (req, res) => {
   try {
     const { id } = req.params
@@ -155,7 +156,47 @@ export const updateAvatar = async (req, res) => {
     })
   }
 }
+export const changePassword =
+  async (req, res) => {
+    try {
 
+      const { newPassword } =
+        req.body;
+
+      if (!newPassword) {
+        return res.status(400).json({
+          message:
+            "Vui lòng nhập mật khẩu mới"
+        });
+      }
+
+      const hashedPassword =
+        await bcrypt.hash(
+          newPassword,
+          6
+        );
+
+      await userDAL.updatePassword(
+        req.user.id,
+        hashedPassword
+      );
+
+      res.json({
+        message:
+          "Đổi mật khẩu thành công"
+      });
+
+    } catch (err) {
+
+      console.error(err);
+
+      res.status(500).json({
+        message:
+          "Lỗi đổi mật khẩu"
+      });
+
+    }
+  };
 // export const updateAvatar = async (req, res) => {
 //   try {
 //     console.log("API HIT")

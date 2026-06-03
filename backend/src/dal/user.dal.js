@@ -149,6 +149,23 @@ export const updateAvatar = async (userId, avatar) => {
   return result.rows[0]
 }
 
+export const updatePassword = async (
+  userId,
+  hashedPassword
+) => {
+  const result = await db.query(
+    `
+    UPDATE users
+    SET password = $1
+    WHERE id = $2
+    RETURNING id, email, name
+    `,
+    [hashedPassword, userId]
+  );
+
+  return result.rows[0];
+};
+
 /*export const getPendingTutors = async () => {
   const result = await db.query(`
     SELECT id, email, name, role, verified

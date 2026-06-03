@@ -25,6 +25,8 @@ import { WalletPage } from "./pages/Wallet";
 import { QRConfirmPage } from "./pages/QRConfirm";
 import { BookingSuccessPage } from "./pages/BookingSuccess";
 import { ClassroomPage } from "./pages/Classroom";
+import { AdminBookingsPage } from "./pages/admin/AdminBookingsPage";
+import { AdminComplaintsPage } from "./pages/admin/AdminComplaintsPage";
 
 export const router = createBrowserRouter([
   {
@@ -136,22 +138,32 @@ export const router = createBrowserRouter([
         path: "admin/login",
         element: <AdminLogin />,
       },
-      {
-        path: "admin/dashboard",
-        element: (
-          <ProtectedRoute requiredRole="admin">
-            <AdminDashboard />
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: "admin/messages",
-        element: (
-          <ProtectedRoute requiredRole="admin">
-            <AdminMessagesPage />
-          </ProtectedRoute>
-        ),
-      },
+  {path: "admin/dashboard",
+  element: (
+    <ProtectedRoute
+      requiredRoles={[
+        "admin",
+        "tutor_manager",
+        "support_staff",
+      ]}
+    >
+      <AdminDashboard />
+    </ProtectedRoute>
+  ),
+},
+    {
+  path: "admin/messages",
+  element: (
+    <ProtectedRoute
+      requiredRoles={[
+        "admin",
+        "support_staff",
+      ]}
+    >
+      <AdminMessagesPage />
+    </ProtectedRoute>
+  ),
+},
       {
         path: "admin/users",
         element: (
@@ -176,6 +188,32 @@ export const router = createBrowserRouter([
 
       { path: "login", element: <AuthPage /> },
       { path: "signup", element: <AuthPage /> },
+   {
+  path: "admin/bookings",
+  element: (
+    <ProtectedRoute
+      requiredRoles={[
+        "admin",
+        "tutor_manager",
+      ]}
+    >
+      <AdminBookingsPage />
+    </ProtectedRoute>
+  ),
+},
+{
+  path: "admin/complaints",
+  element: (
+    <ProtectedRoute
+      requiredRoles={[
+        "admin",
+        "support_staff",
+      ]}
+    >
+      <AdminComplaintsPage />
+    </ProtectedRoute>
+  ),
+},
     ],
   },
 ]);
