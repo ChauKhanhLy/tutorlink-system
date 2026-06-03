@@ -68,11 +68,38 @@ app.use('/api/favorites', favoriteRoutes);
 })*/
 
 app.get('/api/users/me', authMiddleware, async (req, res) => {
-  const user = await findById(req.user.id);
+  try {
+    const user = await findById(req.user.id);
+    const { password, ...userWithoutPassword } = user;
+    res.json(userWithoutPassword);
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    res.status(500).json({ message: 'Failed to fetch user' });
+  }
+});
 
-  const { password, ...userWithoutPassword } = user;
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({ message: 'Route not found' });
+});
 
-  res.json(userWithoutPassword);
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  
+  if (res.headersSent) {
+    return next(err);
+  }
+  
+  const status = err.status || err.statusCode || 500;
+  const message = err.message || 'Internal Server Error';
+  
+  res.status(status).json({
+    error: true,
+    message: message,
+    status: status,
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+  });
 });
 
 export default app

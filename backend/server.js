@@ -30,15 +30,27 @@ const startServer = async () => {
   try {
     if (sequelize?.authenticate) {
       await sequelize.authenticate()
-      console.log('Kết nối database thành công')
+      console.log('✅ Database connection successful')
     }
 
     server.listen(PORT, () => {
-      console.log(`Server running at http://localhost:${PORT}`)
+      console.log(`✅ Server running on port ${PORT}`)
+      console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`)
     })
   } catch (err) {
-    console.error('Lỗi khởi động:', err)
+    console.error('❌ Server startup error:', err.message)
+    process.exit(1)
   }
 }
+
+// Handle unhandled exceptions
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason)
+})
+
+process.on('uncaughtException', (error) => {
+  console.error('❌ Uncaught Exception:', error)
+  process.exit(1)
+})
 
 startServer()

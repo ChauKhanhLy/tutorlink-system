@@ -168,7 +168,7 @@ export function AdminComplaintsPage() {
                 <div className="mt-4">
                   <p className="font-semibold text-slate-700">Video ghi hình buổi học:</p>
                   <video
-                    src={`${import.meta.env.VITE_BACKEND_URL || "http://localhost:5000"}${selected.video_record_url}`}
+                    src={`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || "http://localhost:3000"}${selected.video_record_url}`}
                     controls
                     className="w-full rounded-2xl border aspect-video object-contain bg-slate-950 shadow-inner mt-2"
                   />

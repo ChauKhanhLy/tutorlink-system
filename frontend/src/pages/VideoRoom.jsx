@@ -286,7 +286,7 @@ export function VideoRoomPage() {
       toast.info("Đang lưu trữ và tải video ghi hình lên máy chủ... Vui lòng không đóng tab!");
 
       const token = localStorage.getItem("token");
-      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+      const apiUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api";
       
       const response = await fetch(`${apiUrl}/video-rooms/${id}/record`, {
         method: "POST",
