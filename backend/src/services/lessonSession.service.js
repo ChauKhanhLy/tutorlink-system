@@ -217,23 +217,11 @@ async function confirmLearnerStudied(lessonSessionId, learnerId) {
       if (hasComplaint) {
         console.log(`[confirmLearnerStudied] Buổi học #${session.booking_id} đang có khiếu nại chưa xử lý. Tạm hoãn giải ngân.`);
       } else {
-        const pricePerHour = parseFloat(session.lesson_price_per_hour || session.fee || 0);
-        if (pricePerHour > 0 && durationHours > 0) {
-          const earnedAmount = parseFloat((pricePerHour * durationHours).toFixed(0));
-          await depositToWallet(
-            session.tutor_id,
-            earnedAmount,
-            `Thu nhập buổi dạy - ${durationHours}h × ${pricePerHour.toLocaleString('vi-VN')}₫/h`,
-            session.booking_id,
-            'booking'
-          );
-          console.log(`[confirmLearnerStudied] Đã giải ngân ${earnedAmount}₫ cho gia sư ${session.tutor_id}`);
-        } else {
-          console.log(`[confirmLearnerStudied] Bỏ qua giải ngân: pricePerHour=${pricePerHour}, duration=${durationHours}`);
-        }
+        // Tạm hoãn giải ngân - sẽ xử lý sau 1 tuần không có khiếu nại
+        console.log(`[confirmLearnerStudied] Buổi học #${session.booking_id} đã hoàn thành, không có khiếu nại. Sẽ giải ngân sau 1 tuần.`);
       }
     } catch (walletErr) {
-      console.error('[confirmLearnerStudied] Lỗi giải ngân ví gia sư:', walletErr.message);
+      console.error('[confirmLearnerStudied] Lỗi kiểm tra khiếu nại:', walletErr.message);
     }
 
     return updatedSession;

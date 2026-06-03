@@ -3,6 +3,7 @@ import Transaction from '../models/transaction.model.js';
 import Settlement from '../models/settlement.model.js';
 import sequelize from '../config/database.js';
 import { Op } from 'sequelize';
+import db from '../config/db.js';
 
 export const getOrCreateWallet = async (userId) => {
     let wallet = await Wallet.findOne({ where: { user_id: userId } });
@@ -171,6 +172,88 @@ export const processWeeklySettlements = async () => {
         return { processed: Object.keys(userTransactions).length };
     } catch (error) {
         await t.rollback();
+        throw error;
+    }
+};
+
+export const processTutorPayments = async () => {
+    try {
+        console.log('🔄 Bắt đầu xử lý thanh toán cho gia sư (sau 1 tuần không khiếu nại)...');
+        
+        // Tìm các lesson_sessions đã hoàn thành (learner_confirmed = true, tutor_confirmed = true)
+        // Đã qua 7 ngày kể từ khi learner_confirm
+        // Không có khiếu nại active (status != 'rejected')
+        // Chưa được thanh toán (chưa có transaction type='deposit' cho booking đó)
+        
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        
+        const query = `
+            SELECT 
+                ls.id as lesson_session_id,
+                ls.booking_id,
+                ls.duration_hours,
+                ls.updated_at as learner_confirmed_at,
+                b.tutor_id,
+                b.learner_id,
+                b.fee,
+                b.lesson_price_per_hour,
+                b.type
+            FROM lesson_sessions ls
+            JOIN bookings b ON ls.booking_id = b.id
+            WHERE 
+                ls.learner_confirmed = true
+                AND ls.tutor_confirmed = true
+                AND ls.updated_at <= $1
+                AND NOT EXISTS (
+                    SELECT 1 FROM transactions t 
+                    WHERE t.user_id = b.tutor_id 
+                    AND t.reference_id = b.id 
+                    AND t.type = 'deposit'
+                )
+                AND NOT EXISTS (
+                    SELECT 1 FROM complaints c 
+                    WHERE c.booking_id = b.id 
+                    AND c.status != 'rejected'
+                )
+        `;
+        
+        const result = await db.query(query, [sevenDaysAgo]);
+        const pendingSessions = result.rows;
+        
+        console.log(`[processTutorPayments] Tìm thấy ${pendingSessions.length} buổi học cần thanh toán`);
+        
+        let processedCount = 0;
+        let totalAmount = 0;
+        
+        for (const session of pendingSessions) {
+            try {
+                const durationHours = parseFloat(session.duration_hours || (session.type === 'trial' ? 1.0 : 2.0));
+                const pricePerHour = parseFloat(session.lesson_price_per_hour || session.fee || 0);
+                const earnedAmount = parseFloat((pricePerHour * durationHours).toFixed(0));
+                
+                if (earnedAmount > 0) {
+                    await depositToWallet(
+                        session.tutor_id,
+                        earnedAmount,
+                        `Thu nhập buổi dạy (Thanh toán sau 1 tuần) - ${durationHours}h × ${pricePerHour.toLocaleString('vi-VN')}₫/h`,
+                        session.booking_id,
+                        'booking'
+                    );
+                    
+                    processedCount++;
+                    totalAmount += earnedAmount;
+                    console.log(`[processTutorPayments] Đã thanh toán ${earnedAmount}₫ cho gia sư ${session.tutor_id} (booking: ${session.booking_id})`);
+                }
+            } catch (error) {
+                console.error(`[processTutorPayments] Lỗi thanh toán cho booking ${session.booking_id}:`, error.message);
+            }
+        }
+        
+        console.log(`[processTutorPayments] Hoàn thành: ${processedCount} gia sư, tổng ${totalAmount.toLocaleString('vi-VN')}₫`);
+        return { processed: processedCount, totalAmount };
+    } catch (error) {
+        console.error('[processTutorPayments] Lỗi xử lý thanh toán:', error);
         throw error;
     }
 };

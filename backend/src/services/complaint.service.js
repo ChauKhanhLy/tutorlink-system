@@ -1,5 +1,5 @@
 import * as complaintDAL from '../dal/complaint.dal.js';
-import { depositToWallet } from './wallet.service.js';
+import { depositToWallet, spendFromWallet } from './wallet.service.js';
 import db from '../config/db.js';
 
 export const createComplaint = async (userId, data) => {
@@ -74,8 +74,28 @@ export const updateComplaintStatus = async (complaintId, status, resolution_note
           }
         }
       } else if (status === 'resolved') {
-        // Học sinh thắng khiếu nại -> Hoàn tiền cho Học sinh
-        // Kiểm tra xem học sinh đã được hoàn tiền cho booking này chưa
+        // Học sinh thắng khiếu nại -> Hoàn tiền cho Học sinh và Trừ tiền của Gia sư (nếu đã nhận)
+        
+        // 1. Kiểm tra và trừ tiền của gia sư nếu đã nhận
+        const paidTxRes = await db.query(
+          "SELECT id, amount FROM transactions WHERE user_id = $1 AND reference_id = $2 AND type = 'deposit' LIMIT 1",
+          [booking.tutor_id, bookingId]
+        );
+        const paidTx = paidTxRes.rows[0];
+
+        if (paidTx) {
+          // Gia sư đã nhận tiền → trừ lại
+          const amountToDeduct = parseFloat(paidTx.amount);
+          await spendFromWallet(
+            booking.tutor_id,
+            amountToDeduct,
+            bookingId,
+            `Trừ thu nhập do khiếu nại được chấp nhận - Buổi học #${bookingId}`
+          );
+          console.log(`[updateComplaintStatus] Đã trừ ${amountToDeduct}₫ từ gia sư ${booking.tutor_id} sau khi chấp nhận khiếu nại`);
+        }
+
+        // 2. Kiểm tra xem học sinh đã được hoàn tiền cho booking này chưa
         const refundedTxRes = await db.query(
           "SELECT id FROM transactions WHERE user_id = $1 AND reference_id = $2 AND type = 'refund' LIMIT 1",
           [booking.learner_id, bookingId]

@@ -6,6 +6,11 @@ cron.schedule('59 23 * * 0', async () => {
     console.log('🔄 Bắt đầu xử lý settlements hàng tuần...');
     
     try {
+        // Xử lý thanh toán cho gia sư (sau 1 tuần không khiếu nại)
+        const tutorPaymentResult = await WalletService.processTutorPayments();
+        console.log(`✅ Đã thanh toán cho ${tutorPaymentResult.processed} gia sư, tổng ${tutorPaymentResult.totalAmount?.toLocaleString('vi-VN')}₫`);
+        
+        // Xử lý settlements cũ (nếu cần)
         const result = await WalletService.processWeeklySettlements();
         console.log(`✅ Đã xử lý ${result.processed} settlements thành công`);
         
