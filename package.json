@@ -1,26 +1,28 @@
 {
-  "dependencies": {
-    "dotenv": "^17.4.0",
-    "pg": "^8.20.0",
-    "pg-hstore": "^2.3.4",
-    "qrcode": "^1.5.4",
-    "sequelize": "^6.37.8"
-  },
   "name": "tutorlink-system",
   "version": "1.0.0",
-  "description": "",
-  "main": "check_db.js",
-  "directories": {
-    "doc": "docs"
-  },
+  "description": "TutorLink System - Tutoring Platform",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && npm run dev",
+    "build:frontend": "cd frontend && npm run build",
+    "build:backend": "cd backend && npm install",
+    "test": "echo \"Run tests from frontend or backend folder\""
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ChauKhanhLy/tutorlink-system.git"
   },
-  "keywords": [],
+  "keywords": [
+    "tutoring",
+    "education",
+    "platform"
+  ],
   "author": "",
   "license": "ISC",
   "bugs": {

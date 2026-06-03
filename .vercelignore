@@ -1,0 +1,16 @@
+backend/
+docs/
+scratch/
+.git/
+.github/
+.vscode/
+.windsurf/
+.continue/
+README.md
+docker-compose.yml
+.gitignore
+.gitattributes
+postgresConnect.session.sql
+check_*.js
+node_modules/
+*.log

@@ -41,43 +41,41 @@ Choose ONE of these options:
 
 Go to: **Vercel Dashboard → Your Project → Settings → Environment Variables**
 
-**For Frontend:**
+**For Frontend (only):**
 ```
 VITE_API_BASE_URL = https://your-backend-domain.com/api
 VITE_SOCKET_URL = https://your-backend-domain.com
 ```
 
-**For Backend (if deploying to Vercel):**
-```
-CORS_ORIGINS = https://your-frontend-url.vercel.app
-DATABASE_URL = your-postgres-url
-NODE_ENV = production
-PORT = (leave Vercel to auto-assign)
-
-+ All other backend env vars you currently use
-```
+**Backend is deployed separately** - No backend env vars needed in this Vercel project.
 
 ### 3. Deploy Frontend
 
 ```bash
 # Push to GitHub (if connected to Vercel)
 git add .
-git commit -m "Fix Vercel deployment issues"
+git commit -m "Fix Vercel deployment - corrected monorepo config"
 git push origin main
 
 # Or deploy directly via CLI
 vercel deploy --prod
 ```
 
-### 4. Deploy Backend (if needed)
+### 4. Deploy Backend Separately
 
-If deploying to Vercel:
+Backend MUST be deployed to a different service:
+
+**Option A: Separate Vercel Project**
 ```bash
 cd backend
-vercel deploy --prod
+vercel new --name tutorlink-backend
+# Then set environment variables and deploy
 ```
 
-Get the backend URL from Vercel dashboard.
+**Option B: Railway/Render/Other Platform**
+- Follow platform-specific deployment instructions
+- Set all required environment variables
+- Update `CORS_ORIGINS` to include your Vercel frontend URL
 
 ### 5. Update Frontend Env Vars (if backend URL changed)
 

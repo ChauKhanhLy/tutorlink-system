@@ -1,11 +1,20 @@
 # Vercel Deployment Guide for TutorLink System
 
+## Architecture
+
+This is a **monorepo** with:
+- **Frontend**: React + Vite (deploys to Vercel)
+- **Backend**: Node.js + Express (deploys separately to another service)
+
+**Important:** Frontend and backend must be deployed to separate services/projects.
+
 ## Problems Fixed
 
 1. ✅ **Hardcoded API URLs** - Frontend was calling `http://localhost:3000` in production
-2. ✅ **Missing Vercel Configuration** - Added `vercel.json` for proper deployment
-3. ✅ **No Error Handling** - Added global error handler middleware
-4. ✅ **No Environment Variables** - Set up `.env.production` for frontend
+2. ✅ **Monorepo Configuration** - Configured `vercel.json` to deploy ONLY frontend
+3. ✅ **Peer Dependency Issues** - Fixed cloudinary version conflict
+4. ✅ **No Error Handling** - Added global error handler middleware
+5. ✅ **Environment Variables** - Set up proper `.env.production` configuration
 
 ## Changes Made
 
@@ -15,38 +24,80 @@
 - ✏️ `frontend/src/services/api.js` - Updated with env var
 - ✏️ `frontend/src/socket.js` - Uses `VITE_SOCKET_URL` env var
 - ✏️ `frontend/src/context/AuthContext.jsx` - Updated API URL in refreshUser()
+- ✏️ `frontend/src/utils/avatar.js` - Uses backend URL from env
+- ✏️ `frontend/src/pages/*.jsx` - All video URLs use env variables
 
-### 2. Backend Error Handling
+### 2. Backend Configuration
+- ✏️ `backend/package.json` - Fixed cloudinary version (`^1.41.0` instead of `^2.10.0`)
 - ✏️ `backend/src/app.js` - Added global error handler and 404 handler
 - ✏️ `backend/server.js` - Added process error handlers and better logging
 
-### 3. Deployment Configuration
-- ✨ `vercel.json` - Created Vercel deployment config
-- ✨ `frontend/.env.production` - Created production environment variables
+### 3. Root Configuration
+- ✨ `vercel.json` - Builds and deploys ONLY frontend, serves as SPA
+- ✨ `.vercelignore` - Excludes backend and unnecessary files from Vercel
+- ✨ `package.json` - Updated to workspace configuration
+- ✨ `frontend/.env.production` - Production environment variables template
+- ✨ `frontend/.env.example` - Example environment variables
 
-## How to Deploy on Vercel
+## How to Deploy
 
-### Step 1: Create Backend API on Vercel (if not done)
+### Step 1: Deploy Backend First
 
-You need to deploy the backend separately or use a backend service. Options:
-- Deploy backend to Vercel, AWS, Railway, Render, or Heroku
-- Use an existing backend server URL
+Backend must be deployed to a separate service. Choose one:
 
-### Step 2: Set Environment Variables on Vercel
+**Option A: Separate Vercel Project**
+```bash
+cd backend
+vercel new --name tutorlink-system-backend
+# Follow prompts, deploy backend
+# Get the URL from Vercel dashboard
+```
 
-Go to Vercel Dashboard → Your Project → Settings → Environment Variables
+**Option B: Railway.app** (Recommended for Node.js)
+```bash
+# Go to https://railway.app
+# Connect GitHub
+# Select backend folder
+# Set environment variables
+# Deploy
+```
 
-Add these variables:
+**Option C: Render.com**
+```bash
+# Go to https://render.com
+# Create new Web Service
+# Connect GitHub repo
+# Set build/start commands
+# Deploy
+```
+
+### Step 2: Get Backend URL
+
+Note your backend deployment URL:
+- Vercel: `https://tutorlink-system-backend.vercel.app`
+- Railway: `https://your-backend-railway-app.up.railway.app`
+- Render: `https://your-backend-render.onrender.com`
+
+### Step 3: Set Frontend Environment Variables
+
+Go to **Vercel Dashboard → Your Frontend Project → Settings → Environment Variables**
+
+Add:
 ```
 VITE_API_BASE_URL = https://your-backend-url/api
 VITE_SOCKET_URL = https://your-backend-url
 ```
 
-**For Backend (if deploying to Vercel):**
+If deploying backend to Vercel, also set backend env vars there:
 ```
-CORS_ORIGINS = https://your-frontend-url,http://localhost:3000
-DATABASE_URL = your-postgresql-url
+CORS_ORIGINS = https://your-frontend-url.vercel.app
+DATABASE_URL = postgresql://user:password@host:port/dbname
 NODE_ENV = production
+JWT_SECRET = your-jwt-secret
+CLOUDINARY_CLOUD_NAME = your-cloud-name
+CLOUDINARY_API_KEY = your-api-key
+CLOUDINARY_API_SECRET = your-api-secret
+# ... other backend env vars
 ```
 
 (Add all your other required backend env vars)
@@ -65,37 +116,37 @@ VITE_SOCKET_URL=https://your-backend-domain.com
 ### Step 4: Deploy Frontend to Vercel
 
 ```bash
+# Make sure all changes are committed
+git add .
+git commit -m "Configure deployment for Vercel"
+
 # Option 1: Using Vercel CLI
 npm install -g vercel
 vercel deploy --prod
 
 # Option 2: Connect GitHub to Vercel and push
 git push origin main
+# Vercel will automatically deploy on push
 ```
 
-### Step 5: Deploy Backend (if applicable)
+### Step 5: Verify Deployment
 
-If deploying backend to Vercel:
-- Create `backend/vercel.json`:
+1. **Frontend**
+   - Visit: `https://your-frontend.vercel.app`
+   - Check Network tab in browser devtools
+   - Verify API calls go to your backend URL
+   - Check console for any errors
 
-```json
-{
-  "buildCommand": "npm install",
-  "outputDirectory": "./",
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "server.js"
-    }
-  ]
-}
-```
+2. **Backend**
+   - Visit: `https://your-backend-url/api/health` (if endpoint exists)
+   - Check logs on deployment platform
+   - Verify database connection works
 
-Then deploy:
-```bash
-cd backend
-vercel deploy --prod
-```
+3. **Connection Test**
+   - Try logging in on frontend
+   - Watch Network tab to see `/api/auth/login` call going to backend
+   - Check backend logs for connection
+
 
 ## File Structure After Changes
 
